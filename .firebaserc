@@ -1,0 +1,12 @@
+{
+  "projects": {
+    "default": "project-maui"
+  },
+  "targets": {
+    "project-maui": {
+      "hosting": {
+        "inside-out-studio": ["inside-out-explorer"]
+      }
+    }
+  }
+}

@@ -1,0 +1,16 @@
+# Dependencies (three.js is vendored into app/vendor by `npm run vendor`)
+node_modules/
+
+# Generated test artifacts (re-created by `npm test` / scripts/shot.mjs)
+screenshots/
+.chrome-test-*/
+
+# Firebase CLI cache & logs
+.firebase/
+firebase-debug.log*
+*.log
+
+# OS / editor noise
+.DS_Store
+.vscode/
+.idea/

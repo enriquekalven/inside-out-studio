@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' blob: data:; media-src 'none'; object-src 'none'; worker-src 'self' blob:; manifest-src 'self'; base-uri 'none'; form-action 'none'">
+  <meta name="referrer" content="no-referrer">
+  <meta name="color-scheme" content="light">
+  <meta name="theme-color" content="#fff7e8">
+  <meta name="description" content="Inside Out Studio — Explode &amp; explore how the world works from the inside out!">
+  <title>Inside Out Studio — Explode &amp; explore how the world works from the inside out</title>
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="styles.css">
+  <script type="module" src="js/main.js"></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <header class="topbar">
+    <button id="home-btn" class="btn btn-ghost btn-home" type="button" hidden>
+      <span aria-hidden="true">🏠</span> Home
+    </button>
+    <p class="brand"><span class="brand-icon" aria-hidden="true">🔧</span> Inside Out Studio</p>
+    <div class="topbar-right">
+      <p class="star-total" id="star-total" aria-live="polite">
+        <span aria-hidden="true">⭐</span>
+        <span id="star-count">0</span><span class="star-max" id="star-max">/96</span>
+        <span class="visually-hidden">stars earned</span>
+      </p>
+      <button id="sound-btn" class="btn btn-icon" type="button" aria-pressed="true">
+        <span id="sound-icon" aria-hidden="true">🔊</span><span class="visually-hidden">Sound</span>
+      </button>
+    </div>
+  </header>
+
+  <main id="main" tabindex="-1">
+    <section id="home-screen" class="screen home" aria-labelledby="home-title">
+      <div class="home-intro">
+        <h1 id="home-title">Explode &amp; explore how the world works from the inside out!</h1>
+        <p class="lead">Pick any real-world supercar, airliner, submarine, smartphone, rocket engine, laptop, or building—switch between 31 iconic models, blow them apart in 3D, and earn stars!</p>
+      </div>
+      <ul id="object-grid" class="object-grid"></ul>
+      <div class="home-footer">
+        <p class="small-print">Inside Out Studio • Works offline. No ads, no tracking, nothing leaves this device.</p>
+        <button id="reset-btn" class="btn btn-small btn-ghost" type="button">Reset my stars</button>
+      </div>
+    </section>
+
+    <section id="lab-screen" class="screen lab" hidden aria-labelledby="lab-title">
+      <div class="lab-head">
+        <div class="lab-title-wrap">
+          <h1 id="lab-title" class="lab-title"></h1>
+          <p id="lab-subtitle" class="lab-subtitle"></p>
+        </div>
+        <nav class="modes" aria-label="Ways to play">
+          <button type="button" class="mode-btn" data-mode="explore" aria-pressed="true"><span aria-hidden="true">🔍</span> Explore <span class="mode-stars" data-stars="explore"></span></button>
+          <button type="button" class="mode-btn" data-mode="find" aria-pressed="false"><span aria-hidden="true">🎯</span> Find It! <span class="mode-stars" data-stars="find"></span></button>
+          <button type="button" class="mode-btn" data-mode="build" aria-pressed="false"><span aria-hidden="true">🧩</span> Build It! <span class="mode-stars" data-stars="build"></span></button>
+          <button type="button" class="mode-btn" data-mode="quiz" aria-pressed="false"><span aria-hidden="true">❓</span> Quiz <span class="mode-stars" data-stars="quiz"></span></button>
+          <button type="button" class="mode-btn mode-btn-drive" data-mode="drive" aria-pressed="false"><span id="mode-drive-icon" aria-hidden="true">🏎️</span> <span id="mode-drive-text">Drive It!</span> <span class="mode-stars" data-stars="drive"></span></button>
+        </nav>
+      </div>
+      <div id="model-selector" class="model-selector" role="region" aria-label="Select 3D Model Variant"></div>
+      <div class="lab-body">
+        <div class="stage" id="stage" data-mode="explore">
+          <div class="stage-canvas" id="stage-canvas" role="img" aria-label="3D model. Use the parts list to explore it with a keyboard."></div>
+          <div class="labels" id="labels"></div>
+          <div class="pointer-hint" id="pointer-hint" hidden aria-hidden="true">👆</div>
+          <p class="stage-msg" id="stage-msg" role="status" aria-live="polite"></p>
+          <div class="drive-hud" id="drive-hud" hidden aria-label="Interactive Action Telemetry and Controls">
+            <div class="drive-gauges" id="drive-gauges">
+              <span class="drive-hud-title" id="drive-hud-title">🏎️ Drive It!</span>
+              <div class="drive-speed-box">
+                <span class="drive-speed-val" id="drive-speed">64</span>
+                <span class="drive-speed-unit" id="drive-speed-unit">MPH</span>
+              </div>
+              <div class="drive-gear-box" id="drive-gear" title="Current Transmission Gear">G3</div>
+              <div class="drive-tach-box">
+                <div class="drive-tach-head">
+                  <span id="drive-bar-label">RPM</span>
+                  <span id="drive-rpm">3,600 RPM</span>
+                </div>
+                <div class="drive-tach-track">
+                  <div class="drive-tach-fill" id="drive-rpm-bar"></div>
+                </div>
+              </div>
+            </div>
+            <div class="drive-controls" id="drive-controls" role="group" aria-label="Action Controls">
+              <button type="button" class="drive-ctrl-btn" id="drive-left-btn" title="Steer Left (A or Left Arrow)">⬅️ Steer L</button>
+              <button type="button" class="drive-ctrl-btn" id="drive-right-btn" title="Steer Right (D or Right Arrow)">➡️ Steer R</button>
+              <button type="button" class="drive-ctrl-btn drive-gas" id="drive-gas-btn" title="Accelerate (W or Up Arrow)">🟢 Gas</button>
+              <button type="button" class="drive-ctrl-btn drive-brake" id="drive-brake-btn" title="Brake / Reverse (S, Down Arrow, or Space)">🔴 Brake</button>
+              <button type="button" class="drive-ctrl-btn drive-nitro" id="drive-nitro-btn" title="Nitro / Afterburner Boost (Shift)">🔥 Nitro</button>
+              <button type="button" class="drive-ctrl-btn" id="drive-lights-btn" aria-pressed="true" title="Toggle Headlight Beams (L)">💡 Lights</button>
+              <button type="button" class="drive-ctrl-btn" id="drive-horn-btn" title="Sound Horn (H)">📯 Horn</button>
+            </div>
+          </div>
+          <p class="stage-loading" id="stage-loading" hidden>Getting the studio ready…</p>
+          <div class="stage-error" id="stage-error" hidden role="alert">
+            <p class="stage-error-title">Oh no! This browser can't show 3D models.</p>
+            <p>Try a newer browser like Chrome, Safari, Edge or Firefox.</p>
+          </div>
+          <p class="stage-tip" id="stage-tip" aria-hidden="true">Drag to spin • Pinch or scroll to zoom • Tap any part • Click 🏎️ Drive It! to test-drive</p>
+          <div class="stage-hud" id="stage-hud">
+            <button id="explode-btn" class="btn btn-primary btn-big" type="button">
+              <span id="explode-icon" aria-hidden="true">💥</span> <span id="explode-text">Explode!</span>
+            </button>
+            <button id="assemble-btn" class="btn btn-secondary" type="button">
+              <span aria-hidden="true">🧩</span> <span>Assemble!</span>
+            </button>
+            <button id="drive-btn" class="btn btn-drive" type="button" aria-pressed="false" title="Launch interactive Test-Drive &amp; Dyno Simulator">
+              <span id="drive-btn-icon" aria-hidden="true">🏎️</span> <span id="drive-btn-text">Drive It!</span>
+            </button>
+            <label class="slider" for="explode-slider">
+              <span class="slider-end" aria-hidden="true">🧩</span>
+              <input id="explode-slider" type="range" min="0" max="100" step="1" value="0" aria-label="How far apart">
+              <span class="slider-end" aria-hidden="true">💥</span>
+            </label>
+            <div class="hud-tools">
+              <button id="xray-btn" class="btn btn-icon" type="button" aria-pressed="false" title="X-Ray / Cutaway view">
+                <span aria-hidden="true">🩻</span><span class="visually-hidden">X-Ray Cutaway view</span>
+              </button>
+              <button id="spin-btn" class="btn btn-icon" type="button" aria-pressed="false" title="Auto-rotate 3D model">
+                <span aria-hidden="true">🔄</span><span class="visually-hidden">Auto-rotate 3D model</span>
+              </button>
+              <button id="labels-btn" class="btn btn-icon" type="button" aria-pressed="false" title="Show part names">
+                <span aria-hidden="true">🏷️</span><span class="visually-hidden">Show part names</span>
+              </button>
+              <button id="view-btn" class="btn btn-icon" type="button" title="Reset the view">
+                <span aria-hidden="true">🎥</span><span class="visually-hidden">Reset the view</span>
+              </button>
+            </div>
+          </div>
+        </div>
+        <aside class="panel" id="panel" aria-label="Game panel"></aside>
+      </div>
+    </section>
+  </main>
+
+  <dialog id="celebrate" class="dialog" aria-labelledby="celebrate-title" aria-describedby="celebrate-text">
+    <div class="dialog-body">
+      <p class="dialog-emoji" id="celebrate-emoji" aria-hidden="true">🎉</p>
+      <h2 id="celebrate-title">You did it!</h2>
+      <p class="big-stars" id="celebrate-stars"></p>
+      <p id="celebrate-text"></p>
+      <div class="dialog-actions" id="celebrate-actions"></div>
+    </div>
+  </dialog>
+
+  <dialog id="confirm" class="dialog" aria-labelledby="confirm-title">
+    <div class="dialog-body">
+      <p class="dialog-emoji" aria-hidden="true">🤔</p>
+      <h2 id="confirm-title">Start over?</h2>
+      <p>This clears all your stars and found parts on this device.</p>
+      <div class="dialog-actions">
+        <button id="confirm-yes" class="btn btn-danger" type="button">Yes, clear my stars</button>
+        <button id="confirm-no" class="btn btn-secondary" type="button">No, keep them</button>
+      </div>
+    </div>
+  </dialog>
+
+  <canvas id="confetti" class="confetti" aria-hidden="true"></canvas>
+  <noscript><p class="noscript">Inside Out Studio needs JavaScript turned on.</p></noscript>
+</body>
+</html>
