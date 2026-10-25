@@ -1063,36 +1063,203 @@ function buildTernGsdModel() {
 }
 
 function buildCarbonRoadBikeModel() {
-  const carbon = carbonFiberMat([6, 6]), red = carPaint(0xdc2626), steel = chromeMat();
+  const carbon = carbonFiberMat([6, 6]);
+  const red = carPaint(0xdc2626);
+  const steel = chromeMat();
+  const alu = brushedMetal(0xd8dee9, { metalness: 0.9, roughness: 0.16 });
+  const goldTi = brushedMetal(0xf59e0b, { metalness: 0.92, roughness: 0.14 });
+  const matteBlack = mat(0x111827, { roughness: 0.65 });
+
   const parts = [
-    { id: 'monocoque-carbon-frame-fork', name: 'Toray T1100 Monocoque Carbon Frame & Bladed Aero Fork (CAD)', category: 'Frame & Aero', isOuter: true, explodeOffset: [0, 1.25, 0],
-      desc: 'Real Three.js CarbonFrameBike CAD Kamm-tail carbon frame and suspension/fork linkage.',
+    {
+      id: 'monocoque-carbon-frame-fork',
+      name: 'Toray T1100 Monocoque Carbon Aero Frame & Internal Cable Routing (CAD)',
+      category: 'Frame & Aero',
+      isOuter: true,
+      explodeOffset: [0, 1.25, 0],
+      desc: 'Real Three.js CarbonFrameBike CAD Kamm-tail carbon main triangle, dropped aero seatstays, bottom bracket shell, and internal Di2/hydraulic routing.',
       funFact: 'High-modulus carbon-fiber road frames weigh under 700 grams—less than a full water bottle—yet survive 100+ km/h mountain descents!',
-      build(g) { populateBikeCad(g, { zone: 'frame' }); cyl(g, 0.032, 0.038, 1.15, 16, carbon, [0, 0.28, 0], [0, 0, 1.42]); } },
-    { id: 'aero-cockpit-saddle-seatpost', name: 'Integrated Carbon Bar-Stem Cockpit, GPS Mount & Carbon-Rail Saddle (CAD)', category: 'Cockpit & Contact Points', isOuter: true, explodeOffset: [0.95, 1.15, 0],
-      desc: 'Real CAD one-piece aerodynamic drop handlebar, internal cable routing headset, D-shaped carbon seatpost, and 3D-printed lattice saddle.',
+      build(g) {
+        populateBikeCad(g, { zone: 'frame' });
+        cyl(g, 0.032, 0.038, 1.15, 16, carbon, [0, 0.28, 0], [0, 0, 1.42]);
+      },
+    },
+    {
+      id: 'bladed-aero-carbon-fork',
+      name: 'Bladed Carbon Aero Fork, Tapered Ceramic Headset & Thru-Axle Dropouts',
+      category: 'Front Suspension & Steering',
+      isOuter: true,
+      explodeOffset: [1.15, 0.35, 0],
+      desc: 'Wind-tunnel-sculpted deep-section carbon fork blades, 1-1/8" to 1-1/2" tapered ceramic headset bearings, internal front brake hose channel, and 12×100mm thru-axle.',
+      funFact: 'Aero fork blades are spaced slightly wider apart so turbulent air spinning off the front wheel flows smoothly past the frame without stalling!',
+      build(g) {
+        for (const z of [-0.048, 0.048]) {
+          rbox(g, 0.065, 0.48, 0.018, 0.006, carbon, [0.68, 0.04, z], [0, 0, -0.34]);
+        }
+        cyl(g, 0.024, 0.028, 0.18, 16, carbon, [0.58, 0.36, 0], [0, 0, -0.34]);
+        torus(g, 0.028, 0.006, goldTi, [0.55, 0.44, 0], [Math.PI / 2, 0, -0.34]);
+        cyl(g, 0.008, 0.008, 0.13, 12, alu, [0.78, -0.2, 0], [Math.PI / 2, 0, 0]);
+      },
+    },
+    {
+      id: 'aero-cockpit-saddle-seatpost',
+      name: 'Integrated One-Piece Carbon Aero Bar-Stem, STI Shifters & Out-Front GPS (CAD)',
+      category: 'Cockpit & Controls',
+      isOuter: true,
+      explodeOffset: [0.95, 1.15, 0],
+      desc: 'Real CAD one-piece aerodynamic carbon drop handlebar, wireless dual-control shift/brake levers, perforated bar tape, and out-front GPS computer mount.',
       funFact: 'Routing brake hoses completely inside the handlebar and stem saves up to 8 watts of aerodynamic drag at 45 km/h!',
-      build(g) { populateBikeCad(g, { zone: 'cockpit-fork' }); rbox(g, 0.28, 0.04, 0.14, 0.015, carbon, [-0.38, 0.62, 0]); rbox(g, 0.16, 0.04, 0.42, 0.015, carbon, [0.56, 0.56, 0]); } },
-    { id: 'electronic-derailleur-crankset', name: '12-Speed Wireless Electronic Derailleur, Cassette & Crankset (CAD)', category: 'Drivetrain', isOuter: false, explodeOffset: [0, -0.65, 1.35],
-      desc: 'Real CAD hollow-forged crankarms, dual chainrings, roller chain, 12-cog cassette, and servo-driven rear derailleur.',
-      funFact: 'A modern bicycle chain transfers 98.6% of the rider’s leg power directly to the rear tire—more efficient than almost any car transmission!',
-      build(g) { populateBikeCad(g, { zone: 'drivetrain' }); torus(g, 0.16, 0.016, steel, [-0.08, -0.22, 0.09], [0, 0, 0]); } },
-    { id: 'hydraulic-disc-brakes', name: 'Flat-Mount Hydraulic Disc Calipers & Ice-Tech Vented Rotors (CAD)', category: 'Braking System', isOuter: false, explodeOffset: [0, 0.45, -1.35],
-      desc: 'Real CAD mineral-oil hydraulic brake levers, internal hoses, dual-piston calipers, and 160mm stainless-steel rotors.',
-      funFact: 'Disc brakes moved stopping power from the fragile carbon wheel rim to a steel hub rotor that works equally well in pouring rain!',
-      build(g) { populateBikeCad(g, { zone: 'brakes' }); for (const x of [-0.78, 0.78]) torus(g, 0.14, 0.012, steel, [x, -0.2, -0.06], [0, 0, 0]); } },
-    { id: 'deep-section-carbon-wheelset', name: '50mm Deep-Section Carbon Tubeless Wheelset & Hubs (CAD)', category: 'Wheels & Tires', isOuter: true, explodeOffset: [0, -1.25, 0],
-      desc: 'Real CAD front and rear spoked wheels with bladed aero spokes, ratchet freehub, and 28mm silica slick tires.',
+      build(g) {
+        populateBikeCad(g, { zone: 'cockpit-fork' });
+        rbox(g, 0.16, 0.04, 0.42, 0.015, carbon, [0.56, 0.56, 0]);
+        // Out-front aero cycling GPS computer displaying live watts, cadence & heart rate
+        rbox(g, 0.085, 0.016, 0.052, 0.005, screenMat('dashboard'), [0.68, 0.58, 0], [0, 0, -0.15]);
+        for (const z of [-0.19, 0.19]) {
+          rbox(g, 0.09, 0.12, 0.028, 0.008, matteBlack, [0.64, 0.54, z], [0, 0, -0.25]);
+        }
+      },
+    },
+    {
+      id: 'd-profile-seatpost-3d-saddle',
+      name: 'D-Shaped Aero Carbon Seatpost, Internal Di2 Battery & 3D-Printed Lattice Saddle',
+      category: 'Saddle & Electronics',
+      isOuter: true,
+      explodeOffset: [-0.85, 1.25, 0],
+      desc: 'Truncated-airfoil D-profile carbon seatpost housing the cylindrical 7.4V lithium-ion Di2 battery pack, topped by a carbon-rail 3D-printed elastomeric lattice saddle.',
+      funFact: 'Instead of foam, pro saddles use a 3D-printed honeycomb polymer lattice tuned with softer zones under sit-bones and firmer support at the nose!',
+      build(g) {
+        rbox(g, 0.052, 0.34, 0.028, 0.008, carbon, [-0.32, 0.46, 0], [0, 0, 0.28]);
+        // Cylindrical internal Di2 lithium battery inside seatpost
+        cyl(g, 0.01, 0.01, 0.16, 12, carPaint(0x2563eb), [-0.28, 0.36, 0], [0, 0, 0.28]);
+        // Carbon-rail 3D-printed saddle
+        rbox(g, 0.28, 0.036, 0.14, 0.014, matteBlack, [-0.38, 0.62, 0]);
+        for (const z of [-0.022, 0.022]) {
+          cyl(g, 0.004, 0.004, 0.18, 8, carbon, [-0.37, 0.59, z], [0, 0, Math.PI / 2]);
+        }
+      },
+    },
+    {
+      id: 'hollow-crankset-power-meter',
+      name: 'Hollow-Forged 54/40T Crankset, Dual-Sided Power Meter Spider & Ceramic BB',
+      category: 'Crankset & Power Meter',
+      isOuter: false,
+      explodeOffset: [0.25, -0.65, 1.35],
+      desc: 'Hollow-bonded 172.5mm crankarms, CNC-machined 54/40T aero outer/inner chainrings, strain-gauge power meter spider accurate to ±1%, and ceramic-bearing bottom bracket.',
+      funFact: 'Microscopic strain gauges inside the crank spider measure how much the metal flexes 200 times per second to calculate exact rider power in Watts!',
+      build(g) {
+        // Bottom bracket shell + ceramic bearing cups + 24mm titanium spindle
+        cyl(g, 0.028, 0.028, 0.095, 20, red, [-0.08, -0.22, 0], [Math.PI / 2, 0, 0]);
+        cyl(g, 0.014, 0.014, 0.13, 16, goldTi, [-0.08, -0.22, 0], [Math.PI / 2, 0, 0]);
+        // 54T outer & 40T inner chainrings + strain-gauge spider LED pod
+        torus(g, 0.115, 0.012, carbon, [-0.08, -0.22, 0.055], [0, 0, 0]);
+        torus(g, 0.085, 0.009, alu, [-0.08, -0.22, 0.048], [0, 0, 0]);
+        rbox(g, 0.18, 0.034, 0.016, 0.006, carbon, [-0.01, -0.22, 0.068], [0, 0, -0.35]);
+        rbox(g, 0.18, 0.034, 0.016, 0.006, carbon, [-0.15, -0.22, -0.068], [0, 0, -0.35]);
+      },
+    },
+    {
+      id: 'clipless-carbon-pedals',
+      name: 'Carbon-Body SPD-SL Clipless Road Pedals & Hollow Titanium Spindles',
+      category: 'Pedals & Contact Points',
+      isOuter: false,
+      explodeOffset: [0.55, -0.95, 1.45],
+      desc: 'Wide-platform injection-molded carbon clipless pedals with stainless-steel cleat wear plates, adjustable spring-loaded retention jaws, and hollow titanium axles.',
+      funFact: 'Clipping carbon-soled cycling shoes directly into spring-loaded pedal jaws lets a sprinter pull UP as well as push DOWN at 1,800 watts!',
+      build(g) {
+        for (const [px, py, pz] of [[0.06, -0.25, 0.105], [-0.22, -0.19, -0.105]]) {
+          cyl(g, 0.006, 0.006, 0.055, 10, goldTi, [px, py, pz], [Math.PI / 2, 0, 0]);
+          rbox(g, 0.075, 0.018, 0.065, 0.005, carbon, [px, py, pz + Math.sign(pz) * 0.02]);
+          rbox(g, 0.035, 0.02, 0.05, 0.003, steel, [px, py + 0.004, pz + Math.sign(pz) * 0.02]);
+        }
+      },
+    },
+    {
+      id: 'electronic-derailleur-crankset',
+      name: '12-Speed Wireless Electronic Derailleurs, 11-30T Titanium Cassette & Chain (CAD)',
+      category: 'Electronic Drivetrain',
+      isOuter: false,
+      explodeOffset: [-0.55, -0.65, 1.35],
+      desc: 'Real CAD 12-speed roller chain, 11-30T hyperglide cassette, front braze-on electronic yaw derailleur, and rear servo derailleur with oversized ceramic pulley cage.',
+      funFact: 'A modern waxed bicycle chain transfers 98.6% of the rider’s leg power directly to the rear tire—more efficient than almost any car transmission!',
+      build(g) {
+        populateBikeCad(g, { zone: 'drivetrain' });
+        torus(g, 0.16, 0.016, steel, [-0.08, -0.22, 0.09], [0, 0, 0]);
+        // Oversized ceramic pulley wheel cage on rear derailleur
+        for (const py of [-0.28, -0.35]) {
+          torus(g, 0.024, 0.005, red, [-0.78, py, 0.085], [0, 0, 0]);
+        }
+      },
+    },
+    {
+      id: 'hydraulic-disc-brakes',
+      name: 'Flat-Mount Hydraulic Disc Calipers & 160mm Ice-Tech Centerlock Rotors (CAD)',
+      category: 'Braking System',
+      isOuter: false,
+      explodeOffset: [0, 0.45, -1.35],
+      desc: 'Real CAD mineral-oil hydraulic brake levers, internal hoses, 2-piston monobloc magnesium calipers, finned cooling pads, and 160mm stainless-aluminum-stainless sandwich rotors.',
+      funFact: 'Disc brakes moved stopping power from the fragile carbon wheel rim to a hub rotor with aluminum cooling fins that works equally well in pouring rain!',
+      build(g) {
+        populateBikeCad(g, { zone: 'brakes' });
+        for (const x of [-0.78, 0.78]) {
+          torus(g, 0.14, 0.012, steel, [x, -0.2, -0.06], [0, 0, 0]);
+          rbox(g, 0.065, 0.042, 0.036, 0.008, matteBlack, [x - 0.08, -0.12, -0.06]);
+        }
+      },
+    },
+    {
+      id: 'deep-section-carbon-wheelset',
+      name: '50mm Deep-Section Carbon Tubeless Wheelset, Bladed Spokes & 28c Tires (CAD)',
+      category: 'Wheels & Tires',
+      isOuter: true,
+      explodeOffset: [0, -1.25, 0],
+      desc: 'Real CAD front and rear spoked wheels with 50mm toroidal carbon rims, 24 bladed straight-pull aero spokes, 54T star-ratchet freehub, and 28mm tubeless silica slick tires.',
       funFact: 'Every bicycle wheel is a pre-tensioned suspension bridge—the rim hangs from the top spokes rather than resting on the bottom ones!',
-      build(g) { populateBikeCad(g, { zone: ['front-wheel', 'rear-wheel'] }); for (const x of [-0.78, 0.78]) { const w = new THREE.Group(); w.position.set(x, -0.2, 0); w.userData.driveRole = 'wheel'; g.add(w); torus(w, 0.36, 0.038, mat(0x0f172a), [0, 0, 0], [0, 0, 0]); torus(w, 0.31, 0.022, red, [0, 0, 0], [0, 0, 0]); } } },
+      build(g) {
+        populateBikeCad(g, { zone: ['front-wheel', 'rear-wheel'] });
+        for (const x of [-0.78, 0.78]) {
+          const w = new THREE.Group();
+          w.position.set(x, -0.2, 0);
+          w.userData.driveRole = 'wheel';
+          g.add(w);
+          torus(w, 0.36, 0.038, mat(0x0f172a), [0, 0, 0], [0, 0, 0]);
+          torus(w, 0.31, 0.022, red, [0, 0, 0], [0, 0, 0]);
+        }
+      },
+    },
+    {
+      id: 'aero-carbon-bottle-cages-bidons',
+      name: 'Wind-Tunnel Aero Carbon Water Bottle Cages & Dual 550ml Pro Bidons',
+      category: 'Hydration & Frame Aero',
+      isOuter: false,
+      explodeOffset: [0.15, 0.55, -1.15],
+      desc: 'Twin 18-gram injection-molded carbon cages bolted to the downtube and seattube bosses, holding aerodynamic dimpled 550ml pro team hydration bidons.',
+      funFact: 'In wind-tunnel tests, a modern aero road bike is actually FASTER with water bottles installed because they fill the air gap inside the frame triangle!',
+      build(g) {
+        // Downtube & seattube carbon bottle cages + red/white team bidons
+        const positions = [
+          { pos: [0.14, 0.04, 0], rot: [0, 0, -0.78] },
+          { pos: [-0.14, 0.06, 0], rot: [0, 0, 0.32] },
+        ];
+        for (const { pos, rot } of positions) {
+          rbox(g, 0.055, 0.16, 0.055, 0.015, carbon, pos, rot);
+          cyl(g, 0.034, 0.032, 0.18, 18, mat(0xf8fafc, { roughness: 0.3 }), pos, rot);
+          cyl(g, 0.026, 0.034, 0.035, 16, red, [pos[0] + 0.02, pos[1] + 0.09, pos[2]], rot);
+        }
+      },
+    },
   ];
   return {
-    id: 'carbon-aero-road-bike', name: 'Tour-Grade Carbon Aero Bike', brand: 'Pro Peloton / Three.js CAD', badge: '6.8 kg UCI Limit • 12-Speed • Real CAD',
-    desc: 'Ultra-lightweight carbon-fiber performance bicycle built from the Three.js CarbonFrameBike CAD with hydraulic disc brakes, 12-speed drivetrain, and aero wheelset.',
-    cameraPos: [3.2, 1.8, 3.2], parts,
+    id: 'carbon-aero-road-bike',
+    name: 'Tour-Grade Carbon Aero Bike',
+    brand: 'Pro Peloton / Three.js CAD',
+    badge: '6.8 kg UCI Limit • 12-Speed Di2 • Power Meter • Real CAD',
+    desc: 'Ultra-lightweight 10-part carbon-fiber WorldTour racing bicycle built from the Three.js CarbonFrameBike CAD with bladed aero fork, integrated bar-stem cockpit, 3D-printed lattice saddle, dual-sided power meter crankset, clipless carbon pedals, 12-speed electronic drivetrain, flat-mount hydraulic disc brakes, 50mm wheelset, and aero bidons.',
+    cameraPos: [3.2, 1.8, 3.2],
+    parts,
     quiz: [
       { q: 'Why are carbon-fiber bicycle frames both feather-light and stiff under pedaling loads?', correctId: 'monocoque-carbon-frame-fork', distractors: ['hydraulic-disc-brakes', 'deep-section-carbon-wheelset', 'electronic-derailleur-crankset'] },
       { q: 'Which subsystem transfers 98.6% of the rider’s pedal torque to the rear wheel?', correctId: 'electronic-derailleur-crankset', distractors: ['monocoque-carbon-frame-fork', 'hydraulic-disc-brakes', 'deep-section-carbon-wheelset'] },
+      { q: 'How does the crankset measure a cyclist’s exact pedaling output in Watts?', correctId: 'hollow-crankset-power-meter', distractors: ['clipless-carbon-pedals', 'd-profile-seatpost-3d-saddle', 'aero-carbon-bottle-cages-bidons'] },
       { q: 'Why did pro road bikes switch from rim brakes to hub-mounted hydraulic rotors?', correctId: 'hydraulic-disc-brakes', distractors: ['deep-section-carbon-wheelset', 'monocoque-carbon-frame-fork', 'electronic-derailleur-crankset'] },
     ],
   };

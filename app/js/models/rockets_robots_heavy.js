@@ -171,18 +171,31 @@ function buildRocketModel(cfg) {
     {
       id: 'interstage-stage-sep',
       name: cfg.interstageName,
-      category: 'Stage Separation',
+      category: isSaturn ? 'Second Stage (S-II)' : 'Stage Separation',
       isOuter: true,
       explodeOffset: [-1.35, 0.25, 1.15],
-      desc: 'Composite/steel interstage collar housing pneumatic pushers or hot-stage vents and cold-gas Nitrogen RCS thrusters.',
-      funFact: 'Falcon 9 uses compressed helium pneumatic pushers instead of explosive bolts so every stage separation can be tested before launch!',
+      desc: cfg.interstageDesc || 'Composite/steel interstage collar housing pneumatic pushers or hot-stage vents and cold-gas Nitrogen RCS thrusters.',
+      funFact: cfg.interstageFact || 'Falcon 9 uses compressed helium pneumatic pushers instead of explosive bolts so every stage separation can be tested before launch!',
       build(g) {
-        if (isSaturn) populateSaturnVCad(g, { zone: 's-ii' });
-        cyl(g, r * 1.01, r * 1.01, 0.36, 36, isStarship ? inconel : isSaturn ? whiteHull : blackCarbon, [0, 0.16, 0]);
+        if (isSaturn) {
+          populateSaturnVCad(g, { zone: 's-ii' });
+          // S-II Second Stage hull + 5× Rocketdyne J-2 LH2/LOX engine bells at base of S-II + ullage fairings
+          cyl(g, r * 0.99, r * 0.99, 0.44, 36, whiteHull, [0, 0.16, 0]);
+          buildMultiNozzleCluster(g, {
+            count: 5,
+            ringR: r * 0.56,
+            nozzleR: 0.045,
+            y: -0.06,
+            includeCadCenter: false,
+          });
+        } else {
+          cyl(g, r * 1.01, r * 1.01, 0.36, 36, isStarship ? inconel : blackCarbon, [0, 0.16, 0]);
+        }
         torus(g, r * 1.02, 0.018, chromeMat(), [0, 0.32, 0], [Math.PI / 2, 0, 0]);
         torus(g, r * 1.02, 0.018, chromeMat(), [0, 0.0, 0], [Math.PI / 2, 0, 0]);
         if (isStarship) {
-          // Vented hot-staging ring slots
+          // Vented hot-staging ring slots & dome blast shield
+          cone(g, r * 0.96, 0.12, 28, inconel, [0, 0.06, 0]);
           for (let i = 0; i < 16; i++) {
             const a = (i / 16) * Math.PI * 2;
             box(g, 0.025, 0.12, 0.04, blackTile, [Math.cos(a) * (r * 1.01), 0.16, Math.sin(a) * (r * 1.01)], [0, -a, 0]);
@@ -193,15 +206,30 @@ function buildRocketModel(cfg) {
     {
       id: 'upper-stage-vacuum-engine',
       name: cfg.vacEngName,
-      category: 'Upper-Stage Propulsion',
+      category: isSaturn ? 'Third Stage (S-IVB)' : 'Upper-Stage Propulsion',
       isOuter: false,
       explodeOffset: [1.45, 0.42, 0],
-      desc: 'Huge radiatively-cooled Niobium/Inconel vacuum nozzle optimized to expand exhaust gases to maximum speed in the vacuum of space.',
-      funFact: 'Vacuum rocket nozzles have giant bells up to 5× wider than sea-level nozzles because there is zero atmospheric pressure pushing back in space!',
+      desc: cfg.vacEngDesc || 'Huge radiatively-cooled Niobium/Inconel vacuum nozzle optimized to expand exhaust gases to maximum speed in the vacuum of space.',
+      funFact: cfg.vacEngFact || 'Vacuum rocket nozzles have giant bells up to 5× wider than sea-level nozzles because there is zero atmospheric pressure pushing back in space!',
       build(g) {
         addRocketEngineCad(g, { pos: [0, 0.48, 0], scale: isSaturn ? 0.0018 : 0.0022, rot: [0, 0, Math.PI / 2], replaceFallback: false });
-        cone(g, isSaturn ? 0.15 : r * 0.72, 0.32, 28, inconel, [0, 0.42, 0], [0, 0, 0]);
-        torus(g, isSaturn ? 0.14 : r * 0.68, 0.014, rp1Gold, [0, 0.32, 0], [Math.PI / 2, 0, 0]);
+        if (isStarship) {
+          // Starship 6-Raptor Aft Propulsion Bay: 3× outer giant Raptor Vacuum (RVac) bells + 3× center gimbaled Sea-Level Raptors
+          for (let i = 0; i < 3; i++) {
+            const aVac = (i / 3) * Math.PI * 2;
+            const vx = Math.cos(aVac) * (r * 0.56);
+            const vz = Math.sin(aVac) * (r * 0.56);
+            cone(g, 0.095, 0.28, 24, inconel, [vx, 0.44, vz]);
+            torus(g, 0.088, 0.009, rp1Gold, [vx, 0.34, vz], [Math.PI / 2, 0, 0]);
+            const aSl = aVac + Math.PI / 3;
+            const sx = Math.cos(aSl) * (r * 0.24);
+            const sz = Math.sin(aSl) * (r * 0.24);
+            cone(g, 0.052, 0.18, 20, chromeMat(), [sx, 0.46, sz]);
+          }
+        } else {
+          cone(g, isSaturn ? 0.15 : r * 0.72, 0.32, 28, inconel, [0, 0.42, 0], [0, 0, 0]);
+          torus(g, isSaturn ? 0.14 : r * 0.68, 0.014, rp1Gold, [0, 0.32, 0], [Math.PI / 2, 0, 0]);
+        }
       },
     },
     {
@@ -210,13 +238,21 @@ function buildRocketModel(cfg) {
       category: 'Upper Stage / Spacecraft',
       isOuter: true,
       explodeOffset: [-1.45, 0.88, -0.95],
-      desc: isStarship ? 'Stainless-steel Starship spacecraft hull clad with 18,000 hexagonal black silica thermal protection tiles on the windward belly.' : 'Upper-stage propellant tank hull, avionics ring, and inertial guidance lasers.',
-      funFact: isStarship ? 'Starship’s 18,000 hexagonal heat-shield tiles are pinned mechanically so robotic arms can inspect them between orbital flights!' : 'The Saturn V Instrument Unit computer had less memory than a modern musical greeting card yet guided astronauts to the Moon!',
+      desc: cfg.upperHullDesc || (isStarship ? 'Stainless-steel Starship spacecraft hull clad with 18,000 hexagonal black silica thermal protection tiles on the windward belly.' : 'Upper-stage propellant tank hull, avionics ring, and inertial guidance lasers.'),
+      funFact: cfg.upperHullFact || (isStarship ? 'Starship’s 18,000 hexagonal heat-shield tiles are pinned mechanically so robotic arms can inspect them between orbital flights!' : 'The Saturn V Instrument Unit computer had less memory than a modern musical greeting card yet guided astronauts to the Moon!'),
       build(g) {
         if (isSaturn) populateSaturnVCad(g, { zone: 's-ivb' });
         cyl(g, r * 0.98, r * 0.98, 0.94, 36, hullMat, [0, 0.82, 0]);
         for (const ry of [0.48, 0.82, 1.16]) {
           torus(g, r * 0.99, 0.009, isStarship ? inconel : blackTile, [0, ry, 0], [Math.PI / 2, 0, 0]);
+        }
+        if (isSaturn) {
+          // S-IVB Auxiliary Propulsion System (APS) pods + IBM Instrument Unit black-and-gold guidance collar at y = 1.24
+          for (const side of [-1, 1]) {
+            rbox(g, 0.05, 0.14, 0.06, 0.01, whiteHull, [side * (r * 0.98), 0.56, 0]);
+          }
+          cyl(g, r * 0.99, r * 0.99, 0.08, 36, blackTile, [0, 1.25, 0]);
+          torus(g, r * 0.995, 0.01, rp1Gold, [0, 1.25, 0], [Math.PI / 2, 0, 0]);
         }
         if (isStarship) {
           // Black silica hexagonal heat-shield belly cladding on windward side (+Z)
@@ -239,15 +275,25 @@ function buildRocketModel(cfg) {
         const ps = isSaturn ? 0.14 : 0.22;
         // Payload adapter cone + Starlink flat-pack stack / Apollo Lunar Module Eagle
         cyl(g, isSaturn ? 0.12 : r * 0.56, isSaturn ? 0.16 : r * 0.72, 0.14, 24, chromeMat(), [0, 1.32, 0]);
-        for (let i = 0; i < 5; i++) {
-          rbox(g, ps, 0.055, ps, 0.01, rp1Gold, [0, 1.44 + i * 0.075, 0]);
-        }
         if (isSaturn) {
-          // Lunar Module Eagle ascent cabin + 4 folded gold landing legs
-          sphere(g, 0.11, 16, whiteHull, [0, 1.68, 0]);
+          // Octagonal gold-Kapton Lunar Module Descent Stage + Ascent Cabin + 4 folded landing legs + RCS thruster quads + 4-petal SLA panels
+          cyl(g, 0.13, 0.13, 0.14, 8, rp1Gold, [0, 1.48, 0]);
+          sphere(g, 0.11, 16, whiteHull, [0, 1.64, 0]);
+          cone(g, 0.055, 0.09, 16, inconel, [0, 1.38, 0]);
           for (let i = 0; i < 4; i++) {
             const a = (i / 4) * Math.PI * 2 + Math.PI / 4;
-            cyl(g, 0.008, 0.008, 0.18, 8, rp1Gold, [Math.cos(a) * 0.11, 1.48, Math.sin(a) * 0.11]);
+            cyl(g, 0.008, 0.008, 0.18, 8, rp1Gold, [Math.cos(a) * 0.13, 1.48, Math.sin(a) * 0.13]);
+            rbox(g, 0.03, 0.03, 0.03, 0.005, chromeMat(), [Math.cos(a) * 0.11, 1.65, Math.sin(a) * 0.11]);
+          }
+        } else {
+          for (let i = 0; i < 5; i++) {
+            rbox(g, ps, 0.055, ps, 0.01, rp1Gold, [0, 1.44 + i * 0.075, 0]);
+          }
+          if (isStarship) {
+            // Starship Nosecone Landing Propellant Header Tanks (LOX tip sphere + CH4 header dome & downcomer)
+            sphere(g, 0.095, 20, cryoBlue, [0, 2.08, 0]);
+            sphere(g, 0.12, 20, rp1Gold, [0, 1.86, 0]);
+            cyl(g, 0.018, 0.018, 0.75, 12, chromeMat(), [0, 1.72, 0.14]);
           }
         }
       },
@@ -255,11 +301,11 @@ function buildRocketModel(cfg) {
     {
       id: 'payload-fairing-nosecone',
       name: cfg.fairingName,
-      category: 'Payload Fairing & Nose',
+      category: isSaturn ? 'Apollo CSM & Launch Escape' : 'Payload Fairing & Nose',
       isOuter: true,
       explodeOffset: [0, 1.95, 0],
-      desc: 'Sculpted aerodynamic nose cone / clamshell payload fairing halves lined with acoustic absorbers.',
-      funFact: 'SpaceX catches falling $6 million carbon-fiber payload fairing halves in the ocean using GPS-steered parafoils!',
+      desc: cfg.fairingDesc || 'Sculpted aerodynamic nose cone / clamshell payload fairing halves lined with acoustic absorbers.',
+      funFact: cfg.fairingFact || 'SpaceX catches falling $6 million carbon-fiber payload fairing halves in the ocean using GPS-steered parafoils!',
       build(g) {
         if (isSaturn) populateSaturnVCad(g, { zone: 'csm-les' });
         // Vertical revolved ogive nosecone along +Y (rot = [0, 0, 0])
@@ -284,7 +330,10 @@ function buildRocketModel(cfg) {
           g.add(nm);
         }
         if (isSaturn) {
-          // Apollo Launch Escape System (LES) tower at very top (+Y)
+          // Apollo Service Module (silver cylinder + SPS nozzle) + Command Module cone + Launch Escape System (LES) tower
+          cyl(g, 0.14, 0.14, 0.28, 28, steelHull, [0, 1.92, 0]);
+          cone(g, 0.075, 0.14, 20, inconel, [0, 1.74, 0]);
+          cone(g, 0.14, 0.18, 28, whiteHull, [0, 2.15, 0]);
           cyl(g, 0.022, 0.038, 0.44, 14, whiteHull, [0, 2.42, 0]);
           cone(g, 0.042, 0.12, 14, carPaint(0xdc2626), [0, 2.66, 0]);
         }
@@ -315,31 +364,59 @@ export const ROCKET_MODELS = [
     engName: '9× Merlin 1D Engines in Thrust Octaweb Structure', engDesc: 'Eight outer Merlin 1D engines in an aluminum-lithium Octaweb ring surrounding a center engine that throttles for propulsive landings.', engFact: 'The Octaweb layout protects each Merlin engine in its own thermal armor bay so one engine failure can never stop a mission!',
     boosterName: 'Al-Li 2195 First-Stage Booster Hull & Raceways', boosterDesc: 'Cryogenic Aluminum-Lithium tank walls with external avionics/propellant raceway tunnels and black thermal protection.', boosterFact: 'Single Falcon 9 Block 5 boosters have launched to space and landed back on Autonomous Spaceport Drone Ships over 20 times!',
     finLegName: '4× Cast Titanium Hypersonic Grid Fins & Carbon Landing Legs', finLegDesc: 'Waffle-shaped cast titanium aerodynamic fins at the top and telescopic pneumatic carbon-fiber legs at the base.', finLegFact: 'Each Falcon 9 grid fin is carved from a single glowing block of solid titanium so it won’t melt during Mach 8 re-entry!',
-    interstageName: 'Carbon-Fiber Composite Interstage & Pneumatic Pusher', vacEngName: 'Merlin 1D Vacuum (MVac) Niobium Bell Engine', upperHullName: 'Second-Stage LOX/RP-1 Tank & Flight Computers',
+    interstageName: 'Carbon-Fiber Composite Interstage & Pneumatic Pusher',
+    interstageDesc: 'Carbon-aluminum honeycomb interstage housing the MVac nozzle, helium pneumatic stage-separation pusher rods, and cold-gas nitrogen RCS thrusters.',
+    interstageFact: 'Falcon 9 uses compressed helium pneumatic pushers instead of explosive bolts so every stage separation can be tested before launch!',
+    vacEngName: 'Merlin 1D Vacuum (MVac) Niobium Bell Engine (981 kN)',
+    vacEngDesc: 'Single gimbaled Merlin 1D Vacuum engine with a huge radiatively-cooled niobium-alloy nozzle extension generating 220,500 lbf in space.',
+    vacEngFact: 'The thin niobium nozzle glows bright orange at 1,400°C in orbit, radiating heat directly into the blackness of space!',
+    upperHullName: 'Second-Stage Al-Li LOX/RP-1 Tank & Flight Computers',
+    upperHullDesc: 'Expendable upper stage storing liquid oxygen and RP-1 rocket-grade kerosene with triple-redundant fault-tolerant flight computers.',
+    upperHullFact: 'The second stage accelerates payloads from Mach 6 up to orbital velocity of 17,500 mph (28,000 km/h) in just 6 minutes!',
     payloadName: 'Flat-Pack Starlink V2 Mini Satellite Stack & Dispenser', payloadDesc: 'Tension-rod satellite stack that releases dozens of flat-pack broadband satellites with krypton Hall-effect ion thrusters.', payloadFact: 'Instead of heavy springs, the Starlink stack spins gently and releases a single tension rod so all satellites drift apart like a deck of cards!',
     fairingName: 'Two-Piece Carbon Honeycomb Clamshell Payload Fairing',
+    fairingDesc: '5.2-meter diameter carbon-fiber clamshell nose fairing lined with acoustic suppression panels, cold-gas thrusters, and parafoil recovery hardware.',
+    fairingFact: 'SpaceX catches falling $6 million carbon-fiber payload fairing halves in the ocean using GPS-steered parafoils!',
   }),
   buildRocketModel({
-    id: 'spacex-starship-superheavy', name: 'SpaceX Starship & Super Heavy', brand: 'SpaceX', badge: '121m Fully Reusable • 33× Raptor',
+    id: 'spacex-starship-superheavy', name: 'SpaceX Starship & Super Heavy', brand: 'SpaceX', badge: '121m Fully Reusable • 33× + 6× Raptor',
     desc: 'Tallest and most powerful vertical launch vehicle ever flown: a 33-Raptor Super Heavy stainless-steel booster paired with a 6-Raptor heat-shielded Starship spacecraft.',
     radius: 0.34, nozzleCount: 13, nozzleR: 0.052,
     engName: '33× Raptor Full-Flow Staged-Combustion Booster Cluster', engDesc: 'Concentric rings of subcooled liquid methane/oxygen Raptor engines producing over 16.7 million pounds of liftoff thrust.', engFact: 'Super Heavy’s 33 Raptor engines produce more than double the thrust of the historic Apollo Saturn V Moon rocket!',
     boosterName: '304L Stainless-Steel Super Heavy Booster & Chine Strakes', boosterDesc: 'Cryo-formed 4mm 304L stainless-steel rings with aerodynamic COPV chine fairings and Mechazilla catch pins.', boosterFact: 'Instead of landing legs, Super Heavy is caught mid-air by giant robotic "chopstick" arms on the launch tower!',
     finLegName: '4× Electric-Drive Steel Grid Fins & Ship Aero Flaps', finLegDesc: 'Always-deployed welded steel booster grid fins plus Starship’s 2 forward and 2 aft body flaps for belly-flop skydiving control.', finLegFact: 'Starship re-enters belly-first like a skydiver, using its 4 flaps to steer before flipping vertical at the last second to land!',
-    interstageName: 'Vented Stainless-Steel Hot-Staging Ring & Blast Shield', vacEngName: '3× Raptor Vacuum (RVac) + 3× Gimbaled Sea-Level Raptors', upperHullName: 'Starship 304L Steel Hull & 18,000 Hex Silica Heat Tiles',
-    payloadName: 'Pez-Dispenser Satellite Slot Bay & Nose Header Tanks', payloadDesc: 'Motorized satellite dispenser rack and nose-tip landing propellant header tanks.', payloadFact: 'Small header tanks are tucked right inside the nose cone to balance Starship’s weight during its hypersonic belly-flop descent!',
+    interstageName: 'Vented Stainless-Steel Hot-Staging Ring & Dome Blast Shield',
+    interstageDesc: 'Slotted stainless-steel hot-staging interstage collar and domed blast shield that lets Starship’s 6 upper-stage Raptors ignite before booster separation.',
+    interstageFact: 'Hot-staging—firing the upper stage engines while still attached to the booster—boosts Starship’s payload to orbit by 10%!',
+    vacEngName: '6-Engine Ship Bay: 3× Raptor Vacuum (RVac) + 3× Gimbaled SL Raptors',
+    vacEngDesc: 'Three massive outer Raptor Vacuum (RVac) regeneratively cooled bells for orbital insertion surrounding three gimbaled center Sea-Level Raptors for landing flips.',
+    vacEngFact: 'Each Raptor uses a Full-Flow Staged Combustion cycle where 100% of both oxygen and methane pass through dual turbines before entering the chamber!',
+    upperHullName: 'Starship 304L Steel Hull & 18,000 Hex Silica Heat Tiles',
+    payloadName: 'Pez-Dispenser Satellite Slot Bay & Nose Landing Header Tanks', payloadDesc: 'Motorized satellite dispenser rack plus spherical LOX and Methane landing propellant header tanks tucked into the tip of the nosecone.', payloadFact: 'Small header tanks are tucked right inside the nose cone to balance Starship’s weight during its hypersonic belly-flop descent!',
     fairingName: 'Welded Stainless-Steel Ogive Nose Cone & Forward Flaps',
+    fairingDesc: 'Cold-rolled 304L stainless-steel ogive nosecone clad on the windward side with black silica TPS tiles and actuated forward aero flaps.',
+    fairingFact: 'Stainless steel stays strong at both cryogenic -196°C liquid nitrogen temperatures and glowing +800°C atmospheric re-entry heat!',
   }),
   buildRocketModel({
-    id: 'nasa-saturn-v-apollo', name: 'NASA Apollo Saturn V Moon Rocket', brand: 'NASA / Boeing / North American / Douglas', badge: '110.6m • 5× F-1 • Real NASA CAD',
-    desc: 'Three-stage human-rated Heavy Lift Launch Vehicle that sent 24 Apollo astronauts to the Moon, featuring real upright NASA Saturn V 3D CAD stages.',
+    id: 'nasa-saturn-v-apollo', name: 'NASA Apollo Saturn V Moon Rocket', brand: 'NASA / Boeing / North American / Douglas', badge: '110.6m • 5× F-1 + 5× J-2 + 1× J-2 • Real NASA CAD',
+    desc: 'Three-stage human-rated Heavy Lift Launch Vehicle that sent 24 Apollo astronauts to the Moon, featuring real upright NASA Saturn V 3D CAD stages (S-IC, S-II, S-IVB, IU, LM & CSM).',
     radius: 0.31, nozzleCount: 5, nozzleR: 0.075,
     engName: '5× Rocketdyne F-1 Kerolox Engines (7.5 Million lbf)', engDesc: 'Five gigantic gas-generator kerosene/LOX F-1 engines burning 15 tons of propellant every single second.', engFact: 'The F-1 remains the most powerful single-chamber liquid-propellant rocket engine ever flown in history!',
-    boosterName: 'S-IC First Stage (Boeing) & 4 Aerodynamic Fairing Fins', boosterDesc: 'Real NASA CAD S-IC stage with iconic black-and-white roll-pattern stripes and 4 titanium-clad stabilizing fins.', boosterFact: 'The black-and-white checkerboard paint pattern helped ground cameras track whether the rocket was rolling during liftoff!',
+    boosterName: 'S-IC First Stage (Boeing) & External LOX Feedline Fairings', boosterDesc: 'Real NASA CAD S-IC stage with iconic black-and-white roll-pattern stripes and 5 external LOX tunnels passing through the RP-1 tank.', boosterFact: 'The black-and-white checkerboard paint pattern helped ground cameras track whether the rocket was rolling during liftoff!',
     finLegName: '4× S-IC Supersonic Stabilizer Fins & Retro-Rocket Fairings', finLegDesc: 'Four Delta airfoils around the F-1 engine skirt that stabilized the 3,000-ton vehicle against high-altitude wind shear.', finLegFact: 'Eight solid retro-rockets hidden inside the S-IC engine fairings fired backward to pull the empty first stage away cleanly!',
-    interstageName: 'S-II Second Stage (5× J-2 LH2 Engines) & Ullage Ring', vacEngName: 'S-IVB Third Stage (Single Gimbaled J-2 Trans-Lunar Engine)', upperHullName: 'IBM Instrument Unit Ring & Spacecraft-LM Adapter (SLA)',
-    payloadName: 'Apollo Lunar Module (LM "Eagle") & Descent Stage', payloadDesc: 'Four-legged gold-Kapton lunar lander tucked inside the 4 folding petals of the Spacecraft-Lunar Module Adapter.', payloadFact: 'The Lunar Module was the first true spacecraft in history designed to fly exclusively in the vacuum of space—it had zero aerodynamics!',
-    fairingName: 'Apollo Command/Service Module (CSM) & Launch Escape Tower',
+    interstageName: 'S-II Second Stage (North American) & 5× Rocketdyne J-2 LH2 Engines',
+    interstageDesc: 'Cryogenic liquid-hydrogen/liquid-oxygen second stage powered by five Rocketdyne J-2 engines with a weight-saving insulated common bulkhead.',
+    interstageFact: 'The S-II stage used a single shared "common bulkhead" wall between -253°C liquid hydrogen and -183°C liquid oxygen—saving 3.6 tons of metal!',
+    vacEngName: 'S-IVB Third Stage Restartable J-2 Engine (Trans-Lunar Injection)',
+    vacEngDesc: 'Single gimbaled Rocketdyne J-2 LH2/LOX engine on the Douglas S-IVB third stage that fired once to reach Earth orbit and restarted to blast Apollo to the Moon.',
+    vacEngFact: 'Restarting a cryogenic liquid-hydrogen engine in zero gravity required firing small "ullage" thrusters first to settle the floating liquid fuel at the bottom of the tank!',
+    upperHullName: 'S-IVB Stage Hull, APS Thrusters & IBM Instrument Unit Ring',
+    upperHullDesc: 'Douglas S-IVB third-stage tank topped by the 3-foot-tall IBM Instrument Unit ring containing the ST-124M inertial platform and LVDC flight computer.',
+    upperHullFact: 'The Saturn V Instrument Unit computer had less memory than a modern musical greeting card yet guided astronauts to the Moon!',
+    payloadName: 'Spacecraft-LM Adapter (SLA) & Apollo Lunar Module ("Eagle")', payloadDesc: 'Two-stage gold-Kapton Apollo Lunar Module (Descent Stage + Ascent Stage with 4 landing legs and RCS quads) housed inside the 4 folding SLA petals.', payloadFact: 'The Lunar Module was the first true spacecraft in history designed to fly exclusively in the vacuum of space—it had zero aerodynamics!',
+    fairingName: 'Apollo Command/Service Module (CSM) & Launch Escape System (LES)',
+    fairingDesc: 'Conical 3-astronaut Command Module, cylindrical Service Module with SPS rocket nozzle, and the 10-meter solid-fuel Launch Escape System tower at the tip.',
+    fairingFact: 'If an emergency happened on the launchpad, the red Launch Escape Tower at the very tip could yank the astronaut capsule 1.5 miles high in seconds!',
   }),
 ];
 

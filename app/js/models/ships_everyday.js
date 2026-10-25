@@ -202,15 +202,19 @@ export const SHIP_MODELS = [
     accentHex: 0x991b1b,
     cameraPos: [4.25, 2.25, 4.35],
     partsSpec: [
-      ['hydrodynamic-cruise-hull', '348-Meter Hydrodynamic Cruise Hull, Bulbous Bow & 3× Bow Thrusters', 'Hull Architecture', true, [0, -1.45, 0], 'High-tensile steel cruise hull in Royal Caribbean blue-and-white livery with an air-lubrication microbubble keel, faired bulbous bow, and 3 transverse bow thrusters.', 'Quantum of the Seas pumps millions of microscopic air bubbles under her flat bottom so the ship glides on a friction-reducing carpet of air!', (g, m) => {
+      ['hydrodynamic-cruise-hull', '348-Meter Hydrodynamic Cruise Hull, Bulbous Bow, Fin Stabilizers & 3× Bow Thrusters', 'Hull Architecture', true, [0, -1.45, 0], 'High-tensile steel cruise hull in Royal Caribbean blue-and-white livery with an air-lubrication microbubble keel, retractable port/starboard active fin stabilizers, faired bulbous bow, and 3 transverse bow thrusters.', 'Quantum of the Seas pumps millions of microscopic air bubbles under her flat bottom so the ship glides on a friction-reducing carpet of air!', (g, m) => {
         buildNavalHull(g, {
           length: 4.38, beam: 0.82, upperDraft: 0.34, lowerDraft: 0.22,
           upperMat: m.white, lowerMat: m.accent, sheerMat: m.primary, deckMat: m.teak,
           bulbousBow: true, forecastle: true, portholeRows: 2,
         });
-        // Contour-following Royal Caribbean blue hull sheer accent & bow helipad marking (no protruding rectangular slabs!)
+        // Contour-following Royal Caribbean blue hull sheer accent & bow helipad marking
         cyl(g, 0.16, 0.16, 0.012, 24, m.darkSteel, [1.72, 0.205, 0]);
         torus(g, 0.13, 0.005, carPaint(0xfacc15), [1.72, 0.212, 0], [Math.PI / 2, 0, 0]);
+        // Retractable port & starboard active hydrofoil fin stabilizers midships below waterline
+        for (const s of [-1, 1]) {
+          box(g, 0.26, 0.018, 0.18, m.primary, [-0.12, -0.26, s * 0.44], [s * 0.2, 0, 0]);
+        }
       }],
       ['balcony-stateroom-superstructure', '14-Deck Tiered Balcony Stateroom Superstructure & Flying Bridge', 'Passenger Decks', true, [0, 0.95, -1.35], 'Multi-tier white passenger superstructure containing 2,090 staterooms with private blue-glass verandas, raked forward observation bow, and an aerodynamic enclosed flying bridge.', 'Even the interior staterooms with no outside window have floor-to-ceiling 4K LED "Virtual Balconies" streaming live ocean views in real time!', (g, m) => {
         // 8 stacked architectural stateroom deck tiers with raked forward bow front & recessed blue-glass balcony ribbons
@@ -307,11 +311,15 @@ export const SHIP_MODELS = [
           }
         }
       }],
-      ['royal-esplanade-atrium', 'Royal Esplanade Multi-Deck Shopping Boulevard & Dining Cutaway', 'Interior Cutaway', false, [0, -0.45, 1.55], 'Internal multi-deck indoor boulevard spanning the length of Decks 4 and 5 with boutiques, cafés, Royal Theater stage, and glass elevators.', 'Inside the hull runs an indoor city street three stories tall with cobblestone walkways, patisseries, and a 1,300-seat Broadway theater in the bow!', (g, m) => {
+      ['royal-esplanade-atrium', 'Royal Esplanade Boulevard, Theater Stage & Reverse-Osmosis Water Plant', 'Interior & Hotel Plant', false, [0, -0.45, 1.55], 'Internal multi-deck indoor boulevard spanning Decks 4 and 5 with boutiques, Royal Theater stage, glass elevators, and below-deck reverse-osmosis seawater desalination & HVAC chillers.', 'Below the Royal Esplanade, giant reverse-osmosis desalination membranes turn 2.4 million liters of ocean seawater into pure drinking water every single day!', (g, m) => {
         rbox(g, 2.75, 0.18, 0.56, 0.02, m.brass, [-0.05, 0.04, 0]);
         for (let i = -4; i <= 4; i++) {
           cyl(g, 0.020, 0.020, 0.18, 12, m.chrome, [i * 0.28, 0.04, -0.22]);
           cyl(g, 0.020, 0.020, 0.18, 12, m.chrome, [i * 0.28, 0.04, 0.22]);
+        }
+        // Reverse-Osmosis Seawater Desalination Membrane Skids & Chiller Tanks below the Esplanade
+        for (let k = -2; k <= 2; k++) {
+          cyl(g, 0.032, 0.032, 0.42, 14, m.primary, [k * 0.42, -0.14, 0], [Math.PI / 2, 0, 0]);
         }
       }],
       ['diesel-electric-azipod-plant', '4× Wärtsilä Diesel-Electric Generators (CAD), Scrubber Funnel & Twin 20.5-MW Azipods', 'Propulsion & Power', false, [-1.85, -0.85, 0], 'Four Wärtsilä marine diesel generators (`populateEngineCad`), swept royal-blue exhaust funnel with Crown & Anchor emblem, and twin 360°-steerable ABB Azipod electric thruster pods.', 'Quantum of the Seas has no rudder and no long propeller shafts—instead, two giant 28,000-hp electric motors hang in 360-degree rotating pods underneath the stern!', (g, m) => {
@@ -455,10 +463,12 @@ export const SHIP_MODELS = [
         }
         rbox(g, 0.95, 0.14, 0.46, 0.02, m.brass, [-0.12, 0.04, 0]);
       }],
-      ['quad-mtu-diesel-stabilizers', '4× MTU 20V 4000 M93L Diesels (20,000 HP, CAD) & Zero-Speed Fin Stabilizers', 'Engine Room & Stabilizers', false, [-0.85, -0.75, -1.45], 'Four 20-cylinder turbocharged MTU marine diesel engines (`populateEngineCad`), hybrid battery bank, and active carbon-fiber gyroscopic fin stabilizers.', 'Four 20-cylinder MTU engines generate over 20,000 horsepower—driving this 5,000-gross-ton floating palace at an astonishing 24 knots!', (g, m) => {
+      ['quad-mtu-diesel-stabilizers', '4× MTU 20V 4000 M93L Diesels (20,000 HP, CAD), Gyro & Zero-Speed Fin Stabilizers', 'Engine Room & Stabilizers', false, [-0.85, -0.75, -1.45], 'Four 20-cylinder turbocharged MTU marine diesel engines (`populateEngineCad`), hybrid battery bank, internal zero-speed gyroscopic stabilizer spheres, and active carbon-fiber fin stabilizers.', 'Four 20-cylinder MTU engines generate over 20,000 horsepower—driving this 5,000-gross-ton floating palace at an astonishing 24 knots!', (g, m) => {
         populateEngineCad(g, { pos: [-0.72, -0.14, -0.11], scale: 0.0018, primaryColor: 0x1d4ed8 });
         populateEngineCad(g, { pos: [-0.72, -0.14, 0.11], scale: 0.0018, primaryColor: 0x1d4ed8 });
+        // Twin internal zero-speed vacuum gyroscopic stabilizer spheres + port/starboard active fin stabilizers
         for (const s of [-1, 1]) {
+          sphere(g, 0.075, 16, 14, m.brass, [-0.15, -0.18, s * 0.14]);
           box(g, 0.24, 0.02, 0.16, m.darkSteel, [-0.15, -0.24, s * 0.39], [s * 0.25, 0, 0]);
         }
       }],
@@ -523,13 +533,16 @@ export const SHIP_MODELS = [
           }
         }
       }],
-      ['lashing-bridges-hatch-covers', '8× Elevated Steel Lashing Bridges & Hydraulic Pontoon Hatch Covers', 'Cargo Securing', false, [0.25, 0.95, -1.45], 'Two-tier white steel lashing bridges between every container bay where crew attach turnbuckle lashing rods to secure upper tiers against 40-foot ocean swells.', 'Forged steel twistlocks at every container corner lock automatically when a crane sets one box on top of another!', (g, m) => {
+      ['lashing-bridges-hatch-covers', '8× Elevated Steel Lashing Bridges, Reefer Power Racks & Hatch Covers', 'Cargo Securing & Reefers', false, [0.25, 0.95, -1.45], 'Two-tier white steel lashing bridges between every container bay with 440V refrigerated ("Reefer") container power distribution racks and hydraulic pontoon hatch covers.', 'Forged steel twistlocks at every container corner lock automatically when a crane sets one box on top of another, while 2,000 Reefer plugs keep frozen food icy cold!', (g, m) => {
         for (const lx of [-1.62, -0.97, -0.59, -0.21, 0.17, 0.55, 0.94, 1.30]) {
-          // Pontoon hatch cover coaming + 2-tier white steel lashing bridge truss between bays
+          // Pontoon hatch cover coaming + 2-tier white steel lashing bridge truss + orange 440V Reefer power junction boxes
           box(g, 0.32, 0.024, 0.80, m.accent, [lx - 0.18, 0.125, 0]);
           box(g, 0.028, 0.24, 0.84, m.white, [lx, 0.24, 0]);
           box(g, 0.042, 0.014, 0.86, m.alu, [lx, 0.25, 0]);
           box(g, 0.042, 0.014, 0.86, m.alu, [lx, 0.36, 0]);
+          for (const rz of [-0.32, 0, 0.32]) {
+            rbox(g, 0.036, 0.036, 0.045, 0.005, carPaint(0xf97316), [lx + 0.015, 0.28, rz]);
+          }
         }
       }],
       ['twin-island-bridge-tower', 'Twin-Island Forward Navigation Bridge & Crew Accommodation Tower', 'Command Bridge', true, [0.85, 1.75, 0], '9-story forward accommodation superstructure with full-beam overhanging enclosed bridge wings, ARPA marine radars, ECDIS charts, and twin orange free-fall lifeboats.', 'Container ships place the bridge tower two-thirds forward so the captain can see over the towering 6-story wall of containers ahead!', (g, m) => {
@@ -656,11 +669,21 @@ export const SHIP_MODELS = [
         cyl(rotodome, 0.095, 0.095, 0.012, 24, m.white, [0, 0, 0]);
         torus(rotodome, 0.065, 0.004, m.darkSteel, [0, 0.007, 0], [Math.PI / 2, 0, 0]);
       }],
-      ['emals-catapults-arresting-gear', '4× EMALS Linear Induction Catapults & Mk 7 Arresting Gear Wires', 'Launch & Recovery', false, [1.25, 1.15, 1.25], 'Four 300-foot electromagnetic linear synchronous motor launch tracks plus 3 hydraulic/turbo-electric arresting cables.', 'EMALS catapults accelerate a 30-ton fighter jet from 0 to 165 mph in just 2 seconds using linear magnetic waves!', (g, m) => {
+      ['emals-catapults-arresting-gear', '4× EMALS Linear Induction Catapults, Shuttle Troughs & 4× AAG Arresting Wires', 'Launch & Recovery', false, [1.25, 1.15, 1.25], 'Four 300-foot electromagnetic linear synchronous motor launch troughs with nose-gear shuttles plus 4 cross-deck Advanced Arresting Gear (AAG) cables, deck sheaves, and below-deck turbo-electric energy absorbers.', 'EMALS catapults accelerate a 30-ton fighter jet from 0 to 165 mph in just 2 seconds using linear magnetic waves, while the 4 arresting wires stop a landing jet in 320 feet!', (g, m) => {
         for (const [x, z] of [[1.05, -0.22], [1.05, 0.12], [-0.15, 0.28], [-0.35, 0.42]]) {
+          // Linear motor stator trough + copper coils + nose-gear launch shuttle
           box(g, 1.35, 0.026, 0.032, m.brass, [x, 0.272, z]);
+          box(g, 1.32, 0.03, 0.01, m.darkSteel, [x, 0.275, z]);
+          rbox(g, 0.06, 0.022, 0.04, 0.005, m.chrome, [x - 0.52, 0.288, z]);
         }
-        for (let i = 0; i < 3; i++) box(g, 0.012, 0.02, 0.72, m.chrome, [-1.35 - i * 0.18, 0.278, 0.1]);
+        // 4 cross-deck steel arresting gear pendant cables + deck edge sheaves + below-deck hydraulic/turbo-electric purchase engines
+        for (let i = 0; i < 4; i++) {
+          const ax = -1.28 - i * 0.15;
+          box(g, 0.012, 0.02, 0.72, m.chrome, [ax, 0.278, 0.14], [0, 0.18, 0]);
+          cyl(g, 0.022, 0.022, 0.015, 12, m.brass, [ax, 0.278, -0.2], [0, 0, 0]);
+          cyl(g, 0.022, 0.022, 0.015, 12, m.brass, [ax, 0.278, 0.48], [0, 0, 0]);
+          rbox(g, 0.09, 0.045, 0.28, 0.008, m.primary, [ax, 0.21, 0.14]);
+        }
       }],
       ['island-tower-spy-radar', 'Starboard Island Superstructure, Pri-Fly & Dual-Band Phased-Array Radar', 'Command & Radar', true, [-0.45, 1.85, -1.15], 'Stealth-faceted starboard command island housing Flag Bridge, Navigation Bridge, Primary Flight Control ("Pri-Fly"), flat-panel AN/SPY-6 3D radar faces, and TACAN mast.', 'Fixed solid-state radar panels on the island scan 360 degrees simultaneously with zero spinning antennas needed!', (g, m) => {
         // Multi-tier chined stealth island base + Flag Bridge + Navigation Bridge + Pri-Fly cantilevered gallery
@@ -678,9 +701,9 @@ export const SHIP_MODELS = [
         box(g, 0.018, 0.018, 0.28, m.alu, [-0.62, 1.18, -0.44]);
         sphere(g, 0.035, 14, 12, m.white, [-0.46, 0.74, -0.44]);
       }],
-      ['hangar-bay-deck-elevators', 'Below-Deck Aircraft Hangar Bay & 3× Deck-Edge Aircraft Elevators', 'Aircraft Hangar', false, [0, 0.45, 1.65], 'Three-bay internal maintenance hangar spanning two decks tall, served by three giant 45-ton deck-edge aircraft elevators.', 'Each deck-edge elevator platform is big enough to lift two fighter jets from the hangar to the flight deck in 15 seconds!', (g, m) => {
+      ['hangar-bay-deck-elevators', 'Below-Deck Aircraft Hangar Bay & 4× Deck-Edge Aircraft Elevators', 'Aircraft Hangar', false, [0, 0.45, 1.65], 'Three-bay internal maintenance hangar spanning two decks tall with overhead bridge cranes, blast doors, and four giant 45-ton deck-edge aircraft elevators.', 'Each deck-edge elevator platform is big enough to lift two fighter jets from the hangar to the flight deck in 15 seconds!', (g, m) => {
         rbox(g, 2.85, 0.20, 0.72, 0.02, m.alu, [-0.1, 0.06, 0]);
-        for (const [ex, ez] of [[0.25, -0.62], [-0.95, -0.62], [-0.85, 0.62]]) {
+        for (const [ex, ez] of [[0.48, -0.62], [-0.18, -0.62], [-1.18, -0.62], [-0.85, 0.62]]) {
           box(g, 0.38, 0.032, 0.22, m.primary, [ex, 0.18, ez]);
           box(g, 0.36, 0.008, 0.20, carPaint(0xfacc15), [ex, 0.198, ez]);
         }
@@ -1039,13 +1062,18 @@ export const EVERYDAY_MODELS = [
         // Translucent stored water level inside the tank
         rbox(g, 0.38, 0.42, 0.78, 0.02, m.glass, [-0.52, 0.42, 0]);
       }],
-      ['float-fill-valve-ballcock', 'Buoyant Float Cup Fill Valve, Refill Tube & Overflow Standpipe', 'Automatic Water Level', false, [-1.25, 0.95, -1.15], 'Rising polymer float cup that slides up a vertical supply shaft and pinches off the incoming water valve at the exact fill line.', 'The float valve is a pure mechanical feedback computer—when the water rises to the target line, buoyancy automatically shuts the valve!', (g, m) => {
+      ['float-fill-valve-ballcock', 'Buoyant Float Cup Fill Valve, Braided Supply Line & Angle Stop Valve', 'Automatic Water Level', false, [-1.25, 0.95, -1.15], 'Rising polymer float cup that slides up a vertical supply shaft, overflow standpipe, braided stainless water supply hose, and quarter-turn chrome wall angle-stop valve.', 'The float valve is a pure mechanical feedback computer—when the water rises to the target line, buoyancy automatically shuts the valve!', (g, m) => {
         cyl(g, 0.032, 0.032, 0.56, 18, m.darkSteel, [-0.52, 0.46, -0.26]);
         cyl(g, 0.088, 0.088, 0.16, 20, m.accent, [-0.52, 0.58, -0.26]);
         cyl(g, 0.055, 0.055, 0.05, 18, m.accent, [-0.52, 0.75, -0.26]);
         // Overflow standpipe + curved bowl-refill tube
         cyl(g, 0.032, 0.032, 0.52, 16, m.white, [-0.48, 0.44, 0.06]);
         tube(g, [[-0.52, 0.74, -0.24], [-0.50, 0.78, -0.08], [-0.48, 0.70, 0.06]], 0.009, m.darkSteel);
+        // Quarter-turn chrome wall Angle-Stop supply valve + braided stainless supply hose
+        cyl(g, 0.05, 0.05, 0.015, 18, m.chrome, [-0.74, -0.22, -0.26], [0, 0, Math.PI / 2]);
+        cyl(g, 0.022, 0.022, 0.12, 14, m.chrome, [-0.68, -0.22, -0.26], [0, 0, Math.PI / 2]);
+        rbox(g, 0.02, 0.055, 0.028, 0.006, m.chrome, [-0.61, -0.22, -0.26]);
+        tube(g, [[-0.64, -0.19, -0.26], [-0.58, -0.02, -0.32], [-0.52, 0.16, -0.26]], 0.014, m.chrome);
       }],
       ['flapper-valve-handle-chain', 'Chrome Trip Lever Handle, Stainless Chain & Buoyant Rubber Flapper', 'Flush Trigger', false, [-0.95, 0.95, 1.25], 'Front chrome handle lever connected by a bead chain to a hollow air-pocket rubber flapper sealing the 3-inch flush seat.', 'An air bubble trapped under the rubber flapper makes it float upright for 3 seconds while the tank rushes out, then drop shut as the tank empties!', (g, m) => {
         // Exterior polished chrome flush handle + internal trip lever arm + bead chain
@@ -1055,7 +1083,7 @@ export const EVERYDAY_MODELS = [
         // Red buoyant rubber flapper dome + hinge ears
         cyl(g, 0.115, 0.085, 0.045, 22, carPaint(0xdc2626), [-0.52, 0.21, 0.06], [0, 0, -0.32]);
       }],
-      ['vitreous-bowl-rim-jets', 'Sculpted Vitreous China Bowl, Hollow Rim-Wash Channels & Siphon Jet', 'Bowl Hydraulics', true, [0.85, 0.45, 0], 'Non-porous glazed porcelain bowl with 24 angled rim-wash holes at the top and a high-velocity siphon jet at the bottom.', '70% of the tank water shoots straight out a hidden nozzle at the bottom of the bowl ("siphon jet") to kickstart the siphon in half a second!', (g, m) => {
+      ['vitreous-bowl-rim-jets', 'Sculpted Vitreous China Bowl, 24 Rim-Wash Nozzles & Siphon Jet', 'Bowl Hydraulics', true, [0.85, 0.45, 0], 'Non-porous glazed porcelain bowl with 24 angled rim-wash nozzles around the upper channel and a high-velocity siphon-jet nozzle at the bottom.', '70% of the tank water shoots straight out a hidden nozzle at the bottom of the bowl ("siphon jet") to kickstart the siphon in half a second!', (g, m) => {
         // Smooth lathed porcelain bowl profile ([axialY, radius] with rot=[0,0,0] for vertical axis)
         lathe(g, [
           [-0.44, 0.18], [-0.34, 0.24], [-0.18, 0.38], [0.04, 0.46],
@@ -1063,6 +1091,12 @@ export const EVERYDAY_MODELS = [
         ], 32, m.white, [0.24, 0, 0], [0, 0, 0]);
         // Sculpted rear tank-to-bowl porcelain bridge
         rbox(g, 0.56, 0.32, 0.54, 0.06, m.white, [-0.22, -0.04, 0]);
+        // 12 visible directional rim-wash jet ports + bottom high-velocity siphon-jet nozzle
+        for (let i = 0; i < 12; i++) {
+          const a = (i / 12) * Math.PI * 2;
+          cyl(g, 0.01, 0.01, 0.03, 8, m.accent, [0.24 + Math.cos(a) * 0.39, 0.07, Math.sin(a) * 0.39], [0, 0, 0.35]);
+        }
+        cyl(g, 0.024, 0.024, 0.06, 14, m.accent, [0.14, -0.26, 0], [0, 0, 1.25]);
       }],
       ['water-seal-p-trap', 'Standing Water Seal Pool (Sewer-Gas Barrier)', 'Sanitary Seal', false, [0.65, 0.95, 1.15], 'Crystal-clear standing water pool held in the U-bend of the bowl that blocks sewer gases from entering the bathroom.', 'That quiet pool of water in the bowl isn’t just for cleaning—it is an airtight liquid plug that seals off the city sewer line!', (g, m) => {
         cyl(g, 0.35, 0.22, 0.12, 28, m.poolWater, [0.24, -0.11, 0]);
@@ -1133,22 +1167,35 @@ export const EVERYDAY_MODELS = [
         }
         rbox(g, 0.08, 0.09, 0.64, 0.012, m.darkSteel, [0.50, 0.31, 0]);
       }],
-      ['overspeed-governor-safeties', 'Centrifugal Overspeed Governor & Elisha Otis Progressive Wedge Safeties', 'Emergency Braking', false, [0.65, -0.85, 1.45], 'Flyball centrifugal governor at the top and tapered serrated steel wedges under the cab that clamp the guide rails if the car drops too fast.', 'In 1854, Elisha Otis stood inside an elevator and ordered the rope cut with an axe—his spring wedges locked onto the rails in inches!', (g, m) => {
+      ['overspeed-governor-safeties', 'Centrifugal Overspeed Governor, Governor Rope Loop & Otis Wedge Safeties', 'Emergency Braking', false, [0.65, -0.85, 1.45], 'Flyball centrifugal governor at the top, continuous tensioned governor wire-rope loop with pit tension pulley, and tapered serrated steel wedges under the cab that clamp the guide rails if the car drops too fast.', 'In 1854, Elisha Otis stood inside an elevator and ordered the rope cut with an axe—his spring wedges locked onto the rails in inches!', (g, m) => {
         const red = carPaint(0xdc2626);
         cyl(g, 0.11, 0.11, 0.055, 20, red, [0.34, 0.88, 0.34], [Math.PI / 2, 0, 0]);
+        cyl(g, 0.085, 0.085, 0.045, 18, red, [0.34, -0.82, 0.34], [Math.PI / 2, 0, 0]);
+        // Continuous governor wire-rope loop connecting top centrifugal governor, safety plank linkage, and pit tension pulley
+        for (const gx of [0.25, 0.43]) {
+          cyl(g, 0.005, 0.005, 1.7, 8, m.chrome, [gx, 0.03, 0.34]);
+        }
         for (const z of [-0.34, 0.34]) rbox(g, 0.14, 0.16, 0.10, 0.02, red, [0.18, -0.46, z]);
       }],
-      ['machined-t-guide-rails', 'Precision-Machined T-Section Steel Hoistway Guide Rails & Roller Shoes', 'Vertical Guidance', false, [0, 0, -1.55], 'Vertical T-profile planed steel rails bolted to the shaft walls plus polyurethane 3-wheel roller guide shoes.', 'High-speed elevator rails are aligned with lasers to within half a millimeter so the car glides at 45 mph as smoothly as a bullet train!', (g, m) => {
-        for (const z of [-0.36, 0.36]) box(g, 0.045, 1.88, 0.045, m.darkSteel, [0.18, -0.04, z]);
+      ['machined-t-guide-rails', 'Precision-Machined T-Section Steel Hoistway Guide Rails & 3-Wheel Roller Shoes', 'Vertical Guidance', false, [0, 0, -1.55], 'Vertical T-profile planed steel rails bolted to the shaft walls plus spring-loaded 3-wheel polyurethane roller guide shoes at the top and bottom of the car sling.', 'High-speed elevator rails are aligned with lasers to within half a millimeter so the car glides at 45 mph as smoothly as a bullet train!', (g, m) => {
+        for (const z of [-0.36, 0.36]) {
+          box(g, 0.045, 1.88, 0.045, m.darkSteel, [0.18, -0.04, z]);
+          for (const ry of [0.36, -0.42]) {
+            rbox(g, 0.09, 0.08, 0.08, 0.01, m.accent, [0.18, ry, z]);
+            cyl(g, 0.032, 0.032, 0.02, 14, m.darkSteel, [0.18, ry, z * 0.92]);
+          }
+        }
         for (const z of [-0.25, 0.25]) box(g, 0.038, 1.88, 0.038, m.darkSteel, [-0.34, -0.04, z]);
       }],
-      ['pit-hydraulic-oil-buffers', 'Hoistway Pit Hydraulic Oil-Spring Energy Buffers & Traveling Cable', 'Bottom Pit Safety', false, [0, -1.65, 0], 'Heavy coil-spring and hydraulic piston shock absorbers mounted in the concrete pit floor below the car and counterweight.', 'At the bottom of every elevator shaft stand giant oil-filled hydraulic shock absorbers patterned after aircraft carrier landing gear!', (g, m) => {
+      ['pit-hydraulic-oil-buffers', 'Hoistway Pit Hydraulic Oil-Spring Energy Buffers & Traveling Cable Loop', 'Bottom Pit Safety', false, [0, -1.65, 0], 'Heavy coil-spring and hydraulic piston shock absorbers mounted in the concrete pit floor below the car and counterweight, plus the looping flat power/fiber-optic traveling umbilical cable.', 'At the bottom of every elevator shaft stand giant oil-filled hydraulic shock absorbers patterned after aircraft carrier landing gear!', (g, m) => {
         rbox(g, 1.18, 0.08, 0.88, 0.02, m.darkSteel, [-0.08, -0.92, 0]);
         for (const x of [-0.34, 0.18]) {
           cyl(g, 0.072, 0.085, 0.26, 18, m.accent, [x, -0.76, 0]);
           cyl(g, 0.042, 0.042, 0.18, 16, m.chrome, [x, -0.58, 0]);
           buildCoilSpring(g, [x, -0.74, 0], 0.22, 0.068, 0.01, 5, m.darkSteel);
         }
+        // Hanging flat traveling umbilical cable loop from car underbody to shaft wall junction box
+        tube(g, [[0.18, -0.44, -0.22], [0.16, -0.82, -0.24], [-0.04, -0.86, -0.26], [-0.18, -0.68, -0.28], [-0.18, 0.15, -0.28]], 0.014, m.darkSteel);
       }],
     ],
     quiz: [
@@ -1205,9 +1252,13 @@ export const EVERYDAY_MODELS = [
         cyl(g, 0.075, 0.075, 0.056, 20, m.darkSteel, [1.24, -0.14, 0.08], [Math.PI / 2, 0, 0]);
         for (let i = 0; i < 5; i++) box(g, 0.08, 0.06, 0.038, m.brass, [-0.44 + i * 0.22, -0.10, 0.08], [0, 0, Math.PI / 4]);
       }],
-      ['rotating-tailpiece-cam-bolt', 'Rear Rotating Actuator Cam, Retaining Clip & Deadbolt Throw Bar', 'Deadbolt Actuation', true, [-1.65, -0.15, 0], 'Hardened steel cam pawl screwed to the back of the plug that throws the heavy steel deadbolt when the key turns.', 'Turning the key doesn’t push the door bolt directly—it spins a small crescent-shaped cam on the back that levers the heavy deadbolt out!', (g, m) => {
+      ['rotating-tailpiece-cam-bolt', 'Rear Rotating Actuator Cam, Mortise Case & Hardened Throw Deadbolt', 'Deadbolt Actuation', true, [-1.65, -0.15, 0], 'Hardened steel cam pawl screwed to the back of the plug that levers the 1-inch hardened steel deadbolt (with internal free-spinning anti-saw pin) into the door frame strike plate.', 'Turning the key doesn’t push the door bolt directly—it spins a small crescent-shaped cam on the back that levers the heavy deadbolt out!', (g, m) => {
         cyl(g, 0.22, 0.22, 0.08, 22, m.darkSteel, [-0.80, -0.14, 0], [0, 0, Math.PI / 2]);
         rbox(g, 0.11, 0.36, 0.16, 0.03, m.accent, [-0.86, -0.26, 0.12], [0.55, 0, 0]);
+        // Cutaway deadbolt housing + 1-inch hardened steel throw bolt + internal free-spinning anti-saw roller pin
+        rbox(g, 0.22, 0.24, 0.48, 0.025, m.darkSteel, [-0.94, -0.34, 0.32]);
+        rbox(g, 0.16, 0.16, 0.44, 0.02, m.chrome, [-0.94, -0.34, 0.56]);
+        cyl(g, 0.028, 0.028, 0.42, 14, m.brass, [-0.94, -0.34, 0.56], [Math.PI / 2, 0, 0]);
       }],
       ['hardened-anti-drill-armor', 'Front Armored Escutcheon Collar & Tungsten-Carbide Anti-Drill Pins', 'Physical Security', true, [1.15, 0.45, 0], 'Beveled front armored trim ring and embedded tungsten-carbide rods forward of Chamber #1 that shatter drill bits.', 'Two tiny rods of diamond-hard tungsten carbide hidden right behind the keyhole spin and shatter burglar drill bits!', (g, m) => {
         torus(g, 0.36, 0.055, m.chrome, [0.74, -0.14, 0], [0, Math.PI / 2, 0]);
@@ -1240,16 +1291,21 @@ export const EVERYDAY_MODELS = [
         cyl(g, 0.15, 0.15, 0.34, 22, m.darkSteel, [-0.36, -0.22, 0.22], [0, 0, Math.PI / 2]);
         cyl(g, 0.095, 0.095, 0.18, 20, m.brass, [-0.10, -0.22, 0.22], [0, 0, Math.PI / 2]);
       }],
-      ['dual-copper-pid-boilers', 'Twin Insulated Copper Boilers (93°C Brew Boiler + 125°C Steam Boiler)', 'Thermal Engineering', false, [-0.35, 0.95, -1.25], 'Two thick-walled copper pressure vessels with immersion heating coils and PID solid-state temperature control.', 'Using two separate copper boilers lets the machine brew coffee at a gentle 93.0°C while simultaneously making dry steam at 125°C!', (g, m) => {
+      ['dual-copper-pid-boilers', 'Twin Insulated Copper Boilers (93°C Brew + 125°C Steam) & PID Controller', 'Thermal Engineering', false, [-0.35, 0.95, -1.25], 'Two thick-walled copper pressure vessels with copper immersion heating coils, solid-state relays (SSRs), and a digital PID temperature controller holding brew water within ±0.1°C.', 'Using two separate copper boilers lets the machine brew coffee at a gentle 93.0°C while simultaneously making dry steam at 125°C!', (g, m) => {
         cyl(g, 0.16, 0.16, 0.36, 24, m.copper, [-0.20, 0.08, -0.18]);
         sphere(g, 0.16, 20, 14, m.copper, [-0.20, 0.26, -0.18]);
         cyl(g, 0.18, 0.18, 0.38, 24, m.copper, [-0.20, 0.08, 0.20]);
         sphere(g, 0.18, 20, 14, m.copper, [-0.20, 0.27, 0.20]);
+        // Digital PID Temperature Controller module + finned Solid-State Relay (SSR) heatsink
+        rbox(g, 0.09, 0.14, 0.18, 0.012, m.darkSteel, [0.16, -0.16, -0.32]);
+        box(g, 0.095, 0.06, 0.12, emissiveMat(0xef4444, 1.4), [0.162, -0.14, -0.32]);
       }],
-      ['e61-thermosyphon-grouphead', '4-kg Chrome-Plated Brass E61 Thermosyphon Grouphead & 3-Way Valve', 'Brew Grouphead', true, [1.25, 0.45, 0], 'Iconic 1961 Faema E61 solid brass brew head heated by a continuous hot-water thermosyphon loop plus a 3-way pressure-release solenoid.', 'After you pull a shot, the 3-way valve vents the 9 bars of leftover water pressure down into the drip tray so the coffee puck doesn’t explode in your face!', (g, m) => {
+      ['e61-thermosyphon-grouphead', '4-kg Chrome-Plated Brass E61 Thermosyphon Grouphead & 3-Way Solenoid Valve', 'Brew Grouphead', true, [1.25, 0.45, 0], 'Iconic 1961 Faema E61 solid brass brew head heated by a continuous hot-water thermosyphon loop plus a 3-way pressure-release solenoid and vertical exhaust tube.', 'After you pull a shot, the 3-way valve vents the 9 bars of leftover water pressure down into the drip tray so the coffee puck doesn’t explode in your face!', (g, m) => {
         cyl(g, 0.16, 0.16, 0.26, 28, m.chrome, [0.52, 0.14, 0]);
         torus(g, 0.165, 0.018, m.brass, [0.52, 0.22, 0], [Math.PI / 2, 0, 0]);
         cyl(g, 0.042, 0.042, 0.26, 16, m.chrome, [0.52, -0.06, 0]);
+        // 3-way pressure-relief discharge tube venting down to the drip tray
+        cyl(g, 0.012, 0.012, 0.28, 12, m.chrome, [0.43, -0.14, 0]);
         // Manual mechanical E61 cam brew lever with black ball knob on the right side
         cyl(g, 0.012, 0.012, 0.22, 12, m.chrome, [0.56, 0.16, 0.18], [0, 0, -0.5]);
         sphere(g, 0.032, 14, 12, m.darkSteel, [0.62, 0.25, 0.18]);

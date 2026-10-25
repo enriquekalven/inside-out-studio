@@ -1794,18 +1794,87 @@ function buildLockheedSR71Blackbird() {
       },
     },
     {
-      id: 'jp7-fuel-tanks-landing-gear',
-      name: '6× Integral JP-7 Fuel Tanks & 6-Wheel Titanium/Aluminum-Powder Tire Gear',
-      category: 'Fuel & Landing Gear',
+      id: 'sr71-obc-slr-recon-bays',
+      name: 'Nose & Chine Optical Bar Camera (OBC) & Side-Looking Radar (SLR) Bays',
+      category: 'Reconnaissance Payload',
       isOuter: false,
-      explodeOffset: [0, -1.55, 0],
-      desc: 'Six fuselage fuel tanks holding 80,000 lbs of low-volatility JP-7 fuel (which also serves as hydraulic coolant) plus 3-wheel BFGoodrich aluminum-impregnated main gear bogies.',
+      explodeOffset: [1.75, -0.95, 0],
+      desc: 'Interchangeable detach-nose Technical Objective Camera (TEOC), rotating Itek Optical Bar Camera (OBC) with 10,500 feet of 5-inch film behind fused-quartz belly windows, and synthetic-aperture Side-Looking Radar (ASARS-1) arrays in the forward chines.',
+      funFact: 'From 85,000 feet up (16 miles high!), the SR-71’s panoramic Optical Bar Camera could photograph 100,000 square miles per hour and read a license plate or golf ball on a green!',
+      build(g) {
+        const goldFoil = brushedMetal(0xf59e0b, { metalness: 0.9, roughness: 0.2 });
+        const sensorGreen = brushedMetal(0x065f46, { metalness: 0.65, roughness: 0.35 });
+        // Forward Nose ASARS-1 Synthetic-Aperture Radar phased-array transceiver rack
+        rbox(g, 0.42, 0.11, 0.22, 0.02, goldFoil, [2.02, 0.04, 0]);
+        box(g, 0.36, 0.02, 0.28, sensorGreen, [2.02, -0.02, 0]);
+        // Rotating Itek 30-inch focal-length Optical Bar Camera (OBC) drum & twin film supply/take-up spools
+        cyl(g, 0.075, 0.075, 0.32, 20, betaTitanium, [1.56, 0.01, 0], [0, 0, Math.PI / 2]);
+        for (const fx of [1.42, 1.7]) {
+          cyl(g, 0.055, 0.055, 0.18, 18, goldFoil, [fx, 0.07, 0], [Math.PI / 2, 0, 0]);
+        }
+        // Twin ventral fused-quartz optical camera windows on the lower chine belly
+        for (const side of [-1, 1]) {
+          box(g, 0.28, 0.014, 0.11, quartzGlass, [1.56, -0.06, side * 0.11], [side * 0.18, 0, 0]);
+          // Forward Chine Side-Looking Radar (SLR) waveguide arrays + ELINT receivers
+          rbox(g, 0.68, 0.055, 0.12, 0.015, sensorGreen, [1.15, 0.03, side * 0.28]);
+          cyl(g, 0.022, 0.022, 0.56, 12, goldFoil, [1.15, 0.065, side * 0.28], [0, 0, Math.PI / 2]);
+        }
+      },
+    },
+    {
+      id: 'jp7-fuel-tanks-landing-gear',
+      name: '6× Integral JP-7 Fuel Heat-Sink Tanks & Liquid-Nitrogen Dewar System',
+      category: 'Cryo & Fuel Thermal Sink',
+      isOuter: false,
+      explodeOffset: [0, -1.25, 0],
+      desc: 'Six fuselage fuel tanks holding 80,000 lbs of low-volatility JP-7 fuel—which circulates through heat exchangers to cool the cockpit, hydraulics, and avionics before burning in the J58 engines—inerted by green Liquid-Nitrogen (LN2) dewar spheres.',
+      funFact: 'At Mach 3.3 the outside air is 600°F, so there is no cool air to chill the cockpit! Instead, the SR-71 uses its own JP-7 fuel as giant liquid coolant before pumping the hot fuel into the afterburners!',
+      build(g) {
+        const ln2Green = carPaint(0x16a34a);
+        const fuelManifold = brushedMetal(0xd97706, { metalness: 0.9, roughness: 0.18 });
+        // 6 integral fuselage JP-7 fuel tank cells + central titanium transfer & heat-exchanger spine
+        for (let i = 0; i < 6; i++) {
+          rbox(g, 0.34, 0.15, 0.28, 0.03, betaTitanium, [-0.95 + i * 0.38, 0.04, 0]);
+        }
+        cyl(g, 0.024, 0.024, 2.2, 16, fuelManifold, [-0.02, 0.13, 0.08], [0, 0, Math.PI / 2]);
+        cyl(g, 0.024, 0.024, 2.2, 16, betaTitanium, [-0.02, 0.13, -0.08], [0, 0, Math.PI / 2]);
+        // Spherical cryogenic Liquid-Nitrogen (LN2) fuel-tank pressurization & environmental cooling dewars
+        for (const z of [-0.18, 0, 0.18]) {
+          sphere(g, 0.065, 18, ln2Green, [0.95, 0.04, z]);
+        }
+      },
+    },
+    {
+      id: 'sr71-titanium-landing-gear',
+      name: '6-Wheel Aluminum-Impregnated Nitrogen Tire Bogies & Titanium Struts',
+      category: 'Landing Gear',
+      isOuter: false,
+      explodeOffset: [0, -1.75, 0],
+      desc: 'Forged titanium retractable tricycle landing gear featuring 3-wheel main bogies with BFGoodrich aluminum-powder-impregnated tires inflated with 415 PSI dry nitrogen and multi-disc brakes.',
       funFact: 'The SR-71’s tires are infused with powdered aluminum to reflect heat and inflated with pure nitrogen to 415 PSI so they don’t explode inside the 500°F wheel wells!',
       build(g) {
-        for (let i = 0; i < 5; i++) {
-          rbox(g, 0.34, 0.14, 0.26, 0.03, betaTitanium, [-0.85 + i * 0.42, 0.04, 0]);
-        }
         buildAirlinerLandingGear(g, { noseX: 1.35, mainX: -0.68, mainZ: 0.62, pairsPerBogie: 2 });
+      },
+    },
+    {
+      id: 'sr71-drag-chute-def-ecm',
+      name: 'Aft Tailcone Drag Parachute Canister & DEF A2C2S Electronic Countermeasures',
+      category: 'Recovery & Electronic Warfare',
+      isOuter: false,
+      explodeOffset: [-2.15, 0.85, 0],
+      desc: 'Dorsal aft-fuselage drag-chute compartment housing a 40-foot ribbon braking parachute for 200-knot landings, paired with the tailcone DEF radar warning receiver and high-power ECM jammer suite.',
+      funFact: 'Over 4,000 surface-to-air missiles were fired at SR-71 Blackbirds during their career—and zero ever hit! The Blackbird simply jammed the radar and accelerated above Mach 3.2 to outrun every missile!',
+      build(g) {
+        const chuteOrange = carPaint(0xf97316);
+        // Dorsal drag-chute bay housing, open clamshell doors & packed 40-ft ribbon parachute canister
+        rbox(g, 0.34, 0.09, 0.22, 0.02, betaTitanium, [-1.52, 0.16, 0]);
+        cyl(g, 0.068, 0.068, 0.26, 18, chuteOrange, [-1.52, 0.2, 0], [0, 0, Math.PI / 2]);
+        for (const s of [-1, 1]) {
+          box(g, 0.32, 0.012, 0.11, srCharcoal, [-1.52, 0.24, s * 0.12], [s * 0.75, 0, 0]);
+        }
+        // Aft tailcone DEF / A2C2S Electronic Warfare ECM jammer radome & aerial refueling dorsal receptacle
+        cone(g, 0.08, 0.32, 18, srCharcoal, [-2.06, 0.06, 0], [0, 0, Math.PI / 2]);
+        rbox(g, 0.22, 0.03, 0.08, 0.01, redWalkway, [0.18, 0.23, 0]);
       },
     },
   ];
@@ -1832,7 +1901,12 @@ function buildLockheedSR71Blackbird() {
       {
         q: 'How did the SR-71 Blackbird navigate with pinpoint accuracy at 85,000 feet before GPS satellites existed?',
         correctId: 'tandem-cockpit-astro-inertial',
-        distractors: ['titanium-chined-fuselage', 'jp7-fuel-tanks-landing-gear', 'j58-inlet-spike-cones'],
+        distractors: ['titanium-chined-fuselage', 'sr71-obc-slr-recon-bays', 'j58-inlet-spike-cones'],
+      },
+      {
+        q: 'Which reconnaissance bay in the SR-71 nose and chines could photograph 100,000 square miles per hour through quartz windows?',
+        correctId: 'sr71-obc-slr-recon-bays',
+        distractors: ['sr71-drag-chute-def-ecm', 'sr71-titanium-landing-gear', 'inward-canted-rudders'],
       },
     ],
   };

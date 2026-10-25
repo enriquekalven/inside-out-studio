@@ -42,26 +42,206 @@ preloadCadAssets();
 
 function makeCarQuiz(p, customQ1, customQ2) {
   const ids = p.map((x) => x.id);
+  const pickId = (regex, fallbackIdx) => {
+    const found = p.find((x) => regex.test(x.id) || regex.test(x.name));
+    return found ? found.id : ids[fallbackIdx] || ids[0];
+  };
+  const makeDistractors = (correctId, preferredIndices) => {
+    const out = [];
+    for (const idx of preferredIndices) {
+      if (ids[idx] && ids[idx] !== correctId && !out.includes(ids[idx])) {
+        out.push(ids[idx]);
+      }
+    }
+    for (const id of ids) {
+      if (out.length >= 3) break;
+      if (id !== correctId && !out.includes(id)) out.push(id);
+    }
+    return out.slice(0, 3);
+  };
+
+  const brakeId = pickId(/brake|pccb|ccm|coilover|suspension|pushrod|magneride/i, 6);
+  const glassId = pickId(/glass|windshield|canopy|moonroof|targa/i, 10);
+  const wheelId = pickId(/wheel|tire|arachnid|alione|beadlock/i, 11);
+
   return [
     customQ1,
     customQ2,
     {
       q: `Which part squeezes spinning perforated discs to bring this high-powered vehicle to a safe stop?`,
-      correctId: ids[6],
-      distractors: [ids[0], ids[8], ids[11]],
+      correctId: brakeId,
+      distractors: makeDistractors(brakeId, [0, 8, 11]),
     },
     {
       q: `Which crystal-clear aerodynamic part lets the driver see the road while blocking roaring wind?`,
-      correctId: ids[10],
-      distractors: [ids[1], ids[5], ids[7]],
+      correctId: glassId,
+      distractors: makeDistractors(glassId, [1, 5, 7]),
     },
     {
       q: `Which four parts grip the asphalt with grooved radial rubber tread and 3D hex lug nuts?`,
-      correctId: ids[11],
-      distractors: [ids[2], ids[6], ids[9]],
+      correctId: wheelId,
+      distractors: makeDistractors(wheelId, [2, 6, 9]),
     },
   ];
 }
+
+// Helper: Electric Power-Assisted Steering (EPAS) Rack, Tie-Rods, Bellows Boots & Intermediate Steering Column
+function buildSteeringRackAndColumn(
+  g,
+  {
+    rackX = 1.26,
+    rackY = -0.22,
+    rackWidth = 1.26,
+    colStart = [0.38, 0.28, 0.36],
+    epasColor = 0x2563eb,
+    rearSteerX = null,
+  } = {},
+) {
+  const alu = brushedMetal(0xcbd5e1, { metalness: 0.88, roughness: 0.2 });
+  const darkBoot = mat(0x111827, { roughness: 0.72 });
+  const chrome = chromeMat();
+  const epasMat = brushedMetal(epasColor, { metalness: 0.85, roughness: 0.22 });
+
+  // Cast-aluminum steering rack housing + ribbed pinion tower
+  cyl(g, 0.028, 0.028, rackWidth * 0.62, 16, alu, [rackX, rackY, 0], [Math.PI / 2, 0, 0]);
+  rbox(g, 0.085, 0.075, 0.18, 0.015, alu, [rackX - 0.03, rackY + 0.02, 0.22]);
+  // Brushless EPAS electric assist motor + orange/blue sensor pigtail
+  cyl(g, 0.038, 0.038, 0.14, 16, epasMat, [rackX - 0.05, rackY + 0.04, 0.06], [Math.PI / 2, 0, 0]);
+  // Ribbed rubber inner tie-rod bellows boots + chrome outer tie-rod links + ball-joint knuckles
+  for (const side of [-1, 1]) {
+    cyl(g, 0.034, 0.024, 0.14, 14, darkBoot, [rackX, rackY, side * (rackWidth * 0.34)], [Math.PI / 2, 0, 0]);
+    cyl(g, 0.012, 0.012, rackWidth * 0.22, 12, chrome, [rackX, rackY, side * (rackWidth * 0.48)], [Math.PI / 2, 0, 0]);
+    sphere(g, 0.022, 12, 10, alu, [rackX, rackY, side * (rackWidth * 0.58)]);
+  }
+  // Articulated intermediate steering shaft with U-joints connecting cockpit column to rack pinion
+  tube(
+    g,
+    [
+      colStart,
+      [(colStart[0] + rackX) * 0.52, (colStart[1] + rackY) * 0.45, colStart[2] * 0.78],
+      [rackX - 0.03, rackY + 0.03, 0.24],
+    ],
+    0.013,
+    chrome,
+  );
+  if (rearSteerX !== null) {
+    // Active rear-wheel steering actuator & rear tie rods
+    cyl(g, 0.024, 0.024, rackWidth * 0.56, 14, alu, [rearSteerX, rackY, 0], [Math.PI / 2, 0, 0]);
+    rbox(g, 0.09, 0.07, 0.18, 0.014, epasMat, [rearSteerX, rackY + 0.02, 0]);
+    for (const side of [-1, 1]) {
+      cyl(g, 0.011, 0.011, rackWidth * 0.24, 10, chrome, [rearSteerX, rackY, side * (rackWidth * 0.44)], [Math.PI / 2, 0, 0]);
+    }
+  }
+}
+
+// Helper: Front & Rear Tubular Anti-Roll (Sway) Bars, Polyurethane Bushings & Billet Drop Links
+function buildFrontRearSwayBars(g, { frontX = 1.26, rearX = -1.28, y = -0.25, span = 1.24, color = 0xe11d48 } = {}) {
+  const swayMat = carPaint(color);
+  const alu = brushedMetal(0xcbd5e1, { metalness: 0.88, roughness: 0.2 });
+  for (const ax of [frontX, rearX]) {
+    const xOff = ax > 0 ? -0.11 : 0.11;
+    tube(
+      g,
+      [
+        [ax, y, -span * 0.5],
+        [ax + xOff, y - 0.02, -span * 0.38],
+        [ax + xOff, y - 0.02, span * 0.38],
+        [ax, y, span * 0.5],
+      ],
+      0.014,
+      swayMat,
+    );
+    for (const side of [-1, 1]) {
+      cyl(g, 0.009, 0.009, 0.11, 10, alu, [ax, y + 0.055, side * span * 0.5]);
+    }
+  }
+}
+
+// Helper: Combustion / Hybrid Fuel Tank(s), Submerged High-Pressure Fuel Pumps, Braided Lines & Filler Neck
+function buildFuelSystemAndTank(
+  g,
+  {
+    tankPos = [-0.22, -0.22, 0],
+    tankSize = [0.36, 0.2, 0.34],
+    enginePos = [-0.55, 0.02, 0],
+    fillerPos = [-0.62, 0.24, 0.76],
+    saddle = true,
+    tankColor = 0xd97706,
+  } = {},
+) {
+  const tankMat = brushedMetal(tankColor, { metalness: 0.78, roughness: 0.26 });
+  const alu = brushedMetal(0xd8dee9, { metalness: 0.9, roughness: 0.18 });
+  const redAnodized = carPaint(0xdc2626);
+  const [tx, ty, tz] = tankPos;
+  const [tw, th, td] = tankSize;
+
+  if (saddle) {
+    for (const side of [-1, 1]) {
+      rbox(g, tw, th, td, 0.028, tankMat, [tx, ty, side * 0.42]);
+      // Top submerged brushless fuel-pump hat + AN pressure regulator
+      cyl(g, 0.048, 0.048, 0.025, 16, alu, [tx, ty + th * 0.55, side * 0.42]);
+      cyl(g, 0.018, 0.018, 0.032, 12, redAnodized, [tx + 0.03, ty + th * 0.62, side * 0.42]);
+    }
+    // Crossover balance tube between left & right saddle tanks
+    cyl(g, 0.018, 0.018, 0.84, 12, alu, [tx, ty - th * 0.3, 0], [Math.PI / 2, 0, 0]);
+  } else {
+    rbox(g, tw, th, td, 0.03, tankMat, [tx, ty, tz]);
+    cyl(g, 0.055, 0.055, 0.028, 16, alu, [tx, ty + th * 0.55, tz]);
+    cyl(g, 0.02, 0.02, 0.035, 12, redAnodized, [tx + 0.04, ty + th * 0.62, tz]);
+  }
+  // Braided stainless AN-8 fuel supply & return lines to engine fuel rails + filler neck
+  tube(
+    g,
+    [
+      [tx, ty + th * 0.5, saddle ? 0.42 : tz],
+      [(tx + enginePos[0]) * 0.5, Math.max(ty, enginePos[1]) + 0.04, 0.22],
+      [enginePos[0], enginePos[1] + 0.08, 0.14],
+    ],
+    0.011,
+    alu,
+  );
+  tube(
+    g,
+    [
+      [tx, ty + th * 0.4, saddle ? 0.42 : tz],
+      [fillerPos[0], fillerPos[1], fillerPos[2]],
+    ],
+    0.016,
+    alu,
+  );
+  cyl(g, 0.032, 0.032, 0.018, 16, redAnodized, fillerPos, [Math.PI / 2, 0, 0]);
+}
+
+// Helper: EV NACS/CCS Fast-Charge Port Inlet, 11.5 kW On-Board Charger (PCS) & Pyrotechnic HV Disconnect
+function buildEVChargePortAndOBC(g, { portPos = [-1.62, 0.12, 0.74], obcPos = [-0.88, -0.14, 0] } = {}) {
+  const alu = brushedMetal(0xcbd5e1, { metalness: 0.88, roughness: 0.2 });
+  const darkCase = brushedMetal(0x1e293b, { metalness: 0.82, roughness: 0.28 });
+  const statusGlow = emissiveMat(0x22c55e, 1.8);
+  const [px, py, pz] = portPos;
+  const [ox, oy, oz] = obcPos;
+
+  // Finned aluminum On-Board Charger / Power Conversion System (PCS) + Pyrotechnic HV safety disconnect fuse
+  rbox(g, 0.32, 0.085, 0.44, 0.018, alu, [ox, oy, oz]);
+  rbox(g, 0.11, 0.055, 0.09, 0.01, carPaint(0xdc2626), [ox + 0.14, oy + 0.05, oz + 0.12]);
+  // NACS / CCS charge port housing + glowing green charge-status LED ring + motorized charge flap
+  rbox(g, 0.11, 0.09, 0.06, 0.014, darkCase, [px, py, pz]);
+  torus(g, 0.028, 0.006, statusGlow, [px, py, pz + Math.sign(pz) * 0.032]);
+  rbox(g, 0.12, 0.08, 0.012, 0.004, darkCase, [px + 0.05, py + 0.06, pz + Math.sign(pz) * 0.04], [0.45 * Math.sign(pz), 0, 0]);
+  // Heavy orange DC fast-charge HV cables linking charge port -> OBC -> battery pack
+  buildWiringHarness(g, [
+    {
+      points: [
+        [px, py - 0.02, pz * 0.92],
+        [ox + 0.08, oy + 0.02, pz * 0.55],
+        [ox, oy, oz],
+      ],
+      radius: 0.015,
+      color: 0xff6600,
+      companionColor: 0x22c55e,
+    },
+  ]);
+}
+
 
 // Helper to build a detailed 8/10-speed gearbox with real Khronos GearboxAssy CAD gears + perimeter hex bolts
 function buildDetailedGearbox(g, pos = [-1.38, -0.18, 0], { transverse = false, halfShaftLen = 1.48 } = {}) {
@@ -134,11 +314,11 @@ function buildTeslaPlaid() {
     },
     {
       id: 'battery-pack-4680',
-      name: '800V Structural Battery Pack & HV Busbars',
+      name: '800V Structural Battery Pack, NACS Charge Port & HV Busbars',
       category: 'Energy Storage',
       isOuter: false,
       explodeOffset: [0, -1.05, 0],
-      desc: 'Thousands of lithium-ion battery cells sealed inside an armored aluminum enclosure with copper busbars, an orange 800V high-voltage harness, and liquid cooling ribbons.',
+      desc: 'Thousands of lithium-ion battery cells sealed inside an armored aluminum enclosure with copper busbars, an 11.5 kW On-Board Charger (PCS), NACS 250 kW Supercharger port, and liquid cooling ribbons.',
       funFact: 'Because the heavy battery is flat on the bottom like a skateboard, it is almost impossible for a Tesla to tip over!',
       build(g) {
         // Enclosed extruded aluminum structural battery pack case
@@ -150,6 +330,8 @@ function buildTeslaPlaid() {
           rbox(g, 0.39, 0.04, 1.32, 0.01, moduleMat, [m * 0.43, -0.19, 0]);
           box(g, 0.36, 0.015, 0.06, busbarCopper, [m * 0.43, -0.168, 0]);
         }
+        // NACS Supercharger port + 11.5 kW On-Board Charger (PCS) + HV junction
+        buildEVChargePortAndOBC(g, { portPos: [-1.68, 0.14, 0.76], obcPos: [-0.92, -0.14, 0] });
 
         // High-voltage orange 800V wiring harness + blue CAN-bus + braided coolant lines
         buildWiringHarness(g, [
@@ -257,11 +439,11 @@ function buildTeslaPlaid() {
     },
     {
       id: 'air-suspension-brakes',
-      name: 'Adaptive Helical Coilover Struts, CAD Brake Discs & Wishbone Arms',
+      name: 'Adaptive Air Struts, EPAS Steering Rack, Sway Bars & CAD Brakes',
       category: 'Chassis & Safety',
       isOuter: false,
       explodeOffset: [0, -0.75, 1.65],
-      desc: 'Four 3D helical spring struts, tubular upper and lower A-arm wishbones with ball joints, CAD brake discs & calipers, and braided stainless brake lines.',
+      desc: 'Four 3D helical spring struts, EPAS rack-and-pinion steering with tie rods, front/rear anti-roll sway bars, tubular wishbones, and CAD brake discs & calipers.',
       funFact: 'Electric cars also use "regenerative braking"—turning the motors into generators to slow down and put energy back in the battery!',
       build(g) {
         addCarConceptCadNodes(
@@ -289,6 +471,8 @@ function buildTeslaPlaid() {
           ],
           { springColor: 0x0ea5e9, damperColor: 0xcbd5e1, height: 0.26 },
         );
+        buildSteeringRackAndColumn(g, { rackX: 1.25, rackY: -0.22, colStart: [0.38, 0.3, 0.38] });
+        buildFrontRearSwayBars(g, { frontX: 1.25, rearX: -1.28, y: -0.25, color: 0xc8102e });
       },
     },
     {
@@ -522,11 +706,11 @@ function buildCybertruck() {
   const parts = [
     {
       id: 'gigacast-subframe',
-      name: '9,000-Ton Gigacast Aluminum Chassis & Tow Hooks',
-      category: 'Structure',
+      name: '9,000-Ton Gigacast Chassis, Octovalve Thermal Stack & Class IV Hitch',
+      category: 'Structure & Thermal',
       isOuter: false,
       explodeOffset: [0, -1.65, 0],
-      desc: 'Massive die-cast aluminum front and rear subframes with ribbed structural crossmembers supporting the stainless steel exoskeleton.',
+      desc: 'Massive die-cast aluminum front and rear subframes, front Octovalve heat-pump radiator stack, and a Class IV 11,000-lb rear tow hitch receiver.',
       funFact: 'Cybertruck’s casting machine clamps with 9,000 tons of force—about the weight of 60 blue whales!',
       build(g) {
         const castAlu = brushedMetal(0x64748b, { metalness: 0.84, roughness: 0.28 });
@@ -543,15 +727,23 @@ function buildCybertruck() {
         for (const zRail of [-0.52, 0.52]) {
           box(g, 3.88, 0.12, 0.12, darkFrame, [0, -0.18, zRail]);
         }
+        // Front Octovalve heat-pump radiator core & dual cooling fans
+        rbox(g, 0.14, 0.32, 0.96, 0.02, castAlu, [1.84, -0.06, 0], [0, 0, 0.22]);
+        for (const z of [-0.26, 0.26]) {
+          torus(g, 0.13, 0.016, darkFrame, [1.78, -0.06, z], [0, Math.PI / 2, 0]);
+        }
+        sphere(g, 0.095, 16, darkFrame, [1.68, 0.0, 0.26]);
+        // Class IV 11,000-lb rear tow hitch receiver & trailer 7-pin connector
+        rbox(g, 0.24, 0.1, 0.12, 0.015, darkFrame, [-2.06, -0.2, 0]);
       },
     },
     {
       id: 'cybercell-battery',
-      name: '800V 4680 Cybercell Structural Battery Pack & HV Loom',
+      name: '800V 4680 Cybercell Battery, Powershare Bi-Directional OBC & NACS Port',
       category: 'Energy Storage',
       isOuter: false,
       explodeOffset: [0, -1.1, 0],
-      desc: '800-volt structural battery enclosure housing four high-density 4680 Cybercell arrays, liquid-cooled busbar plates, and heavy orange HV cables.',
+      desc: '800-volt structural battery enclosure housing four 4680 Cybercell arrays, 11.5 kW Powershare bi-directional On-Board Charger, NACS Supercharger port, and HV cables.',
       funFact: 'With Powershare outlets in the bed, Cybertruck’s battery can power an entire house during a blackout for 3 days!',
       build(g) {
         // Armored structural battery enclosure
@@ -563,6 +755,7 @@ function buildCybertruck() {
           rbox(g, 0.36, 0.04, 1.34, 0.01, arrayMat, [m * 0.4, -0.055, 0]);
           box(g, 0.32, 0.015, 0.06, busbarCopper, [m * 0.4, -0.032, 0]);
         }
+        buildEVChargePortAndOBC(g, { portPos: [-1.52, 0.18, 0.84], obcPos: [-0.78, -0.05, 0] });
         buildWiringHarness(g, [
           {
             points: [
@@ -669,11 +862,11 @@ function buildCybertruck() {
     },
     {
       id: 'air-suspension-links',
-      name: '12" Travel Helical Air-Coil Struts & Billet Wishbones',
+      name: '12" Travel Air-Coil Struts, Billet Wishbones & Anti-Roll Sway Bars',
       category: 'Chassis & Safety',
       isOuter: false,
       explodeOffset: [0, -0.85, 1.85],
-      desc: 'Tall billet-aluminum upper and lower wishbones, 3D helical spring struts, and braided brake hoses raise clearance to 16 inches.',
+      desc: 'Tall billet-aluminum upper and lower wishbones, 3D helical spring struts, front/rear anti-roll sway bars, and braided brake hoses raise clearance to 16 inches.',
       funFact: 'In Extract Mode, the air suspension pumps itself up a full foot off the ground to climb over boulders!',
       build(g) {
         buildCoiloverSuspension(
@@ -686,6 +879,7 @@ function buildCybertruck() {
           ],
           { springColor: 0xf59e0b, damperColor: 0x94a3b8, height: 0.32 },
         );
+        buildFrontRearSwayBars(g, { frontX: 1.35, rearX: -1.35, y: -0.2, color: 0xf59e0b });
       },
     },
     {
@@ -963,17 +1157,18 @@ function buildRivianR1T() {
     },
     {
       id: 'max-pack-battery',
-      name: '149 kWh Waterproof Max Battery Pack & HV Busbars',
+      name: '149 kWh Waterproof Max Battery Pack, Adventure Charge Port & HV Busbars',
       category: 'Energy Storage',
       isOuter: false,
       explodeOffset: [0, -1.1, 0],
-      desc: 'Double-stacked module battery sealed with 24 perimeter bolts and high-voltage orange harnesses inside a waterproof enclosure.',
+      desc: 'Double-stacked module battery sealed with 24 perimeter bolts, front-left motorized CCS/NACS charge port, 11.5 kW On-Board Charger, and high-voltage orange harnesses inside a waterproof enclosure.',
       funFact: 'Because an electric truck doesn’t need an air intake snorkel or exhaust pipe, R1T can ford deep rivers up to 43 inches!',
       build(g) {
         rbox(g, 2.35, 0.16, 1.48, 0.025, darkTrim, [0, -0.14, 0]);
         for (let i = -4; i <= 4; i++) {
           rbox(g, 0.22, 0.07, 1.38, 0.015, brushedMetal(0x38bdf8), [i * 0.25, -0.05, 0]);
         }
+        buildEVChargePortAndOBC(g, { portPos: [1.62, 0.16, 0.82], obcPos: [-0.85, -0.04, 0] });
         buildWiringHarness(g, [
           {
             points: [
@@ -1000,15 +1195,20 @@ function buildRivianR1T() {
     },
     {
       id: 'quad-motors',
-      name: 'Independent Quad-Motor Drive Units & HV Inverters',
-      category: 'Powertrain',
+      name: 'Independent Quad-Motor Drive Units, Inverters & Thermal Cooling Stack',
+      category: 'Powertrain & Thermal',
       isOuter: false,
       explodeOffset: [-1.6, 0.95, 0],
-      desc: 'Four separate electric motors—one for every single wheel—with copper hairpin windings, 32 flange bolts, and torque-vectoring gearboxes.',
+      desc: 'Four separate electric motors—one for every single wheel—with copper hairpin windings, torque-vectoring gearboxes, and a front high-capacity radiator & battery chiller stack.',
       funFact: 'Because each wheel has its own motor, a Quad-Motor truck can spin the left wheels forward and right wheels backward to pivot like a tank!',
       build(g) {
         buildDetailedEVDriveUnit(g, { pos: [-1.32, -0.14, 0], twin: true, width: 0.62, radius: 0.15 });
         buildDetailedEVDriveUnit(g, { pos: [1.32, -0.14, 0], twin: true, width: 0.62, radius: 0.15 });
+        // Front Quad-Motor Cooling Radiator, Battery Chiller & Heat Pump Stack
+        rbox(g, 0.14, 0.32, 0.96, 0.02, bashPlate, [1.68, -0.04, 0], [0, 0, 0.18]);
+        for (const z of [-0.26, 0.26]) {
+          torus(g, 0.13, 0.016, darkTrim, [1.62, -0.04, z], [0, Math.PI / 2, 0]);
+        }
       },
     },
     {
@@ -1046,11 +1246,11 @@ function buildRivianR1T() {
     },
     {
       id: 'hydraulic-suspension',
-      name: 'Kinetic Roll-Control Hydraulic & Helical Suspension',
+      name: 'Kinetic Roll-Control Hydraulic Suspension & EPAS Steering Rack',
       category: 'Chassis & Safety',
       isOuter: false,
       explodeOffset: [0, -0.85, 1.85],
-      desc: 'Four 3D helical spring struts, tubular wishbones, and cross-linked braided hydraulic roll-control lines with AN fittings.',
+      desc: 'Four 3D helical spring struts, tubular wishbones, heavy-duty off-road EPAS rack-and-pinion steering with tie rods, and cross-linked hydraulic roll-control lines.',
       funFact: 'At the press of a button, Camp Courtesy Mode levels all four corners automatically so you sleep flat in a rooftop tent!',
       build(g) {
         buildCoiloverSuspension(
@@ -1063,6 +1263,7 @@ function buildRivianR1T() {
           ],
           { springColor: 0xf59e0b, damperColor: 0x94a3b8, height: 0.3 },
         );
+        buildSteeringRackAndColumn(g, { rackX: 1.32, rackY: -0.18, colStart: [0.42, 0.36, 0.38], epasColor: 0xf59e0b });
       },
     },
     {
@@ -1270,12 +1471,12 @@ function buildFerrariSF90() {
     },
     {
       id: 'v8-twinturbo',
-      name: 'Mid-Mounted 4.0L Twin-Turbo V8 (Pistons, Con-Rods & Coils)',
-      category: 'Powertrain',
+      name: 'Mid-Mounted 4.0L Twin-Turbo V8, Saddle Fuel Tanks & 350-Bar Direct Injection',
+      category: 'Powertrain & Fuel',
       isOuter: false,
       explodeOffset: [0.15, 0.68, 0.55],
-      desc: 'Full mechanical F154 V8 behind the cockpit featuring 8 reciprocating aluminum pistons, forged H-beam con-rods, billet crank, crinkle-red DOHC valve covers with 16 hex bolts, ignition coil packs, and serpentine belt drive!',
-      funFact: 'Putting the heavy V8 engine in the middle of the car—like a Formula 1 race car—helps it pivot around corners lightning fast!',
+      desc: 'Full mechanical F154 V8 behind the cockpit with 8 reciprocating aluminum pistons, forged con-rods, dual 68L saddle fuel tanks, 350-bar high-pressure fuel rails, and crinkle-red DOHC valve covers!',
+      funFact: 'Putting the heavy V8 engine and dual saddle fuel tanks right behind the seats—like a Formula 1 race car—helps it pivot around corners lightning fast!',
       build(g) {
         addEngineCadSubassembly(g, [-0.55, -0.04, 0], 0.0011);
         buildDetailedEngineBlock(g, {
@@ -1286,6 +1487,13 @@ function buildFerrariSF90() {
           coilColor: 0xffd100,
           hasTwinTurbos: true,
           scale: 0.96,
+        });
+        buildFuelSystemAndTank(g, {
+          tankPos: [-0.22, -0.18, 0],
+          tankSize: [0.34, 0.22, 0.32],
+          enginePos: [-0.55, 0.02, 0],
+          fillerPos: [-0.72, 0.28, 0.78],
+          saddle: true,
         });
       },
     },
@@ -1319,16 +1527,24 @@ function buildFerrariSF90() {
     },
     {
       id: 'hybrid-mgu-k',
-      name: '3 Axial-Flux Hybrid Motors (RAC-e) & 800V Orange Wiring Loom',
+      name: '3 Axial-Flux Motors (RAC-e), 7.9 kWh PHEV Battery Pack & 800V Loom',
       category: 'Hybrid Electrification',
       isOuter: false,
       explodeOffset: [1.05, 0.38, 0.52],
-      desc: 'Two front torque-vectoring electric motors + rear F1 MGU-K motor wired with high-voltage orange 800V cables, Deutsch plugs, and P-clamps.',
-      funFact: 'When leaving home early in the morning, the Ferrari can drive 15 miles in 100% silent electric "eDrive" mode without waking the neighbors!',
+      desc: 'Two front torque-vectoring electric motors, rear F1 MGU-K motor, and a vertical behind-seat 7.9 kWh high-voltage lithium-ion PHEV battery pack with plug-in charge port and 800V orange looms.',
+      funFact: 'When leaving home early in the morning, the 7.9 kWh battery lets the Ferrari drive 15 miles in 100% silent electric "eDrive" mode without waking the neighbors!',
       build(g) {
         buildDetailedEVDriveUnit(g, { pos: [1.26, -0.18, 0], twin: true, width: 0.56, radius: 0.17 });
         cyl(g, 0.19, 0.19, 0.14, 24, mat(0xff6600, { roughness: 0.25 }), [-1.08, -0.12, 0], [0, 0, Math.PI / 2]);
-        rbox(g, 0.22, 0.28, 1.04, 0.03, carbon, [-0.18, -0.1, 0]);
+        // Behind-seat 7.9 kWh High-Voltage Li-Ion PHEV Battery Pack with 12 laser-welded cell modules & copper busbars
+        rbox(g, 0.24, 0.3, 1.06, 0.03, carbon, [-0.18, -0.08, 0]);
+        const cellMod = brushedMetal(0x38bdf8, { metalness: 0.86, roughness: 0.18 });
+        const busCopper = brushedMetal(0xd97706, { metalness: 0.92, roughness: 0.15 });
+        for (let m = -2; m <= 2; m++) {
+          rbox(g, 0.18, 0.24, 0.16, 0.012, cellMod, [-0.18, -0.08, m * 0.19]);
+        }
+        box(g, 0.12, 0.02, 0.96, busCopper, [-0.18, 0.06, 0]);
+        buildEVChargePortAndOBC(g, { portPos: [-0.82, 0.26, -0.78], obcPos: [-0.18, -0.22, 0] });
         // Full chassis-length 800V Orange + Red 12V + Blue CAN-Bus Wiring Harness with P-clamps
         buildWiringHarness(g, [
           {
@@ -1408,11 +1624,11 @@ function buildFerrariSF90() {
     },
     {
       id: 'carbon-ceramic-brakes',
-      name: 'Brembo Carbon-Ceramic Brakes & Helical Multimatic Shocks',
+      name: 'Brembo Carbon-Ceramic Brakes, Multimatic Shocks, EPAS Rack & Sway Bars',
       category: 'Chassis & Safety',
       isOuter: false,
       explodeOffset: [0, -0.48, 1.48],
-      desc: 'Real 3D yellow helical coilover springs around Multimatic dampers, tubular A-arm wishbones with hex bolts, and braided brake lines.',
+      desc: 'Real 3D yellow helical coilover springs around Multimatic dampers, EPAS steering rack with tie rods, front/rear anti-roll sway bars, and carbon-ceramic brakes.',
       funFact: 'Carbon-ceramic brake discs weigh half as much as iron discs and never fade even at 1,800°F on a racetrack!',
       build(g) {
         addFerrariCadNodes(g, ['brakes']);
@@ -1426,6 +1642,8 @@ function buildFerrariSF90() {
           ],
           { springColor: 0xffd100, damperColor: 0x94a3b8, height: 0.26 },
         );
+        buildSteeringRackAndColumn(g, { rackX: 1.31, rackY: -0.24, colStart: [0.36, 0.22, 0.36], epasColor: 0xd40000 });
+        buildFrontRearSwayBars(g, { frontX: 1.31, rearX: -1.34, y: -0.26, color: 0xffd100 });
       },
     },
     {
@@ -1602,11 +1820,11 @@ function buildLamborghiniRevuelto() {
     },
     {
       id: 'v12-engine',
-      name: 'Naturally Aspirated 6.5L V12 (12 Pistons, Con-Rods & Headers)',
-      category: 'Powertrain',
+      name: '6.5L V12 (12 Pistons & Con-Rods), Side-Pod Radiators & Saddle Fuel Tanks',
+      category: 'Powertrain, Fuel & Cooling',
       isOuter: false,
       explodeOffset: [-0.85, 1.5, 0],
-      desc: 'Twelve cylinders with reciprocating aluminum pistons, forged connecting rods, billet crank, 24 valve-cover hex bolts, 12 ignition coils, and 12 tubular exhaust runners!',
+      desc: 'Twelve cylinders with reciprocating aluminum pistons, forged connecting rods, dual side-pod aluminum V12 water/oil radiators with puller fans, and saddle fuel tanks with 350-bar rails!',
       funFact: 'Lamborghini rotated the V12 engine 180 degrees compared to older models so the gearbox could sit sideways at the back!',
       build(g) {
         addEngineCadSubassembly(g, [-0.65, -0.04, 0], 0.0011);
@@ -1622,6 +1840,18 @@ function buildLamborghiniRevuelto() {
         // Gold X-brace strut bar bolted across the V12 engine bay
         box(g, 0.84, 0.028, 0.045, brushedMetal(0xd4af37), [-0.65, 0.22, 0], [0, 0.55, 0]);
         box(g, 0.84, 0.028, 0.045, brushedMetal(0xd4af37), [-0.65, 0.22, 0], [0, -0.55, 0]);
+        // Dual side-pod aluminum V12 water/oil radiators & puller fans fed by the Y-intake ducts
+        for (const side of [-1, 1]) {
+          rbox(g, 0.28, 0.24, 0.14, 0.02, alu, [-0.42, 0.02, side * 0.64], [0, side * 0.25, 0]);
+          torus(g, 0.085, 0.014, carbon, [-0.42, 0.02, side * 0.56], [0, Math.PI / 2, 0]);
+        }
+        buildFuelSystemAndTank(g, {
+          tankPos: [-0.24, -0.18, 0],
+          tankSize: [0.34, 0.22, 0.34],
+          enginePos: [-0.65, 0.02, 0],
+          fillerPos: [-0.78, 0.26, 0.8],
+          saddle: true,
+        });
       },
     },
     {
@@ -1701,11 +1931,11 @@ function buildLamborghiniRevuelto() {
     },
     {
       id: 'pushrod-suspension',
-      name: 'Horizontal Pushrod Helical Coilovers & Ceramic Brakes',
+      name: 'Pushrod Coilovers, Rear-Wheel Steering, EPAS Rack & Ceramic Brakes',
       category: 'Chassis & Safety',
       isOuter: false,
       explodeOffset: [0, -0.85, 1.85],
-      desc: 'Four 3D helical orange coilover springs, tubular A-arm wishbones with hex bolts, pushrod bellcranks, and braided stainless brake lines.',
+      desc: 'Four 3D helical orange coilover springs, front EPAS steering rack, rear-axle steering actuator, anti-roll sway bars, and carbon-ceramic brakes.',
       funFact: '10-piston front brake calipers—more pistons than most car engines!—bite onto 410mm carbon-ceramic discs.',
       build(g) {
         addFerrariCadNodes(g, ['brakes']);
@@ -1719,6 +1949,14 @@ function buildLamborghiniRevuelto() {
           ],
           { springColor: 0xff5500, damperColor: 0xd1d5db, height: 0.26 },
         );
+        buildSteeringRackAndColumn(g, {
+          rackX: 1.26,
+          rackY: -0.24,
+          colStart: [0.36, 0.22, 0.36],
+          epasColor: 0xff5500,
+          rearSteerX: -1.3,
+        });
+        buildFrontRearSwayBars(g, { frontX: 1.26, rearX: -1.3, y: -0.26, color: 0x65d610 });
       },
     },
     {
@@ -1906,11 +2144,11 @@ function buildFordF150Raptor() {
   const parts = [
     {
       id: 'boxed-ladder-frame',
-      name: 'Boxed High-Strength Steel Ladder Frame & Bolted Skid Plate',
-      category: 'Structure',
+      name: 'Boxed High-Strength Steel Ladder Frame, 36-Gal Fuel Tank & Skid Plate',
+      category: 'Structure & Fuel',
       isOuter: false,
       explodeOffset: [0, -1.65, 0],
-      desc: 'Two massive rectangular steel rails connected by welded crossmembers and a thick silver front bash plate.',
+      desc: 'Two massive rectangular steel rails connected by welded crossmembers, a thick silver front bash plate, and a frame-mounted 36-gallon extended-range fuel tank with braided fuel lines.',
       funFact: 'Pickup trucks use a "ladder frame" shaped like a giant steel ladder so they can tow heavy boats and trailers without bending!',
       build(g) {
         box(g, 3.96, 0.11, 0.12, frameSteel, [0, -0.25, 0.48]);
@@ -1919,15 +2157,23 @@ function buildFordF150Raptor() {
           box(g, 0.1, 0.1, 1.08, frameSteel, [x, -0.25, 0]);
         }
         rbox(g, 0.42, 0.2, 1.24, 0.03, skidAlu, [1.9, -0.2, 0], [0, 0, 0.45]);
+        buildFuelSystemAndTank(g, {
+          tankPos: [-0.48, -0.2, -0.26],
+          tankSize: [0.88, 0.18, 0.34],
+          enginePos: [1.32, 0.06, 0],
+          fillerPos: [-1.15, 0.32, -0.86],
+          saddle: false,
+          tankColor: 0x334155,
+        });
       },
     },
     {
       id: 'ecoboost-v6-v8',
-      name: '5.2L Supercharged Predator V8 (Pistons, Belt Drive & Headers)',
-      category: 'Powertrain',
+      name: '5.2L Supercharged Predator V8, Desert Radiator & Intercooler Stack',
+      category: 'Powertrain & Cooling',
       isOuter: false,
       explodeOffset: [1.55, 1.35, 0],
-      desc: 'Front-mounted 720-HP V8 with reciprocating pistons, forged connecting rods, Ford Performance blue valve covers with 16 hex bolts, serpentine supercharger belt, and dual Baja exhaust!',
+      desc: 'Front-mounted 720-HP V8 with 2.65L Roots supercharger, air-to-water intercooler, heavy-duty desert radiator stack with dual cooling fans, reciprocating pistons, and dual Baja exhaust!',
       funFact: 'Pressing the "Baja" exhaust button on the steering wheel opens special valves in the tailpipes for a trophy-truck roar!',
       build(g) {
         addEngineCadSubassembly(g, [1.32, 0.04, 0], 0.0011);
@@ -1940,6 +2186,12 @@ function buildFordF150Raptor() {
           hasTwinTurbos: true,
           scale: 0.88,
         });
+        // Finned 2.65L Roots Supercharger housing + Front Heavy-Duty Desert Radiator & Intercooler Stack
+        rbox(g, 0.42, 0.1, 0.3, 0.02, frameSteel, [1.32, 0.24, 0]);
+        rbox(g, 0.14, 0.38, 1.12, 0.02, skidAlu, [1.76, 0.08, 0]);
+        for (const fz of [-0.3, 0.3]) {
+          cyl(g, 0.15, 0.15, 0.03, 18, frameSteel, [1.68, 0.08, fz], [0, 0, Math.PI / 2]);
+        }
         cyl(g, 0.06, 0.06, 0.32, 16, frameSteel, [-2.02, -0.22, 0.56], [0, 0, Math.PI / 2]);
         cyl(g, 0.06, 0.06, 0.32, 16, frameSteel, [-2.02, -0.22, -0.56], [0, 0, Math.PI / 2]);
       },
@@ -2138,11 +2390,11 @@ function buildFordF150Raptor() {
     },
     {
       id: 'heavy-brakes-hubs',
-      name: 'Heavy-Duty Vented Disc Brakes & 4x4 Locking Hubs',
-      category: 'Brakes & Safety',
+      name: 'Vented Disc Brakes, 4x4 Locking Hubs, EPAS Steering Rack & Sway Bars',
+      category: 'Brakes, Steering & Safety',
       isOuter: false,
       explodeOffset: [0, -0.5, 1.75],
-      desc: 'Oversized vented iron brake rotors and vacuum-actuated 4x4 front wheel hubs with perimeter hex bolts.',
+      desc: 'Oversized vented iron brake rotors, vacuum-actuated 4x4 front wheel hubs, heavy-duty off-road electric power steering (EPAS) rack & tie rods, and front/rear stabilizer bars.',
       funFact: 'Trailer Brake Control lets the truck’s brake pedal also control the electric brakes on a heavy camper trailer behind you!',
       build(g) {
         for (const x of [-1.35, 1.38]) {
@@ -2151,6 +2403,20 @@ function buildFordF150Raptor() {
             rbox(g, 0.08, 0.11, 0.065, 0.015, foxOrange, [x + (x > 0 ? -0.1 : 0.1), -0.18, z]);
           }
         }
+        buildSteeringRackAndColumn(g, {
+          rackX: 1.38,
+          rackY: -0.2,
+          rackWidth: 1.38,
+          colStart: [0.46, 0.4, 0.42],
+          epasColor: 0xff5a00,
+        });
+        buildFrontRearSwayBars(g, {
+          frontX: 1.38,
+          rearX: -1.35,
+          y: -0.22,
+          span: 1.34,
+          color: 0x0046ad,
+        });
       },
     },
     {
@@ -2302,17 +2568,25 @@ function buildPorsche911GT3RS() {
     },
     {
       id: 'center-radiator-nostrils',
-      name: 'Motorsport Center Radiator, Braided Hoses & Hood Nostrils',
-      category: 'Cooling & Aero',
+      name: 'Motorsport Center Radiator, 90L Front Fuel Tank & Hood Nostrils',
+      category: 'Cooling, Fuel & Aero',
       isOuter: false,
       explodeOffset: [1.95, 1.15, 0],
-      desc: 'Angled race-car radiator filling the nose, plumbed with braided stainless AN coolant lines and twin carbon hood nostrils.',
+      desc: 'Angled race-car radiator filling the nose, a 90-liter front-trunk FT3 fuel bladder with center-hood quick-fill cap, braided stainless AN coolant/fuel lines, and twin carbon hood nostrils.',
       funFact: 'Roof fins above the windshield push that hot radiator air sideways so the rear engine only breathes icy-cold air!',
       build(g) {
         rbox(g, 0.48, 0.26, 0.96, 0.02, alu, [1.28, -0.06, 0], [0, 0, -0.45]);
         for (const z of [-0.28, 0.28]) {
           rbox(g, 0.32, 0.06, 0.28, 0.015, carbon, [1.28, 0.16, z], [0, 0, -0.22]);
         }
+        buildFuelSystemAndTank(g, {
+          tankPos: [0.84, -0.14, 0],
+          tankSize: [0.38, 0.22, 0.68],
+          enginePos: [-1.38, -0.06, 0],
+          fillerPos: [0.96, 0.2, 0],
+          saddle: false,
+          tankColor: 0xe11d48,
+        });
         buildWiringHarness(g, [
           {
             points: [
@@ -2382,11 +2656,11 @@ function buildPorsche911GT3RS() {
     },
     {
       id: 'ball-joint-suspension',
-      name: 'Aero-Wishbone Helical Coilover Suspension & PCCB Brakes',
+      name: 'Aero-Wishbone Coilovers, PCCB Brakes, Rear-Axle Steer & Carbon Sway Bars',
       category: 'Chassis & Safety',
       isOuter: false,
       explodeOffset: [0, -0.85, 1.8],
-      desc: 'Four 3D yellow helical coilover springs, teardrop aero wishbones with rose-joint hex bolts, and CAD PCCB brake discs & calipers.',
+      desc: 'Four 3D yellow helical coilover springs, teardrop aero wishbones, CAD PCCB brake discs & calipers, front/rear-axle steering racks, and Weissach carbon-fiber anti-roll sway bars.',
       funFact: 'Even the metal suspension arms inside the front wheel wells are shaped like little airplane wings!',
       build(g) {
         addCarConceptCadNodes(
@@ -2414,6 +2688,19 @@ function buildPorsche911GT3RS() {
           ],
           { springColor: 0xfacc15, damperColor: 0x94a3b8, height: 0.26 },
         );
+        buildSteeringRackAndColumn(g, {
+          rackX: 1.24,
+          rackY: -0.24,
+          colStart: [0.36, 0.26, 0.36],
+          epasColor: 0xfacc15,
+          rearSteerX: -1.24,
+        });
+        buildFrontRearSwayBars(g, {
+          frontX: 1.24,
+          rearX: -1.24,
+          y: -0.26,
+          color: 0x16a34a,
+        });
       },
     },
     {
@@ -2687,11 +2974,11 @@ function buildTeslaModelXPlaid() {
     },
     {
       id: 'modelx-structural-battery',
-      name: '100 kWh 800V Structural Battery Pack & Orange HV Loom',
+      name: '100 kWh 800V Structural Battery Pack, Charge Port & Orange HV Loom',
       category: 'Energy Storage',
       isOuter: false,
       explodeOffset: [0, -1.1, 0],
-      desc: 'Armored underfloor lithium-ion battery pack with 5 liquid-cooled module bays, copper busbars, and dual orange high-voltage harnesses.',
+      desc: 'Armored underfloor lithium-ion battery pack with 5 liquid-cooled module bays, copper busbars, on-board charger (OBC), NACS Supercharger inlet, and dual orange high-voltage harnesses.',
       funFact: 'Placing 1,200 pounds of battery cells flat under the floor gives Model X the lowest rollover risk of any SUV ever tested!',
       build(g) {
         rbox(g, 2.34, 0.15, 1.5, 0.025, darkMetal, [0, -0.22, 0]);
@@ -2723,6 +3010,7 @@ function buildTeslaModelXPlaid() {
             companionColor: 0xe11d48,
           },
         ]);
+        buildEVChargePortAndOBC(g, { portPos: [-1.72, 0.18, 0.78], obcPos: [-0.92, -0.12, 0] });
       },
     },
     {
@@ -2824,11 +3112,11 @@ function buildTeslaModelXPlaid() {
     },
     {
       id: 'modelx-air-suspension-brakes',
-      name: 'Adaptive Air Suspension Coilovers, CAD Brake Discs & Red Calipers',
+      name: 'Adaptive Air Suspension, CAD Brakes, EPAS Steering Rack & Sway Bars',
       category: 'Chassis & Safety',
       isOuter: false,
       explodeOffset: [0, -0.75, 1.75],
-      desc: 'Height-adjustable air suspension struts, forged control arms, and ventilated CAD brake rotors with crimson 6-piston Brembo calipers.',
+      desc: 'Height-adjustable air suspension struts, forged control arms, ventilated CAD brake rotors with crimson 6-piston Brembo calipers, EPAS steering rack & column, and front/rear sway bars.',
       funFact: 'Model X remembers steep driveways by GPS location and raises its air suspension automatically every time you arrive home!',
       build(g) {
         addCarConceptCadNodes(
@@ -2856,6 +3144,18 @@ function buildTeslaModelXPlaid() {
           ],
           { springColor: 0xd90429, damperColor: 0xcbd5e1, height: 0.3 },
         );
+        buildSteeringRackAndColumn(g, {
+          rackX: 1.287,
+          rackY: -0.2,
+          colStart: [0.38, 0.4, 0.38],
+          epasColor: 0xd90429,
+        });
+        buildFrontRearSwayBars(g, {
+          frontX: 1.287,
+          rearX: -1.289,
+          y: -0.23,
+          color: 0xd90429,
+        });
       },
     },
     {
@@ -2915,11 +3215,11 @@ function buildTeslaModelXPlaid() {
     },
     {
       id: 'modelx-sculpted-suv-body',
-      name: 'Pearl-White Sculpted Crossover Body, Front Doors & Active Rear Wing',
+      name: 'Pearl-White Sculpted Crossover Body, Self-Presenting Doors & Active Wing',
       category: 'Exterior',
       isOuter: true,
       explodeOffset: [0, 1.75, -1.95],
-      desc: 'Sculpted SUV crossover bodywork (`BodyHood`, `BodyRearPanelsColor1`, `BodyDoorL/R` CAD scaled to SUV proportions) with satin-black wheel-arch cladding and an active rear spoiler.',
+      desc: 'Sculpted SUV crossover bodywork (`BodyHood`, `BodyRearPanelsColor1`, `BodyDoorL/R` CAD scaled to SUV proportions) with motorized self-presenting front door strut actuators and an active rear spoiler.',
       funFact: 'The front driver’s door senses your phone key as you walk up, swings open automatically, and closes itself when you press the brake pedal!',
       build(g) {
         const hasCad = addCarConceptCadNodes(
@@ -2962,6 +3262,11 @@ function buildTeslaModelXPlaid() {
             ],
             bodyColor: pearlWhite,
           });
+        }
+        // Self-Presenting Front Door Motorized Strut Actuators at front A-pillar hinges
+        for (const s of [-1, 1]) {
+          cyl(g, 0.016, 0.016, 0.24, 12, chromeMat(), [0.68, 0.14, s * 0.76], [0, 0, Math.PI / 2]);
+          rbox(g, 0.08, 0.06, 0.05, 0.01, darkMetal, [0.8, 0.14, s * 0.74]);
         }
         // Sculpted Active Rear Spoiler bridge across the fastback tailgate
         rbox(g, 0.24, 0.036, 1.46, 0.014, carbon, [-1.84, 0.52, 0], [0, 0, 0.14]);
@@ -3112,11 +3417,11 @@ function buildTeslaRoadster2() {
     },
     {
       id: 'roadster-200kwh-battery',
-      name: '200 kWh Double-Stacked Structural Battery Pack (620-Mile Range)',
+      name: '200 kWh Double-Stacked Structural Battery Pack, Charge Port & OBC',
       category: 'Energy Storage',
       isOuter: false,
       explodeOffset: [0, -1.05, 0],
-      desc: 'Double-layer structural 4680 lithium-silicon battery pack storing 200 kilowatt-hours—twice the energy of a standard EV—with liquid-cooled copper busbars and 800V orange looms.',
+      desc: 'Double-layer structural 4680 lithium-silicon battery pack storing 200 kilowatt-hours—twice the energy of a standard EV—with liquid-cooled copper busbars, NACS charge port, and 800V orange looms.',
       funFact: 'With 200 kWh of energy on board, the new Roadster can drive 620 miles from Los Angeles to San Francisco and back on a single charge!',
       build(g) {
         rbox(g, 1.96, 0.16, 1.42, 0.025, darkTi, [0.05, -0.24, 0]);
@@ -3149,6 +3454,7 @@ function buildTeslaRoadster2() {
             companionColor: 0xe11d48,
           },
         ]);
+        buildEVChargePortAndOBC(g, { portPos: [-1.66, 0.14, 0.78], obcPos: [-0.88, -0.14, 0] });
       },
     },
     {
@@ -3220,16 +3526,28 @@ function buildTeslaRoadster2() {
     },
     {
       id: 'roadster-thermal-radiators',
-      name: 'Dual Tilted Nose Heat Exchangers, Electric Compressors & AN Lines',
-      category: 'Thermal & Cooling',
+      name: 'Dual Tilted Nose Heat Exchangers, 10,000 PSI Air Compressors & AN Lines',
+      category: 'Thermal & Compressor System',
       isOuter: false,
       explodeOffset: [1.95, 0.35, 1.25],
-      desc: 'High-capacity nose and side radiators cooling the 200 kWh battery, tri-motors, AND the SpaceX high-pressure air recharge compressors.',
+      desc: 'High-capacity nose and side radiators cooling the 200 kWh battery, tri-motors, AND twin multi-stage 10,000 PSI electric air recharge compressors with finned intercooler heads.',
       funFact: 'Between rocket bursts, electric air compressors refill the carbon SpaceX tank back up to 10,000 PSI using battery power!',
       build(g) {
         for (const z of [-0.46, 0.46]) {
           rbox(g, 0.24, 0.2, 0.34, 0.02, titanium, [1.56, -0.14, z], [0, z > 0 ? -0.32 : 0.32, 0]);
-          cyl(g, 0.065, 0.065, 0.24, 18, copper, [-0.28, 0.04, z * 1.1], [0, 0, Math.PI / 2]);
+          // Twin Multi-Stage 10,000 PSI Electric Air Recharge Compressor Pumps + finned intercooler heads
+          cyl(g, 0.068, 0.068, 0.26, 18, copper, [-0.28, 0.04, z * 1.1], [0, 0, Math.PI / 2]);
+          rbox(g, 0.14, 0.09, 0.14, 0.015, titanium, [-0.28, 0.13, z * 1.1]);
+          tube(
+            g,
+            [
+              [-0.28, 0.13, z * 1.05],
+              [-0.46, 0.08, z * 0.72],
+              [-0.62, 0.02, z * 0.5],
+            ],
+            0.014,
+            titanium,
+          );
         }
         buildWiringHarness(g, [
           {
@@ -3257,11 +3575,11 @@ function buildTeslaRoadster2() {
     },
     {
       id: 'roadster-active-pushrod-suspension',
-      name: 'Active Track Pushrod Helical Coilovers & Carbon-Ceramic Brakes',
+      name: 'Active Track Pushrod Coilovers, Carbon Brakes, Steer-by-Wire & Sway Bars',
       category: 'Chassis & Safety',
       isOuter: false,
       explodeOffset: [0, -0.55, 1.65],
-      desc: 'Four 3D helical coilover dampers, billet double-wishbone control arms, and 420mm carbon-ceramic brake discs (`brakes` CAD).',
+      desc: 'Four 3D helical coilover dampers, billet double-wishbone control arms, 420mm carbon-ceramic brake discs (`brakes` CAD), front/rear steer-by-wire racks, and active anti-roll sway bars.',
       funFact: 'When braking from 250 mph, upward-pointing cold-gas thrusters in the nose also push the front tires down to shorten stopping distance!',
       build(g) {
         addFerrariCadNodes(g, ['brakes'], { caliper: liquidCherry }, roadsterMatrix);
@@ -3275,6 +3593,19 @@ function buildTeslaRoadster2() {
           ],
           { springColor: 0x38bdf8, damperColor: 0xd8dee9, height: 0.25 },
         );
+        buildSteeringRackAndColumn(g, {
+          rackX: 1.33,
+          rackY: -0.24,
+          colStart: [0.38, 0.2, 0.36],
+          epasColor: 0x38bdf8,
+          rearSteerX: -1.36,
+        });
+        buildFrontRearSwayBars(g, {
+          frontX: 1.33,
+          rearX: -1.36,
+          y: -0.26,
+          color: 0xb91c1c,
+        });
       },
     },
     {
