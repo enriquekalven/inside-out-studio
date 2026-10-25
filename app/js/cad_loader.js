@@ -939,10 +939,88 @@ export function populateShuttleStackCad(
 }
 
 /**
+ * Clips a mesh's triangles to the horizontal band `yMin <= y < yMax` (in the mesh's WORLD space), splitting any triangle
+ * that straddles a band plane with Sutherland–Hodgman so stage cuts are perfectly flat. Returns a world-space
+ * non-indexed BufferGeometry (positions + normals), or null when nothing of the mesh lies inside the band.
+ */
+function clipGeometryToYBand(geometry, matrixWorld, yMin, yMax) {
+  const pos = geometry.attributes.position;
+  if (!pos) return null;
+  const nor = geometry.attributes.normal;
+  const idx = geometry.index;
+  const triCount = idx ? idx.count / 3 : pos.count / 3;
+  const normalMatrix = new THREE.Matrix3().getNormalMatrix(matrixWorld);
+  const outPos = [];
+  const outNor = [];
+  const readVertex = (i) => {
+    const p = new THREE.Vector3().fromBufferAttribute(pos, i).applyMatrix4(matrixWorld);
+    const n = nor ? new THREE.Vector3().fromBufferAttribute(nor, i).applyMatrix3(normalMatrix).normalize() : null;
+    return { p, n };
+  };
+  const lerpVertex = (a, b, t) => ({
+    p: a.p.clone().lerp(b.p, t),
+    n: a.n && b.n ? a.n.clone().lerp(b.n, t).normalize() : null,
+  });
+  // Keep the half-space where `inside(y)` is true, interpolating new vertices exactly on the plane y = planeY.
+  const clipPolygon = (poly, planeY, inside) => {
+    const out = [];
+    for (let i = 0; i < poly.length; i++) {
+      const cur = poly[i];
+      const prev = poly[(i + poly.length - 1) % poly.length];
+      const curIn = inside(cur.p.y);
+      const prevIn = inside(prev.p.y);
+      if (curIn !== prevIn) {
+        const t = (planeY - prev.p.y) / (cur.p.y - prev.p.y);
+        out.push(lerpVertex(prev, cur, t));
+      }
+      if (curIn) out.push(cur);
+    }
+    return out;
+  };
+  for (let t = 0; t < triCount; t++) {
+    const ia = idx ? idx.getX(t * 3) : t * 3;
+    const ib = idx ? idx.getX(t * 3 + 1) : t * 3 + 1;
+    const ic = idx ? idx.getX(t * 3 + 2) : t * 3 + 2;
+    let poly = [readVertex(ia), readVertex(ib), readVertex(ic)];
+    const ys = poly.map((v) => v.p.y);
+    const lo = Math.min(...ys);
+    const hi = Math.max(...ys);
+    if (hi < yMin || lo >= yMax) continue;
+    if (lo < yMin) poly = clipPolygon(poly, yMin, (y) => y >= yMin);
+    if (poly.length >= 3 && hi >= yMax) poly = clipPolygon(poly, yMax, (y) => y < yMax);
+    if (poly.length < 3) continue;
+    for (let k = 1; k < poly.length - 1; k++) {
+      for (const v of [poly[0], poly[k], poly[k + 1]]) {
+        outPos.push(v.p.x, v.p.y, v.p.z);
+        if (v.n) outNor.push(v.n.x, v.n.y, v.n.z);
+      }
+    }
+  }
+  if (!outPos.length) return null;
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(outPos, 3));
+  if (outNor.length === outPos.length) geo.setAttribute('normal', new THREE.Float32BufferAttribute(outNor, 3));
+  else geo.computeVertexNormals();
+  return geo;
+}
+
+// Saturn V stage boundaries in `saturn_v.glb` model units (studio Y = (glbY - 5.6) * 0.38), measured from the
+// CAD radius profile: S-IC/S-II split at the real 42.1 m station, the S-II/S-IVB split where the 6.6 m S-IVB
+// cylinder begins above the conical aft interstage, and the SLA/CSM/LES stack above the S-IVB forward skirt.
+const SATURN_V_STAGE_BANDS = [
+  { zone: 's-ic', yMin: -Infinity, yMax: 4.81 },
+  { zone: 's-ii', yMin: 4.81, yMax: 8.36 },
+  { zone: 's-ivb', yMin: 8.36, yMax: 10.2 },
+  { zone: 'csm-les', yMin: 10.2, yMax: Infinity },
+];
+
+/**
  * Splits and attaches the NASA Apollo Saturn V CAD (`saturn_v.glb`) by stage zone:
- * `'f1-engines'` (base F-1 engine bells & fairings), `'s-ic'` (1st stage tank & fins),
- * `'s-ii'` (2nd stage), `'s-ivb'` (3rd stage), `'csm-les'` (Apollo spacecraft & LES).
- * Stands vertically upright along +Y!
+ * `'f1-engines'` (all 5 F-1 engine bells & turbopump hardware), `'fins'` (4 stabilizer fins & engine fairings),
+ * `'s-ic'` (1st stage), `'s-ii'` (2nd stage + conical aft interstage), `'s-ivb'` (3rd stage + IU),
+ * `'csm-les'` (SLA petals, Apollo CSM & LES tower), or `'all'`.
+ * The single full-height fuselage mesh in the GLB is plane-clipped into the stage bands so each stage explodes
+ * as a clean, separate section. Stands vertically upright along +Y!
  */
 export function populateSaturnVCad(
   targetGroup,
@@ -957,41 +1035,49 @@ export function populateSaturnVCad(
     const whitePaint = mat(0xf8fafc, { roughness: 0.28, metalness: 0.12 });
     const blackRoll = mat(0x0f172a, { roughness: 0.36, metalness: 0.2 });
     const inconel = brushedMetal(0x475569, { metalness: 0.88, roughness: 0.22 });
+    const offset = new THREE.Vector3(0, -5.6, -0.743);
 
     const box = new THREE.Box3();
-    const ctr = new THREE.Vector3();
     let count = 0;
-
-    root.traverse((child) => {
-      if (!child.isMesh || !child.geometry) return;
-      box.setFromObject(child);
-      box.getCenter(ctr);
-
-      const radial = Math.hypot(ctr.x, ctr.z - 0.743);
-      let stageZone = 's-ic';
-      if (ctr.y > 9.6) stageZone = 'csm-les';
-      else if (ctr.y > 7.0) stageZone = 's-ivb';
-      else if (ctr.y > 4.1) stageZone = 's-ii';
-      else if (ctr.y <= 0.8 && radial > 0.52) stageZone = 'fins';
-      else if (ctr.y <= 1.25) stageZone = 'f1-engines';
-
-      if (zone !== 'all' && stageZone !== zone) return;
-
-      const mName = (child.material?.name || '').toLowerCase();
-      const chosenMat =
-        mName.includes('fin') || mName.includes('blinn6') || stageZone === 'f1-engines' || stageZone === 'fins'
-          ? inconel
-          : mName.includes('blinn2')
-            ? blackRoll
-            : whitePaint;
-      const m = new THREE.Mesh(child.geometry, chosenMat);
-      child.matrixWorld.decompose(m.position, m.quaternion, m.scale);
-      m.position.y -= 5.6;
-      m.position.z -= 0.743;
+    root.updateWorldMatrix(true, true);
+    const addMesh = (geometry, material, applyWorld, child) => {
+      const m = new THREE.Mesh(geometry, material);
+      if (applyWorld) child.matrixWorld.decompose(m.position, m.quaternion, m.scale);
+      m.position.add(offset);
       m.castShadow = true;
       m.receiveShadow = true;
       wrapper.add(m);
       count++;
+    };
+
+    root.traverse((child) => {
+      if (!child.isMesh || !child.geometry) return;
+      box.setFromObject(child);
+      const mName = (child.material?.name || '').toLowerCase();
+      const isFinMat = mName.includes('fin') || mName.includes('blinn6');
+      const baseMat = isFinMat ? inconel : mName.includes('blinn2') ? blackRoll : whitePaint;
+
+      // Engine hardware reaches the very bottom of the stack; fins & fairings sit just above the heat shield.
+      const isEngine = box.min.y < 0.08;
+      const isFin = !isEngine && box.max.y < 1.5;
+      if (isEngine || isFin) {
+        const meshZone = isEngine ? 'f1-engines' : 'fins';
+        if (zone === 'all' || zone === meshZone) addMesh(child.geometry, inconel, true, child);
+        return;
+      }
+      if (zone === 'all') {
+        addMesh(child.geometry, baseMat, true, child);
+        return;
+      }
+      const band = SATURN_V_STAGE_BANDS.find((b) => b.zone === zone);
+      if (!band) return;
+      if (box.max.y < band.yMin || box.min.y >= band.yMax) return;
+      if (box.min.y >= band.yMin && box.max.y < band.yMax) {
+        addMesh(child.geometry, baseMat, true, child);
+        return;
+      }
+      const clipped = clipGeometryToYBand(child.geometry, child.matrixWorld, band.yMin, band.yMax);
+      if (clipped) addMesh(clipped, baseMat, false, child);
     });
 
     if (count > 0) {

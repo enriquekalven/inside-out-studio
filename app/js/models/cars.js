@@ -42,16 +42,29 @@ preloadCadAssets();
 
 function makeCarQuiz(p, customQ1, customQ2) {
   const ids = p.map((x) => x.id);
-  const pickId = (regex, fallbackIdx) => {
-    const found = p.find((x) => regex.test(x.id) || regex.test(x.name));
-    return found ? found.id : ids[fallbackIdx] || ids[0];
+  const nameOf = (x) => x.name || '';
+  const catOf = (x) => x.category || '';
+  const isWheelsCategory = (x) => /wheels?\s*&\s*tires?|tires?\s*&\s*wheels?/i.test(catOf(x));
+  // Resolve a part by walking prioritized predicate tiers (first tier with a match wins).
+  const resolve = (tiers) => {
+    for (const tier of tiers) {
+      const found = p.find((x) => tier(x));
+      if (found) return found.id;
+    }
+    return null;
   };
-  const makeDistractors = (correctId, preferredIndices) => {
+  const makeDistractors = (correctId, preferredIndices, exclude = () => false) => {
     const out = [];
+    const ok = (id) => {
+      const part = p.find((x) => x.id === id);
+      return part && id !== correctId && !out.includes(id) && !exclude(part);
+    };
     for (const idx of preferredIndices) {
-      if (ids[idx] && ids[idx] !== correctId && !out.includes(ids[idx])) {
-        out.push(ids[idx]);
-      }
+      if (ids[idx] && ok(ids[idx])) out.push(ids[idx]);
+    }
+    for (const id of ids) {
+      if (out.length >= 3) break;
+      if (ok(id)) out.push(id);
     }
     for (const id of ids) {
       if (out.length >= 3) break;
@@ -60,27 +73,57 @@ function makeCarQuiz(p, customQ1, customQ2) {
     return out.slice(0, 3);
   };
 
-  const brakeId = pickId(/brake|pccb|ccm|coilover|suspension|pushrod|magneride/i, 6);
-  const glassId = pickId(/glass|windshield|canopy|moonroof|targa/i, 10);
-  const wheelId = pickId(/wheel|tire|arachnid|alione|beadlock/i, 11);
+  // Brakes: dedicated brake part id > part explicitly named with brakes/calipers (not the wheel assembly).
+  const brakeId = resolve([
+    (x) => /brake/i.test(x.id),
+    (x) => /brake|caliper|pccb|ccm/i.test(nameOf(x)) && !isWheelsCategory(x),
+  ]);
+  // Suspension: used for Q3 on vehicles whose brake discs live inside the wheel assembly (e.g., trucks).
+  const suspensionId = resolve([
+    (x) => /suspension|coilover|pushrod|shock|magneride/i.test(x.id),
+    (x) => /suspension|coilover|strut|shock/i.test(nameOf(x)),
+  ]);
+  // Glass: match on part id first so "Steering Wheel" / "Rear-Wheel Steering" style names can never hijack it.
+  const glassId =
+    resolve([
+      (x) => /glass|windshield|windscreen|canopy|moonroof|targa|roof/i.test(x.id),
+      (x) => /glass|windshield|windscreen|canopy|moonroof|targa/i.test(nameOf(x)),
+    ]) || ids[10] || ids[0];
+  // Wheels: the "Wheels & Tires" category is authoritative; never match steering wheels or wheel-torque names.
+  const wheelId =
+    resolve([
+      (x) => isWheelsCategory(x),
+      (x) => /(^|-)(wheels?|tires?|tyres?|rims?)(-|$)/i.test(x.id) && !/steer/i.test(x.id),
+      (x) => /\b(wheels|tires|tyres)\b/i.test(nameOf(x)) && !/steer/i.test(nameOf(x)),
+    ]) || ids[11] || ids[0];
+
+  const brakeQuestion = brakeId
+    ? {
+        q: `Which part squeezes spinning perforated discs to bring this high-powered vehicle to a safe stop?`,
+        correctId: brakeId,
+        distractors: makeDistractors(brakeId, [0, 8, 9], (x) => /brake|caliper|rotor|pccb|disc/i.test(nameOf(x))),
+      }
+    : {
+        q: `Which part uses springs, dampers and wishbones to soak up bumps and keep all four tires planted on rough ground?`,
+        correctId: suspensionId || ids[6] || ids[0],
+        distractors: makeDistractors(suspensionId || ids[6] || ids[0], [0, 8, 9], (x) =>
+          /suspension|coilover|strut|shock|spring/i.test(nameOf(x)),
+        ),
+      };
 
   return [
     customQ1,
     customQ2,
-    {
-      q: `Which part squeezes spinning perforated discs to bring this high-powered vehicle to a safe stop?`,
-      correctId: brakeId,
-      distractors: makeDistractors(brakeId, [0, 8, 11]),
-    },
+    brakeQuestion,
     {
       q: `Which crystal-clear aerodynamic part lets the driver see the road while blocking roaring wind?`,
       correctId: glassId,
-      distractors: makeDistractors(glassId, [1, 5, 7]),
+      distractors: makeDistractors(glassId, [1, 5, 7], (x) => /glass|windshield|canopy|moonroof|targa/i.test(nameOf(x))),
     },
     {
       q: `Which four parts grip the asphalt with grooved radial rubber tread and 3D hex lug nuts?`,
       correctId: wheelId,
-      distractors: makeDistractors(wheelId, [2, 6, 9]),
+      distractors: makeDistractors(wheelId, [2, 6, 9], (x) => isWheelsCategory(x) || /\b(tires|tyres)\b/i.test(nameOf(x))),
     },
   ];
 }

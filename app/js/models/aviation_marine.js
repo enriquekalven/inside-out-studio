@@ -1908,6 +1908,11 @@ function buildLockheedSR71Blackbird() {
         correctId: 'sr71-obc-slr-recon-bays',
         distractors: ['sr71-drag-chute-def-ecm', 'sr71-titanium-landing-gear', 'inward-canted-rudders'],
       },
+      {
+        q: 'Which part pops out of the SR-71’s spine after touchdown to slow the 170-mph landing roll before the brakes take over?',
+        correctId: 'sr71-drag-chute-def-ecm',
+        distractors: ['sr71-titanium-landing-gear', 'blended-delta-wing-nacelles', 'jp7-fuel-tanks-landing-gear'],
+      },
     ],
   };
 }

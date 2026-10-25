@@ -212,7 +212,9 @@ function buildRocketModel(cfg) {
       desc: cfg.vacEngDesc || 'Huge radiatively-cooled Niobium/Inconel vacuum nozzle optimized to expand exhaust gases to maximum speed in the vacuum of space.',
       funFact: cfg.vacEngFact || 'Vacuum rocket nozzles have giant bells up to 5× wider than sea-level nozzles because there is zero atmospheric pressure pushing back in space!',
       build(g) {
-        addRocketEngineCad(g, { pos: [0, 0.48, 0], scale: isSaturn ? 0.0018 : 0.0022, rot: [0, 0, Math.PI / 2], replaceFallback: false });
+        // Saturn V: the single J-2 hangs inside the conical S-IVB aft interstage (studio y ≈ 0.85–1.05) below the S-IVB tank.
+        const ey = isSaturn ? 0.56 : 0;
+        addRocketEngineCad(g, { pos: [0, 0.48 + ey, 0], scale: isSaturn ? 0.0018 : 0.0022, rot: [0, 0, Math.PI / 2], replaceFallback: false });
         if (isStarship) {
           // Starship 6-Raptor Aft Propulsion Bay: 3× outer giant Raptor Vacuum (RVac) bells + 3× center gimbaled Sea-Level Raptors
           for (let i = 0; i < 3; i++) {
@@ -227,8 +229,8 @@ function buildRocketModel(cfg) {
             cone(g, 0.052, 0.18, 20, chromeMat(), [sx, 0.46, sz]);
           }
         } else {
-          cone(g, isSaturn ? 0.15 : r * 0.72, 0.32, 28, inconel, [0, 0.42, 0], [0, 0, 0]);
-          torus(g, isSaturn ? 0.14 : r * 0.68, 0.014, rp1Gold, [0, 0.32, 0], [Math.PI / 2, 0, 0]);
+          cone(g, isSaturn ? 0.15 : r * 0.72, 0.32, 28, inconel, [0, 0.42 + ey, 0], [0, 0, 0]);
+          torus(g, isSaturn ? 0.14 : r * 0.68, 0.014, rp1Gold, [0, 0.32 + ey, 0], [Math.PI / 2, 0, 0]);
         }
       },
     },
@@ -273,19 +275,22 @@ function buildRocketModel(cfg) {
       funFact: cfg.payloadFact,
       build(g) {
         const ps = isSaturn ? 0.14 : 0.22;
-        // Payload adapter cone + Starlink flat-pack stack / Apollo Lunar Module Eagle
-        cyl(g, isSaturn ? 0.12 : r * 0.56, isSaturn ? 0.16 : r * 0.72, 0.14, 24, chromeMat(), [0, 1.32, 0]);
         if (isSaturn) {
-          // Octagonal gold-Kapton Lunar Module Descent Stage + Ascent Cabin + 4 folded landing legs + RCS thruster quads + 4-petal SLA panels
-          cyl(g, 0.13, 0.13, 0.14, 8, rp1Gold, [0, 1.48, 0]);
-          sphere(g, 0.11, 16, whiteHull, [0, 1.64, 0]);
-          cone(g, 0.055, 0.09, 16, inconel, [0, 1.38, 0]);
+          // Apollo LM folded inside the SLA cone (studio y 1.75–2.05): S-IVB forward skirt / SLA base ring, octagonal
+          // gold-Kapton Descent Stage + 4 folded landing legs & footpads, Ascent Stage cabin + RCS thruster quads.
+          cyl(g, 0.095, 0.158, 0.05, 24, chromeMat(), [0, 1.765, 0]);
+          cone(g, 0.04, 0.07, 16, inconel, [0, 1.80, 0]);
+          cyl(g, 0.105, 0.105, 0.1, 8, rp1Gold, [0, 1.87, 0]);
+          sphere(g, 0.08, 16, whiteHull, [0, 1.985, 0]);
           for (let i = 0; i < 4; i++) {
             const a = (i / 4) * Math.PI * 2 + Math.PI / 4;
-            cyl(g, 0.008, 0.008, 0.18, 8, rp1Gold, [Math.cos(a) * 0.13, 1.48, Math.sin(a) * 0.13]);
-            rbox(g, 0.03, 0.03, 0.03, 0.005, chromeMat(), [Math.cos(a) * 0.11, 1.65, Math.sin(a) * 0.11]);
+            cyl(g, 0.007, 0.007, 0.15, 8, rp1Gold, [Math.cos(a) * 0.105, 1.87, Math.sin(a) * 0.105], [0, 0, 0]);
+            cyl(g, 0.022, 0.022, 0.008, 12, rp1Gold, [Math.cos(a) * 0.105, 1.795, Math.sin(a) * 0.105]);
+            rbox(g, 0.024, 0.024, 0.024, 0.004, chromeMat(), [Math.cos(a) * 0.082, 1.99, Math.sin(a) * 0.082]);
           }
         } else {
+          // Payload adapter cone + Starlink flat-pack stack
+          cyl(g, r * 0.56, r * 0.72, 0.14, 24, chromeMat(), [0, 1.32, 0]);
           for (let i = 0; i < 5; i++) {
             rbox(g, ps, 0.055, ps, 0.01, rp1Gold, [0, 1.44 + i * 0.075, 0]);
           }
@@ -350,8 +355,10 @@ function buildRocketModel(cfg) {
     parts,
     quiz: [
       { q: `Which part at the base of ${cfg.name} gimbals to steer the rocket during liftoff?`, correctId: 'first-stage-engines', distractors: ['payload-fairing-nosecone', 'cryo-lox-fuel-tanks', 'payload-stack-module'] },
-      { q: 'Which upper-stage propulsion unit features an oversized bell nozzle optimized for the vacuum of space?', correctId: 'upper-stage-vacuum-engine', distractors: ['grid-fins-landing-legs', 'booster-airframe-hull', 'first-stage-engines'] },
-      { q: 'Which nose assembly protects the spacecraft or satellites from supersonic aerodynamic pressure during ascent?', correctId: 'payload-fairing-nosecone', distractors: ['interstage-stage-sep', 'cryo-lox-fuel-tanks', 'first-stage-engines'] },
+      { q: cfg.quizUpperEngineQ || 'Which upper-stage propulsion unit features an oversized bell nozzle optimized for the vacuum of space?', correctId: 'upper-stage-vacuum-engine', distractors: ['grid-fins-landing-legs', 'booster-airframe-hull', 'first-stage-engines'] },
+      { q: cfg.quizNoseQ || 'Which nose assembly protects the spacecraft or satellites from supersonic aerodynamic pressure during ascent?', correctId: 'payload-fairing-nosecone', distractors: ['interstage-stage-sep', 'cryo-lox-fuel-tanks', 'first-stage-engines'] },
+      { q: 'Which internal cutaway tanks keep -183°C liquid oxygen and fuel apart with domed bulkheads, a downcomer pipe and anti-slosh baffles?', correctId: 'cryo-lox-fuel-tanks', distractors: ['upper-stage-ship-hull', 'interstage-stage-sep', 'payload-stack-module'] },
+      { q: cfg.quizPayloadQ || 'Which stack of satellites or spacecraft rides on top of the upper stage as the rocket’s actual cargo?', correctId: 'payload-stack-module', distractors: ['payload-fairing-nosecone', 'booster-airframe-hull', 'grid-fins-landing-legs'] },
     ],
   };
 }
@@ -377,6 +384,7 @@ export const ROCKET_MODELS = [
     fairingName: 'Two-Piece Carbon Honeycomb Clamshell Payload Fairing',
     fairingDesc: '5.2-meter diameter carbon-fiber clamshell nose fairing lined with acoustic suppression panels, cold-gas thrusters, and parafoil recovery hardware.',
     fairingFact: 'SpaceX catches falling $6 million carbon-fiber payload fairing halves in the ocean using GPS-steered parafoils!',
+    quizPayloadQ: 'Which flat-pack stack of broadband satellites rides inside the fairing and drifts apart like a deck of cards once in orbit?',
   }),
   buildRocketModel({
     id: 'spacex-starship-superheavy', name: 'SpaceX Starship & Super Heavy', brand: 'SpaceX', badge: '121m Fully Reusable • 33× + 6× Raptor',
@@ -396,6 +404,9 @@ export const ROCKET_MODELS = [
     fairingName: 'Welded Stainless-Steel Ogive Nose Cone & Forward Flaps',
     fairingDesc: 'Cold-rolled 304L stainless-steel ogive nosecone clad on the windward side with black silica TPS tiles and actuated forward aero flaps.',
     fairingFact: 'Stainless steel stays strong at both cryogenic -196°C liquid nitrogen temperatures and glowing +800°C atmospheric re-entry heat!',
+    quizUpperEngineQ: 'Which 6-engine bay under the Starship spacecraft pairs three giant vacuum bells with three gimbaling sea-level Raptors for landing flips?',
+    quizNoseQ: 'Which welded stainless-steel nose at the very tip is clad with black heat-shield tiles and carries the forward aero flaps?',
+    quizPayloadQ: 'Which bay tucked inside the nose holds the satellite "Pez dispenser" slot and the spherical landing header tanks?',
   }),
   buildRocketModel({
     id: 'nasa-saturn-v-apollo', name: 'NASA Apollo Saturn V Moon Rocket', brand: 'NASA / Boeing / North American / Douglas', badge: '110.6m • 5× F-1 + 5× J-2 + 1× J-2 • Real NASA CAD',
@@ -413,10 +424,13 @@ export const ROCKET_MODELS = [
     upperHullName: 'S-IVB Stage Hull, APS Thrusters & IBM Instrument Unit Ring',
     upperHullDesc: 'Douglas S-IVB third-stage tank topped by the 3-foot-tall IBM Instrument Unit ring containing the ST-124M inertial platform and LVDC flight computer.',
     upperHullFact: 'The Saturn V Instrument Unit computer had less memory than a modern musical greeting card yet guided astronauts to the Moon!',
-    payloadName: 'Spacecraft-LM Adapter (SLA) & Apollo Lunar Module ("Eagle")', payloadDesc: 'Two-stage gold-Kapton Apollo Lunar Module (Descent Stage + Ascent Stage with 4 landing legs and RCS quads) housed inside the 4 folding SLA petals.', payloadFact: 'The Lunar Module was the first true spacecraft in history designed to fly exclusively in the vacuum of space—it had zero aerodynamics!',
-    fairingName: 'Apollo Command/Service Module (CSM) & Launch Escape System (LES)',
-    fairingDesc: 'Conical 3-astronaut Command Module, cylindrical Service Module with SPS rocket nozzle, and the 10-meter solid-fuel Launch Escape System tower at the tip.',
+    payloadName: 'Apollo Lunar Module ("Eagle") Folded Inside the SLA Adapter', payloadDesc: 'Two-stage gold-Kapton Apollo Lunar Module (octagonal Descent Stage with 4 folded landing legs and footpads + Ascent Stage cabin with RCS quads) seated on the S-IVB forward skirt inside the SLA cone.', payloadFact: 'The Lunar Module was the first true spacecraft in history designed to fly exclusively in the vacuum of space—it had zero aerodynamics!',
+    fairingName: 'Apollo Spacecraft Stack: SLA Petals, Service & Command Modules & LES Tower',
+    fairingDesc: 'Real NASA CAD nose section: the 4-petal Spacecraft-LM Adapter cone, cylindrical Service Module with SPS nozzle, conical 3-astronaut Command Module, and the 10-meter solid-fuel Launch Escape System tower at the tip.',
     fairingFact: 'If an emergency happened on the launchpad, the red Launch Escape Tower at the very tip could yank the astronaut capsule 1.5 miles high in seconds!',
+    quizUpperEngineQ: 'Which restartable third-stage engine fired a second time in Earth orbit to blast Apollo toward the Moon (Trans-Lunar Injection)?',
+    quizNoseQ: 'Which assembly at the very tip carried the 3 Apollo astronauts and had a solid-rocket escape tower to pull them to safety in an emergency?',
+    quizPayloadQ: 'Which gold-foil two-stage spacecraft folded inside the adapter petals actually landed astronauts on the Moon?',
   }),
 ];
 
