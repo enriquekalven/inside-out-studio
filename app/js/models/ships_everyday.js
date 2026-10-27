@@ -6,6 +6,83 @@ import {
 } from '../materials.js';
 import { populateEngineCad, populateGearboxCad } from '../cad_loader.js';
 
+function makeSmoothHullWaterline(hl, hb, {
+  lenScale = 1.0,
+  beamScale = 1.0,
+  sternPinch = 0.44,
+  bowTipScale = 1.0,
+  bowEntranceStart = 0.30,
+  sternRunStart = -0.54,
+  bowPower = 1.65,
+  stations = 32,
+} = {}) {
+  const L = hl * lenScale;
+  const B = hb * beamScale;
+  const bowX = L * bowTipScale;
+  const sternX = -L;
+  const stbd = [];
+  const port = [];
+  // Add curved transom/cruiser stern arch points first (from centerline to port/stbd quarters)
+  const transomSteps = 6;
+  for (let t = 1; t < transomSteps; t++) {
+    const u = t / transomSteps;
+    const z = B * sternPinch * u;
+    const x = sternX - L * 0.018 * Math.cos(u * Math.PI * 0.5);
+    port.unshift([x, -z]);
+    stbd.push([x, z]);
+  }
+  for (let i = 0; i <= stations; i++) {
+    const u = i / stations; // 0 = stern quarter, 1 = bow stem tip
+    // Cosine-clustered station spacing for extra density at bow entrance and stern run
+    const s = 0.5 - 0.5 * Math.cos(u * Math.PI);
+    const x = sternX + (bowX - sternX) * s;
+    const normX = x / L;
+    let widthFrac = 1.0;
+    if (normX < sternRunStart) {
+      const t = Math.min(1, Math.max(0, (sternRunStart - normX) / (1.0 + sternRunStart)));
+      widthFrac = 1.0 - (1.0 - sternPinch) * Math.pow(Math.sin(t * Math.PI * 0.5), 1.55);
+    } else if (normX > bowEntranceStart) {
+      const t = Math.min(1, Math.max(0, (normX - bowEntranceStart) / (bowTipScale - bowEntranceStart)));
+      widthFrac = Math.pow(Math.cos(t * Math.PI * 0.5), bowPower);
+    }
+    const z = B * Math.max(0, widthFrac);
+    if (i < stations) {
+      port.push([x, -z]);
+      stbd.unshift([x, z]);
+    } else {
+      port.push([bowX, 0]);
+    }
+  }
+  return [[sternX - L * 0.018, 0], ...port, ...stbd];
+}
+
+function makeSmoothDeckOutline(aftX, foreX, hb, { sternPinch = 0.88, bowStartFrac = 0.68, stations = 24 } = {}) {
+  const port = [];
+  const stbd = [];
+  const span = foreX - aftX;
+  for (let i = 0; i <= stations; i++) {
+    const u = i / stations;
+    const s = 0.5 - 0.5 * Math.cos(u * Math.PI);
+    const x = aftX + span * s;
+    let w = 1.0;
+    if (s < 0.14) {
+      const t = (0.14 - s) / 0.14;
+      w = 1.0 - (1.0 - sternPinch) * (t * t);
+    } else if (s > bowStartFrac) {
+      const t = (s - bowStartFrac) / (1.0 - bowStartFrac);
+      w = Math.pow(Math.cos(t * Math.PI * 0.5), 1.35);
+    }
+    const z = hb * Math.max(0, w);
+    if (i < stations) {
+      port.push([x, -z]);
+      stbd.unshift([x, z]);
+    } else {
+      port.push([foreX, 0]);
+    }
+  }
+  return [...port, ...stbd];
+}
+
 function buildNavalHull(g, {
   length = 4.2,
   beam = 0.82,
@@ -23,41 +100,39 @@ function buildNavalHull(g, {
   const hl = length * 0.5;
   const hb = beam * 0.5;
 
-  const makeWaterlinePts = (lenScale, beamScale, sternPinch = 0.44, bowTipScale = 1.0) => [
-    [-hl * lenScale, -hb * beamScale * sternPinch],
-    [-hl * lenScale * 0.90, -hb * beamScale * 0.84],
-    [-hl * lenScale * 0.58, -hb * beamScale],
-    [hl * lenScale * 0.34, -hb * beamScale],
-    [hl * lenScale * 0.68, -hb * beamScale * 0.72],
-    [hl * lenScale * 0.90, -hb * beamScale * 0.28],
-    [hl * lenScale * bowTipScale, 0],
-    [hl * lenScale * 0.90, hb * beamScale * 0.28],
-    [hl * lenScale * 0.68, hb * beamScale * 0.72],
-    [hl * lenScale * 0.34, hb * beamScale],
-    [-hl * lenScale * 0.58, hb * beamScale],
-    [-hl * lenScale * 0.90, hb * beamScale * 0.84],
-    [-hl * lenScale, hb * beamScale * sternPinch],
-  ];
+  const makeWaterlinePts = (lenScale, beamScale, sternPinch = 0.44, bowTipScale = 1.0, bowPower = 1.55) =>
+    makeSmoothHullWaterline(hl, hb, {
+      lenScale,
+      beamScale,
+      sternPinch,
+      bowTipScale,
+      bowPower,
+      stations: 32,
+    });
 
-  // Smooth 6-layer multi-waterline stepped/beveled marine topsides & anti-fouling lower hull
-  const upperTopPts = makeWaterlinePts(1.0, 1.0, 0.48, rakedYachtBow ? 1.035 : 1.01);
-  const upperMidPts = makeWaterlinePts(0.992, 0.985, 0.46, rakedYachtBow ? 1.015 : 0.995);
-  const upperLowPts = makeWaterlinePts(0.982, 0.96, 0.43, 0.98);
-  const bootTopPts = makeWaterlinePts(0.974, 0.935, 0.40, 0.97);
-  const lowerMidPts = makeWaterlinePts(0.962, 0.89, 0.35, bulbousBow ? 0.995 : 0.95);
-  const keelPts = makeWaterlinePts(0.935, 0.78, 0.26, bulbousBow ? 0.985 : 0.92);
+  // Smooth 8-layer multi-waterline flared marine topsides & anti-fouling lower hull
+  const upperSheerPts = makeWaterlinePts(1.002, 1.004, 0.49, rakedYachtBow ? 1.042 : 1.015, 1.48);
+  const upperTopPts = makeWaterlinePts(0.997, 0.995, 0.47, rakedYachtBow ? 1.028 : 1.006, 1.52);
+  const upperMidPts = makeWaterlinePts(0.990, 0.980, 0.45, rakedYachtBow ? 1.012 : 0.994, 1.56);
+  const upperLowPts = makeWaterlinePts(0.982, 0.960, 0.42, 0.982, 1.62);
+  const bootTopPts = makeWaterlinePts(0.974, 0.935, 0.39, 0.972, 1.66);
+  const lowerTopPts = makeWaterlinePts(0.966, 0.905, 0.35, bulbousBow ? 0.996 : 0.958, 1.70);
+  const lowerMidPts = makeWaterlinePts(0.954, 0.855, 0.30, bulbousBow ? 0.992 : 0.942, 1.75);
+  const keelPts = makeWaterlinePts(0.935, 0.770, 0.24, bulbousBow ? 0.984 : 0.920, 1.82);
 
-  extrudeProfile(g, upperTopPts, upperDraft * 0.42, upperMat, [0, 0.04, 0], [Math.PI / 2, 0, 0], 0.018);
-  extrudeProfile(g, upperMidPts, upperDraft * 0.42, upperMat, [-0.008, -upperDraft * 0.24, 0], [Math.PI / 2, 0, 0], 0.018);
-  extrudeProfile(g, upperLowPts, upperDraft * 0.40, upperMat, [-0.016, -upperDraft * 0.52, 0], [Math.PI / 2, 0, 0], 0.018);
+  extrudeProfile(g, upperSheerPts, upperDraft * 0.34, upperMat, [0, 0.055, 0], [Math.PI / 2, 0, 0], 0.016);
+  extrudeProfile(g, upperTopPts, upperDraft * 0.36, upperMat, [-0.004, -upperDraft * 0.14, 0], [Math.PI / 2, 0, 0], 0.016);
+  extrudeProfile(g, upperMidPts, upperDraft * 0.36, upperMat, [-0.010, -upperDraft * 0.34, 0], [Math.PI / 2, 0, 0], 0.016);
+  extrudeProfile(g, upperLowPts, upperDraft * 0.36, upperMat, [-0.016, -upperDraft * 0.54, 0], [Math.PI / 2, 0, 0], 0.016);
 
   // Crisp white/brass boot-top waterline stripe separating upper topsides and anti-fouling lower hull
   const bootMat = sheerMat || mat(0xf8fafc, { roughness: 0.22, metalness: 0.12 });
   extrudeProfile(g, bootTopPts, 0.028, bootMat, [-0.022, -upperDraft * 0.78, 0], [Math.PI / 2, 0, 0], 0.005);
 
-  // Lower anti-fouling hull + flat keel bottom + bilge keels
-  extrudeProfile(g, lowerMidPts, lowerDraft * 0.65, lowerMat, [-0.030, -upperDraft * 0.84 - lowerDraft * 0.22, 0], [Math.PI / 2, 0, 0], 0.018);
-  extrudeProfile(g, keelPts, lowerDraft * 0.52, lowerMat, [-0.045, -upperDraft * 0.84 - lowerDraft * 0.66, 0], [Math.PI / 2, 0, 0], 0.016);
+  // Lower anti-fouling hull + turn of the bilge + flat keel bottom + bilge keels
+  extrudeProfile(g, lowerTopPts, lowerDraft * 0.48, lowerMat, [-0.026, -upperDraft * 0.84 - lowerDraft * 0.14, 0], [Math.PI / 2, 0, 0], 0.016);
+  extrudeProfile(g, lowerMidPts, lowerDraft * 0.48, lowerMat, [-0.034, -upperDraft * 0.84 - lowerDraft * 0.42, 0], [Math.PI / 2, 0, 0], 0.016);
+  extrudeProfile(g, keelPts, lowerDraft * 0.46, lowerMat, [-0.045, -upperDraft * 0.84 - lowerDraft * 0.68, 0], [Math.PI / 2, 0, 0], 0.015);
 
   // Hydrodynamic bilge keels along port & starboard turn of the bilge
   for (const s of [-1, 1]) {
@@ -65,23 +140,15 @@ function buildNavalHull(g, {
   }
 
   if (sheerMat) {
-    const sheerPts = makeWaterlinePts(1.003, 1.008, 0.49, rakedYachtBow ? 1.038 : 1.012);
+    const sheerPts = makeWaterlinePts(1.004, 1.009, 0.49, rakedYachtBow ? 1.045 : 1.016, 1.46);
     extrudeProfile(g, sheerPts, 0.022, sheerMat, [0, 0.095, 0], [Math.PI / 2, 0, 0], 0.005);
   }
   if (deckMat) {
-    const deckPts = makeWaterlinePts(0.988, 0.965, 0.46, rakedYachtBow ? 1.02 : 0.995);
+    const deckPts = makeWaterlinePts(0.990, 0.968, 0.46, rakedYachtBow ? 1.025 : 0.998, 1.50);
     extrudeProfile(g, deckPts, 0.022, deckMat, [0, 0.116, 0], [Math.PI / 2, 0, 0], 0.004);
   }
   if (forecastle) {
-    const fPts = [
-      [hl * 0.42, -hb * 0.95],
-      [hl * 0.68, -hb * 0.72],
-      [hl * 0.90, -hb * 0.29],
-      [hl * 1.015, 0],
-      [hl * 0.90, hb * 0.29],
-      [hl * 0.68, hb * 0.72],
-      [hl * 0.42, hb * 0.95],
-    ];
+    const fPts = makeSmoothDeckOutline(hl * 0.42, hl * 1.018, hb * 0.95, { sternPinch: 0.98, bowStartFrac: 0.05, stations: 24 });
     extrudeProfile(g, fPts, 0.088, upperMat, [0, 0.145, 0], [Math.PI / 2, 0, 0], 0.012);
     if (deckMat) {
       extrudeProfile(g, fPts.map(([x, z]) => [x * 0.992, z * 0.95]), 0.016, deckMat, [0, 0.192, 0], [Math.PI / 2, 0, 0], 0.004);
@@ -112,28 +179,31 @@ function buildNavalHull(g, {
     for (let i = -12; i <= 12; i++) {
       const px = i * (length * 0.032);
       const frac = Math.abs(px) / hl;
-      const hz = hb * (frac > 0.36 ? Math.max(0.28, 1.0 - (frac - 0.36) * 0.95) : 0.99);
+      const hz = hb * (frac > 0.32 ? Math.max(0.24, Math.pow(Math.cos(((frac - 0.32) / 0.68) * Math.PI * 0.5), 1.52)) : 0.995);
       for (const s of [-1, 1]) {
-        cyl(g, 0.009, 0.009, 0.008, 10, portholeGlow, [px, 0.025, s * hz], [Math.PI / 2, 0, 0]);
+        cyl(g, 0.009, 0.009, 0.008, 12, portholeGlow, [px, 0.025, s * hz], [Math.PI / 2, 0, 0]);
         if (portholeRows > 1 && i % 2 === 0) {
-          cyl(g, 0.008, 0.008, 0.008, 10, portholeGlow, [px, -0.035, s * (hz * 0.97)], [Math.PI / 2, 0, 0]);
+          cyl(g, 0.008, 0.008, 0.008, 12, portholeGlow, [px, -0.035, s * (hz * 0.97)], [Math.PI / 2, 0, 0]);
         }
       }
     }
   }
   if (bulbousBow) {
-    // Integrated hydrodynamic teardrop bulbous bow faired smoothly into lower stem (no protruding red hotdog!)
+    // High-resolution 36-segment hydrodynamic teardrop bulbous bow faired smoothly into lower stem
     const bulbY = -upperDraft * 0.82 - lowerDraft * 0.45;
     lathe(
       g,
       [
-        [-0.22, 0.01],
-        [-0.12, 0.072],
-        [0.02, 0.082],
-        [0.12, 0.068],
+        [-0.26, 0.008],
+        [-0.18, 0.048],
+        [-0.10, 0.072],
+        [-0.02, 0.082],
+        [0.05, 0.080],
+        [0.11, 0.068],
+        [0.15, 0.044],
         [0.18, 0.002],
       ],
-      20,
+      36,
       lowerMat,
       [hl * 0.86, bulbY, 0],
       [0, 0, -Math.PI / 2],
@@ -142,7 +212,7 @@ function buildNavalHull(g, {
     // Bow thruster tunnels with protective cross-grilles
     const darkHole = mat(0x0f172a, { roughness: 0.85 });
     for (const dx of [hl * 0.68, hl * 0.75, hl * 0.82]) {
-      cyl(g, 0.032, 0.032, hb * 0.82, 16, darkHole, [dx, bulbY + 0.02, 0], [Math.PI / 2, 0, 0]);
+      cyl(g, 0.032, 0.032, hb * 0.82, 20, darkHole, [dx, bulbY + 0.02, 0], [Math.PI / 2, 0, 0]);
     }
   }
 }
@@ -209,7 +279,7 @@ export const SHIP_MODELS = [
           bulbousBow: true, forecastle: true, portholeRows: 2,
         });
         // Contour-following Royal Caribbean blue hull sheer accent & bow helipad marking
-        cyl(g, 0.16, 0.16, 0.012, 24, m.darkSteel, [1.72, 0.205, 0]);
+        cyl(g, 0.16, 0.16, 0.012, 28, m.darkSteel, [1.72, 0.205, 0]);
         torus(g, 0.13, 0.005, carPaint(0xfacc15), [1.72, 0.212, 0], [Math.PI / 2, 0, 0]);
         // Retractable port & starboard active hydrofoil fin stabilizers midships below waterline
         for (const s of [-1, 1]) {
@@ -217,23 +287,13 @@ export const SHIP_MODELS = [
         }
       }],
       ['balcony-stateroom-superstructure', '14-Deck Tiered Balcony Stateroom Superstructure & Flying Bridge', 'Passenger Decks', true, [0, 0.95, -1.35], 'Multi-tier white passenger superstructure containing 2,090 staterooms with private blue-glass verandas, raked forward observation bow, and an aerodynamic enclosed flying bridge.', 'Even the interior staterooms with no outside window have floor-to-ceiling 4K LED "Virtual Balconies" streaming live ocean views in real time!', (g, m) => {
-        // 8 stacked architectural stateroom deck tiers with raked forward bow front & recessed blue-glass balcony ribbons
+        // 8 stacked architectural stateroom deck tiers with smooth curved bow front & recessed blue-glass balcony ribbons
         for (let d = 0; d < 8; d++) {
           const y = 0.16 + d * 0.056;
           const foreX = 1.28 - d * 0.045;
           const aftX = -1.62 + (d > 4 ? (d - 4) * 0.05 : 0);
           const hb = 0.38 - (d > 4 ? (d - 4) * 0.012 : 0);
-          const tierPts = [
-            [aftX, -hb * 0.92],
-            [aftX + 0.16, -hb],
-            [foreX - 0.28, -hb],
-            [foreX, -hb * 0.58],
-            [foreX + 0.12, 0],
-            [foreX, hb * 0.58],
-            [foreX - 0.28, hb],
-            [aftX + 0.16, hb],
-            [aftX, hb * 0.92],
-          ];
+          const tierPts = makeSmoothDeckOutline(aftX, foreX + 0.12, hb, { sternPinch: 0.92, bowStartFrac: 0.72, stations: 24 });
           extrudeProfile(g, tierPts, 0.032, m.white, [0, y, 0], [Math.PI / 2, 0, 0], 0.008);
           extrudeProfile(g, tierPts.map(([x, z]) => [x * 0.992, z * 1.015]), 0.022, m.glass, [0, y + 0.018, 0], [Math.PI / 2, 0, 0], 0.005);
           // Vertical white cabin balcony dividers along port & starboard flanks
@@ -322,7 +382,7 @@ export const SHIP_MODELS = [
           cyl(g, 0.032, 0.032, 0.42, 14, m.primary, [k * 0.42, -0.14, 0], [Math.PI / 2, 0, 0]);
         }
       }],
-      ['diesel-electric-azipod-plant', '4× Wärtsilä Diesel-Electric Generators (CAD), Scrubber Funnel & Twin 20.5-MW Azipods', 'Propulsion & Power', false, [-1.85, -0.85, 0], 'Four Wärtsilä marine diesel generators (`populateEngineCad`), swept royal-blue exhaust funnel with Crown & Anchor emblem, and twin 360°-steerable ABB Azipod electric thruster pods.', 'Quantum of the Seas has no rudder and no long propeller shafts—instead, two giant 28,000-hp electric motors hang in 360-degree rotating pods underneath the stern!', (g, m) => {
+      ['diesel-electric-azipod-plant', '4× Wärtsilä Diesel-Electric Generators (CAD), Scrubber Funnel & Twin 20.5-MW Azipods', 'Propulsion & Power', false, [-1.85, -0.85, 0], 'Four Wärtsilä marine diesel generators, swept royal-blue exhaust funnel with Crown & Anchor emblem, and twin 360°-steerable ABB Azipod electric thruster pods.', 'Quantum of the Seas has no rudder and no long propeller shafts—instead, two giant 28,000-hp electric motors hang in 360-degree rotating pods underneath the stern!', (g, m) => {
         populateEngineCad(g, { pos: [-0.85, -0.14, 0], scale: 0.002, primaryColor: 0x1d4ed8 });
         // Swept Royal Blue Funnel with white aerodynamic cowling, Crown & Anchor gold medallion, and quad silver exhaust pipes
         rbox(g, 0.38, 0.34, 0.22, 0.045, m.primary, [-1.02, 0.78, 0], [0, 0, 0.26]);
@@ -376,17 +436,7 @@ export const SHIP_MODELS = [
         ];
         for (let idx = 0; idx < deckConfigs.length; idx++) {
           const d = deckConfigs[idx];
-          const pts = [
-            [d.aft, -d.hb * 0.88],
-            [d.aft + 0.15, -d.hb],
-            [d.fore - 0.25, -d.hb],
-            [d.fore, -d.hb * 0.52],
-            [d.fore + 0.14, 0],
-            [d.fore, d.hb * 0.52],
-            [d.fore - 0.25, d.hb],
-            [d.aft + 0.15, d.hb],
-            [d.aft, d.hb * 0.88],
-          ];
+          const pts = makeSmoothDeckOutline(d.aft, d.fore + 0.14, d.hb, { sternPinch: 0.88, bowStartFrac: 0.65, stations: 24 });
           // Teak deck floor + white/silver coaming overhang + recessed dark floor-to-ceiling salon glazing
           extrudeProfile(g, pts.map(([x, z]) => [x * 1.03, z * 1.06]), 0.014, m.teak, [0, d.y, 0], [Math.PI / 2, 0, 0], 0.004);
           extrudeProfile(g, pts.map(([x, z]) => [x * 1.04, z * 1.08]), 0.022, d.mat, [0, d.y + d.h, 0], [Math.PI / 2, 0, 0], 0.006);
@@ -407,7 +457,7 @@ export const SHIP_MODELS = [
         }
         cyl(g, 0.008, 0.018, 0.28, 10, m.chrome, [-0.04, 0.79, 0], [0, 0, 0.22]);
       }],
-      ['foredeck-helipad-helicopter', 'Certified Foredeck Helipad & Airbus ACH160 VIP Twin-Engine Helicopter', 'Aviation Deck', true, [1.35, 1.35, 0], 'Reinforced circular teak-and-steel bow helipad with perimeter night landing lights, fold-out safety netting, and a parked Airbus ACH160 VIP helicopter (`driveAnim="fan"`).', 'Launchpad’s extended bow deck houses a commercial-grade helipad and below-deck aviation fuel system so a twin-engine helicopter can land while the yacht is cruising at sea!', (g, m) => {
+      ['foredeck-helipad-helicopter', 'Certified Foredeck Helipad & Airbus ACH160 VIP Twin-Engine Helicopter', 'Aviation Deck', true, [1.35, 1.35, 0], 'Reinforced circular teak-and-steel bow helipad with perimeter night landing lights, fold-out safety netting, and a parked Airbus ACH160 VIP helicopter.', 'Launchpad’s extended bow deck houses a commercial-grade helipad and below-deck aviation fuel system so a twin-engine helicopter can land while the yacht is cruising at sea!', (g, m) => {
         // Circular bow helipad deck with yellow touch-down ring & white H marking
         cyl(g, 0.29, 0.31, 0.022, 32, m.darkSteel, [1.42, 0.145, 0]);
         torus(g, 0.25, 0.008, carPaint(0xfacc15), [1.42, 0.158, 0], [Math.PI / 2, 0, 0]);
@@ -463,7 +513,7 @@ export const SHIP_MODELS = [
         }
         rbox(g, 0.95, 0.14, 0.46, 0.02, m.brass, [-0.12, 0.04, 0]);
       }],
-      ['quad-mtu-diesel-stabilizers', '4× MTU 20V 4000 M93L Diesels (20,000 HP, CAD), Gyro & Zero-Speed Fin Stabilizers', 'Engine Room & Stabilizers', false, [-0.85, -0.75, -1.45], 'Four 20-cylinder turbocharged MTU marine diesel engines (`populateEngineCad`), hybrid battery bank, internal zero-speed gyroscopic stabilizer spheres, and active carbon-fiber fin stabilizers.', 'Four 20-cylinder MTU engines generate over 20,000 horsepower—driving this 5,000-gross-ton floating palace at an astonishing 24 knots!', (g, m) => {
+      ['quad-mtu-diesel-stabilizers', '4× MTU 20V 4000 M93L Diesels (20,000 HP, CAD), Gyro & Zero-Speed Fin Stabilizers', 'Engine Room & Stabilizers', false, [-0.85, -0.75, -1.45], 'Four 20-cylinder turbocharged MTU marine diesel engines, hybrid battery bank, internal zero-speed gyroscopic stabilizer spheres, and active carbon-fiber fin stabilizers.', 'Four 20-cylinder MTU engines generate over 20,000 horsepower—driving this 5,000-gross-ton floating palace at an astonishing 24 knots!', (g, m) => {
         populateEngineCad(g, { pos: [-0.72, -0.14, -0.11], scale: 0.0018, primaryColor: 0x1d4ed8 });
         populateEngineCad(g, { pos: [-0.72, -0.14, 0.11], scale: 0.0018, primaryColor: 0x1d4ed8 });
         // Twin internal zero-speed vacuum gyroscopic stabilizer spheres + port/starboard active fin stabilizers
@@ -472,7 +522,7 @@ export const SHIP_MODELS = [
           box(g, 0.24, 0.02, 0.16, m.darkSteel, [-0.15, -0.24, s * 0.39], [s * 0.25, 0, 0]);
         }
       }],
-      ['twin-bronze-screws-rudders', 'Twin 5-Blade Skewed Bronze Propellers, Shaft Struts & Twin Rudders', 'Stern Propulsion', false, [-2.15, -0.85, 0], 'Two whisper-quiet 5-blade skewed Nickel-Aluminum-Bronze propellers (`driveAnim="fan"`) on V-bracket shaft struts plus twin high-aspect spade rudders.', 'Each 5-blade bronze propeller is computer-milled with swept "scimitar" blades so zero cavitation vibration ever reaches the guest cabins above!', (g, m) => {
+      ['twin-bronze-screws-rudders', 'Twin 5-Blade Skewed Bronze Propellers, Shaft Struts & Twin Rudders', 'Stern Propulsion', false, [-2.15, -0.85, 0], 'Two whisper-quiet 5-blade skewed Nickel-Aluminum-Bronze propellers on V-bracket shaft struts plus twin high-aspect spade rudders.', 'Each 5-blade bronze propeller is computer-milled with swept "scimitar" blades so zero cavitation vibration ever reaches the guest cabins above!', (g, m) => {
         for (const z of [-0.16, 0.16]) {
           cyl(g, 0.022, 0.022, 0.65, 14, m.chrome, [-1.52, -0.28, z], [0, 0, Math.PI / 2]);
           buildMarinePropeller(g, { x: -1.86, y: -0.30, z, r: 0.125, blades: 5 });
@@ -721,7 +771,7 @@ export const SHIP_MODELS = [
       ['armored-hull-torpedo-defense', 'Multi-Layer Armored Double Hull & Bulbous Sonar Bow', 'Hull Protection', true, [0, -1.45, 0], 'Compartmented steel hull with Kevlar spall liners, side torpedo defense voids, and bulbous bow sonar dome.', 'Over 2,000 watertight compartments inside the hull keep the ship afloat and level even after heavy battle damage!', (g, m) => {
         buildNavalHull(g, { length: 4.18, beam: 0.86, upperDraft: 0.32, lowerDraft: 0.22, upperMat: m.primary, lowerMat: m.accent, sheerMat: m.darkSteel, bulbousBow: true, portholeRows: 0 });
       }],
-      ['quad-shafts-bronze-screws', '4× 21-Ft 5-Blade Bronze Propellers & Twin Balanced Rudders', 'Stern Propulsion', false, [-2.15, -0.95, 0], 'Four 30-ton bronze propellers (`driveAnim="fan"`) on underwater shaft struts plus twin hydraulic rudders pushing the carrier past 30 knots.', 'Four 21-foot bronze propellers push the 1,100-foot warship fast enough to outrun escorting destroyers in heavy seas!', (g, m) => {
+      ['quad-shafts-bronze-screws', '4× 21-Ft 5-Blade Bronze Propellers & Twin Balanced Rudders', 'Stern Propulsion', false, [-2.15, -0.95, 0], 'Four 30-ton bronze propellers on underwater shaft struts plus twin hydraulic rudders pushing the carrier past 30 knots.', 'Four 21-foot bronze propellers push the 1,100-foot warship fast enough to outrun escorting destroyers in heavy seas!', (g, m) => {
         for (const z of [-0.28, -0.1, 0.1, 0.28]) buildMarinePropeller(g, { x: -1.92, y: -0.36, z, r: 0.11, blades: 5 });
         for (const z of [-0.18, 0.18]) box(g, 0.16, 0.24, 0.03, m.accent, [-2.04, -0.36, z]);
       }],
@@ -745,48 +795,38 @@ export const SHIP_MODELS = [
       ['riveted-hull-double-bottom', '3-Million-Rivet Steel Hull, Knife-Edge Stem Bow, Well Decks & Poop Deck', 'Hull Structure', true, [0, -1.45, 0], 'Sleek 882-foot riveted steel hull with a knife-sharp vertical stem bow, anti-fouling red lower hull, gold sheer stripe, raised Forecastle, Forward & Aft Well Decks with electric cargo cranes, and stern Poop Deck.', 'Titanic’s hull had a 7-foot-thick cellular "double bottom" tank floor fastened by 3 million wrought-iron and steel rivets!', (g, m) => {
         const hl = 2.32;
         const hb = 0.255;
-        // Custom 1912 Ocean-Liner Waterline Helper (knife-sharp raked stem bow + elliptical counter stern)
-        const linerWaterline = (lenScale, beamScale, sternRound = 0.42) => [
-          [-hl * lenScale, -hb * beamScale * sternRound],
-          [-hl * lenScale * 0.92, -hb * beamScale * 0.78],
-          [-hl * lenScale * 0.62, -hb * beamScale],
-          [hl * lenScale * 0.42, -hb * beamScale],
-          [hl * lenScale * 0.72, -hb * beamScale * 0.68],
-          [hl * lenScale * 0.91, -hb * beamScale * 0.26],
-          [hl * lenScale, 0],
-          [hl * lenScale * 0.91, hb * beamScale * 0.26],
-          [hl * lenScale * 0.72, hb * beamScale * 0.68],
-          [hl * lenScale * 0.42, hb * beamScale],
-          [-hl * lenScale * 0.62, hb * beamScale],
-          [-hl * lenScale * 0.92, hb * beamScale * 0.78],
-          [-hl * lenScale, hb * beamScale * sternRound],
-        ];
+        // High-resolution 32-station 1912 Ocean-Liner Waterline Helper (knife-sharp raked stem bow + elliptical counter stern)
+        const linerWaterline = (lenScale, beamScale, sternRound = 0.42, bowPower = 1.62) =>
+          makeSmoothHullWaterline(hl, hb, {
+            lenScale,
+            beamScale,
+            sternPinch: sternRound,
+            bowTipScale: 1.0,
+            bowEntranceStart: 0.36,
+            sternRunStart: -0.58,
+            bowPower,
+            stations: 32,
+          });
 
         // 1. Multi-waterline riveted black topsides & deep oxide-red lower hull (no modern bulbous bow!)
-        extrudeProfile(g, linerWaterline(1.0, 1.0, 0.44), 0.16, m.primary, [0, 0.01, 0], [Math.PI / 2, 0, 0], 0.016);
-        extrudeProfile(g, linerWaterline(0.992, 0.97, 0.38), 0.15, m.primary, [-0.01, -0.12, 0], [Math.PI / 2, 0, 0], 0.016);
+        extrudeProfile(g, linerWaterline(1.002, 1.004, 0.45, 1.54), 0.11, m.primary, [0, 0.025, 0], [Math.PI / 2, 0, 0], 0.014);
+        extrudeProfile(g, linerWaterline(0.996, 0.988, 0.42, 1.58), 0.11, m.primary, [-0.005, -0.055, 0], [Math.PI / 2, 0, 0], 0.014);
+        extrudeProfile(g, linerWaterline(0.990, 0.968, 0.38, 1.62), 0.11, m.primary, [-0.010, -0.135, 0], [Math.PI / 2, 0, 0], 0.014);
         // Gold-leaf White Star sheer stripe near the upper gunwale + crisp white waterline boot-top
-        extrudeProfile(g, linerWaterline(1.003, 1.012, 0.45), 0.016, m.brass, [0, 0.082, 0], [Math.PI / 2, 0, 0], 0.004);
-        extrudeProfile(g, linerWaterline(0.982, 0.94, 0.32), 0.022, m.white, [-0.015, -0.24, 0], [Math.PI / 2, 0, 0], 0.004);
-        // Oxide-red anti-fouling lower hull + flat double-bottom keel + bilge keels
-        extrudeProfile(g, linerWaterline(0.968, 0.89, 0.24), 0.13, m.accent, [-0.025, -0.30, 0], [Math.PI / 2, 0, 0], 0.015);
-        extrudeProfile(g, linerWaterline(0.94, 0.74, 0.14), 0.10, m.accent, [-0.04, -0.40, 0], [Math.PI / 2, 0, 0], 0.012);
+        extrudeProfile(g, linerWaterline(1.004, 1.012, 0.46, 1.52), 0.016, m.brass, [0, 0.082, 0], [Math.PI / 2, 0, 0], 0.004);
+        extrudeProfile(g, linerWaterline(0.982, 0.942, 0.33, 1.66), 0.022, m.white, [-0.015, -0.24, 0], [Math.PI / 2, 0, 0], 0.004);
+        // Oxide-red anti-fouling lower hull + turn of bilge + flat double-bottom keel + bilge keels
+        extrudeProfile(g, linerWaterline(0.972, 0.905, 0.27, 1.70), 0.09, m.accent, [-0.022, -0.28, 0], [Math.PI / 2, 0, 0], 0.014);
+        extrudeProfile(g, linerWaterline(0.958, 0.840, 0.20, 1.76), 0.09, m.accent, [-0.030, -0.34, 0], [Math.PI / 2, 0, 0], 0.014);
+        extrudeProfile(g, linerWaterline(0.938, 0.740, 0.14, 1.82), 0.09, m.accent, [-0.040, -0.40, 0], [Math.PI / 2, 0, 0], 0.012);
         for (const s of [-1, 1]) {
           box(g, 1.95, 0.014, 0.035, m.accent, [-0.05, -0.36, s * 0.22], [s * 0.35, 0, 0]);
         }
         // Main hull teak deck spanning the full length
-        extrudeProfile(g, linerWaterline(0.99, 0.96, 0.42), 0.018, m.teak, [0, 0.102, 0], [Math.PI / 2, 0, 0], 0.004);
+        extrudeProfile(g, linerWaterline(0.990, 0.962, 0.42, 1.56), 0.018, m.teak, [0, 0.102, 0], [Math.PI / 2, 0, 0], 0.004);
 
         // 2. Raised Forecastle Deck at Bow (x = 1.24 to 2.32) with anchor chains, capstans & white breakwater
-        const fPts = [
-          [1.24, -hb * 0.92],
-          [1.68, -hb * 0.66],
-          [2.08, -hb * 0.26],
-          [2.32, 0],
-          [2.08, hb * 0.26],
-          [1.68, hb * 0.66],
-          [1.24, hb * 0.92],
-        ];
+        const fPts = makeSmoothDeckOutline(1.24, 2.32, hb * 0.93, { sternPinch: 0.98, bowStartFrac: 0.05, stations: 24 });
         extrudeProfile(g, fPts, 0.075, m.primary, [0, 0.135, 0], [Math.PI / 2, 0, 0], 0.01);
         extrudeProfile(g, fPts.map(([x, z]) => [x * 0.995, z * 0.94]), 0.014, m.teak, [0, 0.178, 0], [Math.PI / 2, 0, 0], 0.003);
         // Centerline 15-ton Hall anchor well, steam windlass & brass bell at forecastle
@@ -805,15 +845,20 @@ export const SHIP_MODELS = [
           tube(g, [[cx, 0.19, cz], [cx + dir * 0.11, 0.28, cz * 0.6]], 0.006, m.brass);
         }
 
-        // 4. Raised Stern Poop Deck (x = -2.28 to -1.52) with White Bulwarks, Teak Deck & Aft Docking Bridge
-        const pPts = [
-          [-2.28, -hb * 0.42],
-          [-2.08, -hb * 0.78],
-          [-1.52, -hb * 0.94],
-          [-1.52, hb * 0.94],
-          [-2.08, hb * 0.78],
-          [-2.28, hb * 0.42],
-        ];
+        // 4. Raised Stern Poop Deck (x = -2.28 to -1.52) with Smooth Elliptical Counter Stern, White Bulwarks, Teak Deck & Aft Docking Bridge
+        const pPts = [];
+        for (let i = 0; i <= 20; i++) {
+          const u = i / 20;
+          const x = -2.30 + u * 0.78;
+          const z = hb * 0.94 * Math.pow(Math.sin(u * Math.PI * 0.5), 0.55);
+          pPts.push([x, -z]);
+        }
+        for (let i = 20; i >= 0; i--) {
+          const u = i / 20;
+          const x = -2.30 + u * 0.78;
+          const z = hb * 0.94 * Math.pow(Math.sin(u * Math.PI * 0.5), 0.55);
+          pPts.push([x, z]);
+        }
         extrudeProfile(g, pPts, 0.068, m.white, [0, 0.132, 0], [Math.PI / 2, 0, 0], 0.01);
         extrudeProfile(g, pPts.map(([x, z]) => [x * 0.995, z * 0.93]), 0.014, m.teak, [0, 0.172, 0], [Math.PI / 2, 0, 0], 0.003);
         rbox(g, 0.045, 0.04, 0.38, 0.006, m.white, [-1.72, 0.20, 0]);
@@ -822,11 +867,12 @@ export const SHIP_MODELS = [
         const portholeGlow = emissiveMat(0xfef08a, 0.95);
         for (let i = -18; i <= 18; i++) {
           const px = i * 0.095;
-          const hullZ = hb * (Math.abs(px) > 1.1 ? 0.92 - (Math.abs(px) - 1.1) * 0.36 : 0.99);
+          const frac = Math.abs(px) / hl;
+          const hullZ = hb * (frac > 0.38 ? Math.max(0.24, Math.pow(Math.cos(((frac - 0.38) / 0.62) * Math.PI * 0.5), 1.56)) : 0.995);
           for (const s of [-1, 1]) {
-            cyl(g, 0.009, 0.009, 0.008, 10, portholeGlow, [px, 0.045, s * hullZ], [Math.PI / 2, 0, 0]);
+            cyl(g, 0.009, 0.009, 0.008, 12, portholeGlow, [px, 0.045, s * hullZ], [Math.PI / 2, 0, 0]);
             if (i % 2 === 0) {
-              cyl(g, 0.008, 0.008, 0.008, 10, portholeGlow, [px, -0.015, s * (hullZ * 0.98)], [Math.PI / 2, 0, 0]);
+              cyl(g, 0.008, 0.008, 0.008, 12, portholeGlow, [px, -0.015, s * (hullZ * 0.98)], [Math.PI / 2, 0, 0]);
             }
           }
         }
@@ -1127,7 +1173,7 @@ export const EVERYDAY_MODELS = [
     desc: 'Skyscraper vertical transport system with a top permanent-magnet traction sheave, steel hoist ropes, 45% counterweight frame, overspeed governor, and Otis wedge safety brakes.',
     primaryHex: 0x0284c7, accentHex: 0xf59e0b, cameraPos: [3.8, 2.2, 4.0],
     partsSpec: [
-      ['gearless-traction-hoist-motor', 'Machine-Room-Less PM Synchronous Traction Motor & Grooved Sheave (CAD)', 'Top Hoist Drive', true, [0, 1.75, 0], 'Permanent-magnet synchronous motor, multi-groove traction sheave (`driveAnim="fan"`), fail-safe spring caliper brakes, and CAD gearbox.', 'Elevator motors don’t wind up the cable like a fishing reel—friction grooves on the sheave pull the cab up on one side while letting the counterweight down on the other!', (g, m) => {
+      ['gearless-traction-hoist-motor', 'Machine-Room-Less PM Synchronous Traction Motor & Grooved Sheave (CAD)', 'Top Hoist Drive', true, [0, 1.75, 0], 'Permanent-magnet synchronous motor, multi-groove traction sheave, fail-safe spring caliper brakes, and CAD gearbox.', 'Elevator motors don’t wind up the cable like a fishing reel—friction grooves on the sheave pull the cab up on one side while letting the counterweight down on the other!', (g, m) => {
         populateGearboxCad(g, { pos: [-0.08, 0.96, -0.18], scale: 0.011 });
         const sh = new THREE.Group();
         sh.position.set(-0.08, 0.96, 0);
@@ -1277,66 +1323,234 @@ export const EVERYDAY_MODELS = [
     primaryHex: 0xdc2626, accentHex: 0xd97706, cameraPos: [3.5, 2.1, 3.7],
     partsSpec: [
       ['stainless-chassis-cup-warmer', 'Mirror-Polished 304 Stainless Chassis, Frame & Top Passive Cup Warmer', 'Exterior Chassis', true, [-0.95, 1.25, 0], 'Folded mirror-chromed stainless body panels, Rosso Corsa side cheeks, and vented top cup-warming rail with porcelain espresso demitasse cups.', 'Pre-warming porcelain espresso cups on top of the machine keeps a 1-ounce shot from losing 10°C the instant it hits the cup!', (g, m) => {
-        rbox(g, 1.08, 0.82, 0.92, 0.045, m.primary, [-0.15, 0.05, 0]);
-        rbox(g, 0.12, 0.78, 0.88, 0.02, m.chrome, [0.36, 0.05, 0]);
-        rbox(g, 1.14, 0.05, 0.96, 0.02, m.chrome, [-0.15, 0.49, 0]);
-        // Tubular chrome cup-warmer rail + 4 porcelain demitasse cups on top
-        for (const z of [-0.42, 0.42]) cyl(g, 0.012, 0.012, 0.96, 12, m.chrome, [-0.15, 0.55, z], [0, 0, Math.PI / 2]);
-        for (const [cx, cz] of [[-0.32, -0.22], [-0.08, -0.22], [-0.32, 0.22], [-0.08, 0.22]]) {
-          cyl(g, 0.065, 0.048, 0.09, 18, m.white, [cx, 0.56, cz]);
-          torus(g, 0.028, 0.008, m.white, [cx, 0.56, cz + 0.065]);
+        // Architectural C-Frame La Marzocco / E61 Silhouette:
+        // Base plinth + 4 machined stainless adjustable barista counter legs
+        rbox(g, 1.16, 0.07, 0.96, 0.02, m.darkSteel, [-0.04, -0.38, 0]);
+        for (const [lx, lz] of [[-0.52, -0.40], [0.44, -0.40], [-0.52, 0.40], [0.44, 0.40]]) {
+          cyl(g, 0.038, 0.028, 0.08, 18, m.chrome, [lx, -0.44, lz]);
+          cyl(g, 0.044, 0.044, 0.018, 18, m.darkSteel, [lx, -0.48, lz]);
+        }
+        // Rear boiler compartment housing (leaves front barista work zone recessed & open!)
+        rbox(g, 0.72, 0.78, 0.90, 0.045, m.primary, [-0.28, 0.05, 0]);
+        // Mirror-polished 304 stainless front splash wall behind the E61 grouphead & steam wands
+        rbox(g, 0.06, 0.64, 0.88, 0.018, m.chrome, [0.16, 0.02, 0]);
+        // Upper overhanging control brow housing the gauges, brew buttons & cup warmer
+        rbox(g, 0.96, 0.18, 0.94, 0.035, m.primary, [-0.14, 0.40, 0]);
+        rbox(g, 0.06, 0.16, 0.90, 0.018, m.chrome, [0.35, 0.40, 0]);
+        // Illuminated barista LED work-light bar under the overhang brow + 4 volumetric shot buttons
+        box(g, 0.08, 0.012, 0.68, emissiveMat(0xfef08a, 1.1), [0.28, 0.305, 0]);
+        for (let b = 0; b < 4; b++) {
+          const bz = -0.09 + b * 0.06;
+          cyl(g, 0.018, 0.018, 0.016, 16, m.chrome, [0.385, 0.40, bz], [0, 0, Math.PI / 2]);
+          cyl(g, 0.013, 0.013, 0.018, 16, emissiveMat(b === 3 ? 0xef4444 : 0x38bdf8, 1.2), [0.388, 0.40, bz], [0, 0, Math.PI / 2]);
+        }
+        // Sculpted C-shaped side cheek bolsters with brushed stainless inset panels & cooling louvers
+        for (const s of [-1, 1]) {
+          const zSide = s * 0.465;
+          extrudeProfile(
+            g,
+            [
+              [-0.64, -0.35],
+              [0.34, -0.35],
+              [0.24, -0.22],
+              [0.20, 0.28],
+              [0.36, 0.32],
+              [0.34, 0.49],
+              [-0.62, 0.49],
+            ],
+            0.032,
+            m.primary,
+            [0, 0, zSide - 0.016],
+            [0, 0, 0],
+            0.008,
+          );
+          rbox(g, 0.56, 0.52, 0.018, 0.02, m.silver, [-0.26, 0.07, s * 0.482]);
+          for (let lv = 0; lv < 6; lv++) {
+            box(g, 0.34, 0.014, 0.022, m.darkSteel, [-0.28, -0.10 + lv * 0.045, s * 0.486]);
+          }
+        }
+        // Top brushed-stainless passive cup-warming deck + wrap-around chrome tubular gallery rails
+        rbox(g, 0.98, 0.032, 0.94, 0.014, m.chrome, [-0.14, 0.50, 0]);
+        for (const z of [-0.43, 0.43]) {
+          cyl(g, 0.011, 0.011, 0.90, 14, m.chrome, [-0.14, 0.565, z], [0, 0, Math.PI / 2]);
+          for (const xPost of [-0.54, -0.14, 0.26]) {
+            cyl(g, 0.009, 0.009, 0.055, 12, m.chrome, [xPost, 0.535, z]);
+          }
+        }
+        cyl(g, 0.011, 0.011, 0.86, 14, m.chrome, [-0.59, 0.565, 0], [Math.PI / 2, 0, 0]);
+        // 6 porcelain espresso demitasse cups with saucers on the cup warmer
+        const porcelain = mat(0xf8fafc, { roughness: 0.16, clearcoat: 0.9 });
+        for (const [cx, cz] of [
+          [-0.42, -0.24], [-0.16, -0.24], [0.10, -0.24],
+          [-0.42, 0.24], [-0.16, 0.24], [0.10, 0.24],
+        ]) {
+          cyl(g, 0.078, 0.052, 0.014, 22, porcelain, [cx, 0.522, cz]);
+          lathe(
+            g,
+            [[0, 0.034], [0.02, 0.044], [0.06, 0.058], [0.095, 0.064], [0.095, 0.054], [0.018, 0.034]],
+            22,
+            porcelain,
+            [cx, 0.528, cz],
+          );
+          torus(g, 0.024, 0.007, porcelain, [cx, 0.575, cz + 0.062]);
         }
       }],
       ['rotary-vane-9bar-pump', '9-Bar Brass Positive-Displacement Rotary Vane Pump & Motor', 'Hydraulic Pressure', false, [-1.25, -0.85, 1.15], 'Electric motor coupled to a graphite-chamber brass rotary vane pump pressurizing water to 9 atmospheres (130 PSI).', '9 bars of pressure—9 times Earth’s atmospheric pressure—is required to force hot water through finely ground coffee and emulsify its golden crema oils!', (g, m) => {
-        cyl(g, 0.15, 0.15, 0.34, 22, m.darkSteel, [-0.36, -0.22, 0.22], [0, 0, Math.PI / 2]);
-        cyl(g, 0.095, 0.095, 0.18, 20, m.brass, [-0.10, -0.22, 0.22], [0, 0, Math.PI / 2]);
+        // Finned electric induction motor + cooling shroud + rubber vibration mounts
+        cyl(g, 0.145, 0.145, 0.32, 26, m.darkSteel, [-0.36, -0.20, 0.22], [0, 0, Math.PI / 2]);
+        for (let f = 0; f < 9; f++) {
+          cyl(g, 0.158, 0.158, 0.012, 24, m.alu, [-0.48 + f * 0.028, -0.20, 0.22], [0, 0, Math.PI / 2]);
+        }
+        rbox(g, 0.12, 0.06, 0.10, 0.01, m.darkSteel, [-0.36, -0.03, 0.22]);
+        // Procon / Fluid-o-Tech solid brass rotary vane pump head + stainless clamp ring + pressure adjustment screw
+        cyl(g, 0.092, 0.092, 0.16, 24, m.brass, [-0.11, -0.20, 0.22], [0, 0, Math.PI / 2]);
+        torus(g, 0.096, 0.012, m.chrome, [-0.18, -0.20, 0.22], [0, Math.PI / 2, 0]);
+        cyl(g, 0.028, 0.028, 0.11, 14, m.brass, [-0.09, -0.10, 0.22]);
+        cyl(g, 0.024, 0.024, 0.09, 14, m.brass, [-0.09, -0.20, 0.31], [Math.PI / 2, 0, 0]);
       }],
       ['dual-copper-pid-boilers', 'Twin Insulated Copper Boilers (93°C Brew + 125°C Steam) & PID Controller', 'Thermal Engineering', false, [-0.35, 0.95, -1.25], 'Two thick-walled copper pressure vessels with copper immersion heating coils, solid-state relays (SSRs), and a digital PID temperature controller holding brew water within ±0.1°C.', 'Using two separate copper boilers lets the machine brew coffee at a gentle 93.0°C while simultaneously making dry steam at 125°C!', (g, m) => {
-        cyl(g, 0.16, 0.16, 0.36, 24, m.copper, [-0.20, 0.08, -0.18]);
-        sphere(g, 0.16, 20, 14, m.copper, [-0.20, 0.26, -0.18]);
-        cyl(g, 0.18, 0.18, 0.38, 24, m.copper, [-0.20, 0.08, 0.20]);
-        sphere(g, 0.18, 20, 14, m.copper, [-0.20, 0.27, 0.20]);
-        // Digital PID Temperature Controller module + finned Solid-State Relay (SSR) heatsink
-        rbox(g, 0.09, 0.14, 0.18, 0.012, m.darkSteel, [0.16, -0.16, -0.32]);
-        box(g, 0.095, 0.06, 0.12, emissiveMat(0xef4444, 1.4), [0.162, -0.14, -0.32]);
+        // Brew boiler (left/rear) & Steam boiler (right/front) with bolted brass end-flanges & sight glass
+        for (const [bx, bz, br, bh] of [[-0.24, -0.19, 0.155, 0.36], [-0.24, 0.19, 0.175, 0.38]]) {
+          cyl(g, br, br, bh, 28, m.copper, [bx, 0.08, bz]);
+          sphere(g, br, 24, 16, m.copper, [bx, 0.08 + bh * 0.5, bz]);
+          sphere(g, br, 24, 16, m.copper, [bx, 0.08 - bh * 0.5, bz]);
+          cyl(g, br * 1.06, br * 1.06, 0.024, 28, m.brass, [bx, 0.08 + bh * 0.42, bz]);
+          cyl(g, br * 1.06, br * 1.06, 0.024, 28, m.brass, [bx, 0.08 - bh * 0.42, bz]);
+          for (let k = 0; k < 8; k++) {
+            const a = (k / 8) * Math.PI * 2;
+            cyl(g, 0.011, 0.011, 0.036, 8, m.chrome, [bx + Math.cos(a) * br * 0.98, 0.08 + bh * 0.42, bz + Math.sin(a) * br * 0.98]);
+          }
+          // Top brass safety valve & vacuum breaker fittings
+          cyl(g, 0.024, 0.024, 0.07, 14, m.brass, [bx, 0.08 + bh * 0.5 + br * 0.85, bz]);
+        }
+        // Digital PID Temperature Controller module on the front splash wall (`93.4°C`)
+        rbox(g, 0.045, 0.095, 0.16, 0.010, m.darkSteel, [0.185, -0.02, -0.25]);
+        box(g, 0.050, 0.048, 0.12, emissiveMat(0xef4444, 1.5), [0.188, -0.01, -0.25]);
       }],
       ['e61-thermosyphon-grouphead', '4-kg Chrome-Plated Brass E61 Thermosyphon Grouphead & 3-Way Solenoid Valve', 'Brew Grouphead', true, [1.25, 0.45, 0], 'Iconic 1961 Faema E61 solid brass brew head heated by a continuous hot-water thermosyphon loop plus a 3-way pressure-release solenoid and vertical exhaust tube.', 'After you pull a shot, the 3-way valve vents the 9 bars of leftover water pressure down into the drip tray so the coffee puck doesn’t explode in your face!', (g, m) => {
-        cyl(g, 0.16, 0.16, 0.26, 28, m.chrome, [0.52, 0.14, 0]);
-        torus(g, 0.165, 0.018, m.brass, [0.52, 0.22, 0], [Math.PI / 2, 0, 0]);
-        cyl(g, 0.042, 0.042, 0.26, 16, m.chrome, [0.52, -0.06, 0]);
-        // 3-way pressure-relief discharge tube venting down to the drip tray
-        cyl(g, 0.012, 0.012, 0.28, 12, m.chrome, [0.43, -0.14, 0]);
-        // Manual mechanical E61 cam brew lever with black ball knob on the right side
-        cyl(g, 0.012, 0.012, 0.22, 12, m.chrome, [0.56, 0.16, 0.18], [0, 0, -0.5]);
-        sphere(g, 0.032, 14, 12, m.darkSteel, [0.62, 0.25, 0.18]);
+        // Twin thermosyphon flow/return collar bridges mounting the E61 grouphead to the front stainless wall
+        for (const dy of [0.11, 0.21]) {
+          cyl(g, 0.034, 0.034, 0.22, 18, m.chrome, [0.28, dy, 0], [0, 0, Math.PI / 2]);
+          cyl(g, 0.046, 0.046, 0.022, 18, m.brass, [0.20, dy, 0], [0, 0, Math.PI / 2]);
+        }
+        // Iconic stepped chrome-plated brass Faema E61 bell housing (lathed profile)
+        lathe(
+          g,
+          [
+            [0.00, 0.145],
+            [0.04, 0.150],
+            [0.05, 0.125],
+            [0.14, 0.128],
+            [0.16, 0.152],
+            [0.22, 0.152],
+            [0.24, 0.115],
+            [0.27, 0.085],
+            [0.29, 0.00],
+          ],
+          32,
+          m.chrome,
+          [0.44, 0.02, 0],
+        );
+        torus(g, 0.152, 0.014, m.brass, [0.44, 0.20, 0], [Math.PI / 2, 0, 0]);
+        // Lower pre-infusion chamber & 3-way pressure-relief discharge exhaust tube down to drip tray
+        cyl(g, 0.052, 0.042, 0.14, 22, m.chrome, [0.44, -0.06, 0]);
+        cyl(g, 0.022, 0.016, 0.22, 16, m.chrome, [0.44, -0.19, 0]);
+        // Mechanical E61 cam brew lever on the right side with turned walnut/chrome ball knob
+        rbox(g, 0.06, 0.06, 0.05, 0.012, m.chrome, [0.44, 0.14, 0.155]);
+        cyl(g, 0.011, 0.011, 0.22, 14, m.chrome, [0.51, 0.21, 0.175], [0, 0, -0.62]);
+        sphere(g, 0.032, 18, 14, mat(0x451a03, { roughness: 0.36, clearcoat: 0.4 }), [0.58, 0.29, 0.175]);
+        // Grouphead extraction pressure profiling gauge mounted on the E61 mushroom cap
+        cyl(g, 0.036, 0.036, 0.022, 20, m.chrome, [0.52, 0.28, 0], [0, 0, -0.55]);
+        cyl(g, 0.030, 0.030, 0.025, 18, m.white, [0.524, 0.282, 0], [0, 0, -0.55]);
       }],
       ['portafilter-58mm-basket', '58mm Stainless Portafilter, Precision Shower Screen & Dual Spouts', 'Extraction Filter', true, [1.85, -0.35, 0], 'Bayonet-locking forged brass/stainless portafilter holding a laser-perforated 20-gram filter basket and walnut ergonomic handle.', 'A 58mm espresso basket has over 600 microscopic laser-drilled holes—and at 9 bars, almost 400 pounds of total downward force pushes on that coffee puck!', (g, m) => {
-        cyl(g, 0.155, 0.135, 0.095, 26, m.chrome, [0.52, -0.04, 0]);
-        // Dual curved espresso pour spouts
-        for (const z of [-0.045, 0.045]) cyl(g, 0.016, 0.012, 0.06, 12, m.chrome, [0.52, -0.11, z]);
-        // Turned walnut handle + chrome collar
-        cyl(g, 0.024, 0.024, 0.10, 14, m.chrome, [0.68, -0.04, 0], [0, 0, Math.PI / 2]);
-        cyl(g, 0.042, 0.030, 0.44, 20, mat(0x451a03, { roughness: 0.42 }), [0.94, -0.04, 0], [0, 0, Math.PI / 2]);
+        const walnut = mat(0x451a03, { roughness: 0.36, clearcoat: 0.4 });
+        const crema = mat(0xb45309, { roughness: 0.25, clearcoat: 0.85 });
+        // Forged chrome portafilter basket body + bayonet locking ears
+        cyl(g, 0.142, 0.118, 0.088, 28, m.chrome, [0.44, -0.035, 0]);
+        box(g, 0.04, 0.018, 0.31, m.chrome, [0.44, -0.002, 0]);
+        // Precision 58mm stainless filter basket + freshly tamped dark-roast espresso puck inside
+        cyl(g, 0.132, 0.112, 0.065, 26, m.silver, [0.44, -0.022, 0]);
+        cyl(g, 0.122, 0.122, 0.012, 24, mat(0x291509, { roughness: 0.85 }), [0.44, 0.005, 0]);
+        // Dual curved open espresso pour spouts + golden tiger-striped crema streams pouring down
+        cyl(g, 0.032, 0.026, 0.042, 18, m.chrome, [0.44, -0.095, 0]);
+        for (const z of [-0.048, 0.048]) {
+          tube(g, [[0.44, -0.105, 0], [0.44, -0.12, z * 0.85], [0.44, -0.145, z]], 0.013, m.chrome);
+          cyl(g, 0.005, 0.004, 0.09, 10, crema, [0.44, -0.185, z]);
+        }
+        // Angled chrome neck ferrule + ergonomic lathed Italian walnut handle + chrome end cap
+        cyl(g, 0.022, 0.018, 0.11, 16, m.chrome, [0.60, -0.042, 0], [0, 0, Math.PI / 2 + 0.08]);
+        lathe(
+          g,
+          [
+            [0.00, 0.020],
+            [0.06, 0.024],
+            [0.18, 0.034],
+            [0.32, 0.040],
+            [0.38, 0.035],
+            [0.40, 0.00],
+          ],
+          22,
+          walnut,
+          [0.65, -0.046, 0],
+          [0, 0, -Math.PI / 2 - 0.08],
+        );
+        cyl(g, 0.034, 0.030, 0.022, 18, m.chrome, [1.04, -0.078, 0], [0, 0, Math.PI / 2 + 0.08]);
       }],
       ['articulated-steam-wand-gauges', 'Ball-Joint Cool-Touch Steam Wand, Hot-Water Tap & Dual Bourbon Gauges', 'Barista Controls', true, [1.15, 0.75, 1.25], 'Double-walled stainless milk-frothing steam wand, rotary brass steam valve knob, and dual boiler/pump pressure gauges.', 'Micro-holes in the steam wand tip whip microscopic air bubbles into milk at sonic speed to create velvety latte art microfoam!', (g, m) => {
-        tube(g, [[0.42, 0.28, 0.34], [0.56, 0.05, 0.42], [0.52, -0.24, 0.38]], 0.018, m.chrome);
-        tube(g, [[0.42, 0.28, -0.34], [0.54, 0.06, -0.38], [0.52, -0.18, -0.36]], 0.016, m.chrome);
-        for (const z of [-0.26, 0.26]) {
-          cyl(g, 0.075, 0.075, 0.03, 22, m.brass, [0.43, 0.34, z], [0, 0, Math.PI / 2]);
-          cyl(g, 0.062, 0.062, 0.034, 20, m.white, [0.432, 0.34, z], [0, 0, Math.PI / 2]);
+        const walnut = mat(0x451a03, { roughness: 0.36, clearcoat: 0.4 });
+        // Left & Right rotary steam / hot-water valve bodies + fluted walnut/brass knobs
+        for (const s of [-1, 1]) {
+          const vz = s * 0.34;
+          cyl(g, 0.026, 0.026, 0.08, 16, m.chrome, [0.38, 0.39, vz], [0, 0, Math.PI / 2]);
+          cyl(g, 0.044, 0.036, 0.038, 20, walnut, [0.43, 0.39, vz], [0, 0, Math.PI / 2]);
+          cyl(g, 0.020, 0.020, 0.042, 16, m.brass, [0.435, 0.39, vz], [0, 0, Math.PI / 2]);
+          sphere(g, 0.028, 16, 14, m.chrome, [0.32, 0.28, vz]);
+        }
+        // Articulated stainless steam wand (right, z = +0.34) with rubber anti-burn sleeve & 4-hole tip
+        tube(g, [[0.32, 0.28, 0.34], [0.42, 0.14, 0.39], [0.38, -0.08, 0.37], [0.43, -0.22, 0.35]], 0.013, m.chrome);
+        tube(g, [[0.39, 0.18, 0.375], [0.41, 0.06, 0.385]], 0.019, m.darkSteel);
+        cyl(g, 0.017, 0.012, 0.032, 16, m.chrome, [0.43, -0.23, 0.35]);
+        // Hot-water tea/Americano dispenser wand (left, z = -0.34) with flared aerator nozzle
+        tube(g, [[0.32, 0.28, -0.34], [0.40, 0.12, -0.36], [0.38, -0.14, -0.34]], 0.013, m.chrome);
+        cyl(g, 0.022, 0.016, 0.045, 16, m.chrome, [0.38, -0.16, -0.34]);
+        // Dual vintage brass-bezel Bourbon pressure gauges (Boiler 1.2 bar & Pump 9.0 bar) with needles & center caps
+        for (const [z, ang] of [[-0.19, -0.45], [0.19, 0.35]]) {
+          cyl(g, 0.064, 0.064, 0.026, 24, m.brass, [0.375, 0.40, z], [0, 0, Math.PI / 2]);
+          torus(g, 0.062, 0.006, m.chrome, [0.388, 0.40, z], [0, Math.PI / 2, 0]);
+          cyl(g, 0.054, 0.054, 0.028, 22, m.white, [0.378, 0.40, z], [0, 0, Math.PI / 2]);
+          box(g, 0.030, 0.006, 0.038, m.accent, [0.382, 0.405, z], [ang, 0, 0]);
+          sphere(g, 0.008, 10, 10, m.brass, [0.393, 0.40, z]);
         }
       }],
       ['copper-manifold-opv-plumbing', 'Braided Copper Heat-Exchanger Tubing, Flowmeter & OPV Relief Valve', 'Internal Plumbing', false, [0, -0.45, -1.45], 'Hand-bent copper high-pressure water lines, Gicar hall-effect paddlewheel flowmeter, and calibrated 9-bar Over-Pressure Valve (OPV).', 'A tiny spinning paddlewheel with a magnet inside the cold-water line counts exact milliliters to stop a double shot automatically!', (g, m) => {
-        tube(g, [[-0.36, -0.22, 0.22], [-0.20, 0.18, -0.18], [0.52, 0.14, 0]], 0.02, m.copper);
-        cyl(g, 0.055, 0.055, 0.10, 16, m.brass, [0.12, 0.16, -0.08]);
+        tube(g, [[-0.11, -0.20, 0.22], [0.02, -0.12, 0.08], [-0.24, 0.18, -0.19], [0.20, 0.21, 0]], 0.018, m.copper);
+        tube(g, [[-0.24, 0.24, 0.19], [0.12, 0.28, 0.26], [0.32, 0.28, 0.34]], 0.015, m.copper);
+        tube(g, [[-0.24, 0.24, -0.19], [0.12, 0.28, -0.26], [0.32, 0.28, -0.34]], 0.015, m.copper);
+        // Brass Gicar flowmeter + calibrated 9-bar Over-Pressure Valve (OPV)
+        cyl(g, 0.052, 0.052, 0.09, 18, m.brass, [0.02, -0.12, 0.08]);
+        cyl(g, 0.032, 0.032, 0.11, 16, m.brass, [0.06, 0.12, -0.06], [0, 0, 0.4]);
       }],
       ['drip-tray-reservoir-tank', '2.5-Liter BPA-Free Water Reservoir, Level Probe & Stainless Drip Tray', 'Water & Drainage', true, [0.55, -1.35, 0], 'Removable rear water reservoir with low-water capacitive sensor plus a front stainless-steel slotted drip grate and waste basin with twin espresso cups.', 'Because espresso is 90% water, built-in ion-exchange resin filters inside the tank soften the water so limestone scale never clogs the copper tubes!', (g, m) => {
-        rbox(g, 0.54, 0.13, 0.90, 0.03, m.chrome, [0.50, -0.34, 0]);
-        rbox(g, 0.26, 0.66, 0.74, 0.025, m.glass, [-0.52, 0.06, 0]);
-        // Two porcelain espresso cups sitting on the drip tray under the portafilter spouts
-        for (const z of [-0.07, 0.07]) {
-          cyl(g, 0.055, 0.042, 0.085, 18, m.white, [0.52, -0.23, z]);
-          cyl(g, 0.048, 0.048, 0.015, 16, mat(0x78350f, { roughness: 0.3 }), [0.52, -0.19, z]);
+        const porcelain = mat(0xf8fafc, { roughness: 0.16, clearcoat: 0.9 });
+        const crema = mat(0xb45309, { roughness: 0.25, clearcoat: 0.85 });
+        // Full-width mirror-stainless front drip tray basin + laser-cut slotted top grate + red full-water float indicator
+        rbox(g, 0.42, 0.11, 0.90, 0.025, m.chrome, [0.38, -0.32, 0]);
+        rbox(g, 0.38, 0.016, 0.86, 0.012, m.silver, [0.38, -0.262, 0]);
+        for (let sl = -6; sl <= 6; sl++) {
+          box(g, 0.26, 0.018, 0.016, m.darkSteel, [0.38, -0.260, sl * 0.058]);
+        }
+        cyl(g, 0.014, 0.014, 0.024, 14, m.primary, [0.26, -0.252, -0.36]);
+        // Rear translucent blue water reservoir tank + internal white water-softener filter cartridge
+        rbox(g, 0.24, 0.68, 0.76, 0.025, m.glass, [-0.50, 0.06, 0]);
+        rbox(g, 0.21, 0.48, 0.72, 0.018, glassMat(0x38bdf8, 0.42), [-0.50, -0.02, 0]);
+        cyl(g, 0.048, 0.048, 0.28, 18, porcelain, [-0.50, -0.10, 0]);
+        // Two porcelain espresso cups on saucers sitting on the drip tray grate catching the twin crema streams
+        for (const z of [-0.058, 0.058]) {
+          cyl(g, 0.066, 0.046, 0.012, 20, porcelain, [0.44, -0.250, z]);
+          cyl(g, 0.052, 0.038, 0.078, 22, porcelain, [0.44, -0.210, z]);
+          cyl(g, 0.046, 0.046, 0.014, 20, crema, [0.44, -0.177, z]);
+          torus(g, 0.022, 0.006, porcelain, [0.44, -0.210, z + (z > 0 ? 0.052 : -0.052)]);
         }
       }],
     ],

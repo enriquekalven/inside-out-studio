@@ -352,7 +352,8 @@ function buildRocketModel(cfg) {
     brand: cfg.brand,
     badge: cfg.badge,
     desc: cfg.desc,
-    cameraPos: [4.6, 2.1, 5.0],
+    cameraPos: isSaturn ? [5.2, 2.35, 5.6] : [4.95, 2.2, 5.3],
+    cameraTarget: isSaturn ? [0, 0.38, 0] : [0, 0.24, 0],
     parts,
     quiz: [
       { q: `Which part at the base of ${cfg.name} gimbals to steer the rocket during liftoff?`, correctId: 'first-stage-engines', distractors: ['payload-fairing-nosecone', 'cryo-lox-fuel-tanks', 'payload-stack-module'] },
@@ -472,7 +473,7 @@ function buildPerseveranceRover() {
     { id: 'sample-caching-carousel', name: 'Adaptive Caching Assembly & 43 Titanium Sample Tubes', category: 'Sample Return', isOuter: false, explodeOffset: [0.55, -0.95, 1.25],
       desc: 'Rotating bit carousel, internal belly robotic arm, and 43 ultra-sterile gold-coated titanium rock sample tubes.',
       funFact: 'Inside Perseverance’s belly is a second smaller robot arm whose only job is to seal rock cores inside titanium tubes!',
-      build(g) { cyl(g, 0.18, 0.18, 0.1, 24, goldFoil, [0.32, 0.06, 0]); for (let i = 0; i < 8; i++) cyl(g, 0.014, 0.014, 0.09, 10, alu, [0.32 + Math.cos(i * 0.78) * 0.12, 0.06, Math.sin(i * 0.78) * 0.12]); } },
+      build(g) { populatePerseveranceCad(g, { zone: 'caching' }); cyl(g, 0.18, 0.18, 0.1, 24, goldFoil, [0.32, 0.06, 0]); for (let i = 0; i < 8; i++) cyl(g, 0.014, 0.014, 0.09, 10, alu, [0.32 + Math.cos(i * 0.78) * 0.12, 0.06, Math.sin(i * 0.78) * 0.12]); } },
     { id: 'moxie-oxygen-generator', name: 'MOXIE Martian CO₂-to-Oxygen Solid-Oxide Electrolyzer', category: 'ISRU Life Support', isOuter: false, explodeOffset: [-0.25, 0.85, -1.35],
       desc: 'Gold-plated 800°C solid-oxide electrolysis reactor that splits Martian carbon dioxide air into breathable oxygen.',
       funFact: 'MOXIE made history by manufacturing breathable oxygen on another planet for the very first time—enough for a small dog to breathe!',
@@ -589,48 +590,217 @@ export const ROBOT_MODELS = [
     primaryHex: 0xeab308,
     partsSpec: [
       ['exoskeleton-torso-shell', 'Impact-Resistant Molded Torso Shell & Crash Roll-Bars', 'Torso Structure', true, [0, 1.25, 0], 'High-visibility yellow polymer clamshell armor protecting the aluminum spine and roll cages.', 'When a quadruped slips on ice, its curved torso roll-bars let it roll over and push itself right back onto its feet!', (g, m) => {
-        rbox(g, 1.36, 0.24, 0.44, 0.07, m.primary, [0, 0.18, 0]);
+        const bumperBlack = mat(0x111827, { roughness: 0.72, metalness: 0.18 });
+        const hazardMat = emissiveMat(0xf59e0b, 0.9);
+        // Internal CNC-machined structural aluminum spine chassis
+        rbox(g, 1.26, 0.16, 0.34, 0.03, m.alu, [0, 0.17, 0]);
+        // Sculpted chamfered Spot-yellow upper dorsal armor shell (extruded side profile)
+        const dorsalPts = [
+          [-0.64, 0.21], [-0.52, 0.29], [-0.18, 0.305], [0.24, 0.305],
+          [0.54, 0.285], [0.68, 0.21], [0.58, 0.16], [-0.58, 0.16],
+        ];
+        extrudeProfile(g, dorsalPts, 0.39, m.primary, [0, 0, 0], [0, 0, 0], { bevel: true, bevelThickness: 0.018, bevelSize: 0.016 });
+        // Sculpted lateral yellow clamshell flank plates with ventilation louvers and actuator cutouts
+        const flankPts = [
+          [-0.60, 0.11], [-0.36, 0.09], [-0.24, 0.14], [0.24, 0.14],
+          [0.36, 0.09], [0.62, 0.11], [0.66, 0.21], [0.46, 0.26],
+          [-0.46, 0.26], [-0.64, 0.21],
+        ];
         for (const side of [-1, 1]) {
-          rbox(g, 1.18, 0.14, 0.04, 0.02, m.darkSteel, [0, 0.18, side * 0.22]);
-          tube(g, [[-0.64, 0.14, side * 0.18], [-0.74, 0.18, side * 0.1], [-0.64, 0.24, side * 0.18]], 0.016, m.darkSteel);
+          extrudeProfile(g, flankPts, 0.032, m.primary, [0, 0, side * 0.205], [0, 0, 0], { bevel: true, bevelThickness: 0.008, bevelSize: 0.008 });
+          // Black rubberized side rub-rails and vertical crash ribs
+          rbox(g, 0.92, 0.042, 0.024, 0.01, bumperBlack, [0, 0.19, side * 0.228]);
+          for (let rx = -0.34; rx <= 0.34; rx += 0.085) {
+            box(g, 0.022, 0.09, 0.018, bumperBlack, [rx, 0.19, side * 0.226]);
+          }
+          // Front and rear tubular steel roll-over crash hoops & lift handles
+          tube(g, [[0.58, 0.13, side * 0.17], [0.73, 0.17, side * 0.12], [0.73, 0.23, side * 0.12], [0.56, 0.27, side * 0.17]], 0.016, bumperBlack);
+          tube(g, [[-0.56, 0.13, side * 0.17], [-0.71, 0.17, side * 0.12], [-0.71, 0.23, side * 0.12], [-0.54, 0.27, side * 0.17]], 0.016, bumperBlack);
+          // Self-righting dorsal roll-cage skids
+          tube(g, [[-0.42, 0.29, side * 0.17], [0, 0.315, side * 0.18], [0.44, 0.29, side * 0.17]], 0.013, bumperBlack);
         }
+        // Front/rear bumper crossbars & glowing status LED lightbars
+        rbox(g, 0.06, 0.05, 0.28, 0.015, bumperBlack, [0.72, 0.23, 0]);
+        rbox(g, 0.06, 0.05, 0.28, 0.015, bumperBlack, [-0.70, 0.23, 0]);
+        box(g, 0.018, 0.016, 0.22, emissiveMat(0x22c55e, 1.4), [0.69, 0.255, 0]);
+        box(g, 0.018, 0.016, 0.20, hazardMat, [-0.67, 0.255, 0]);
+        // Rear emergency E-stop mushroom button
+        cyl(g, 0.026, 0.026, 0.018, 16, mat(0xdc2626, { roughness: 0.35 }), [-0.50, 0.31, 0]);
       }],
       ['planetary-actuator-hips', '8× Coaxial Brushless Hip Abduction/Flexion Planetary Actuators', 'Hip Actuation', true, [0, 0.35, 1.55], 'Low-ratio backdrivable planetary gear motors at all 4 shoulders/hips for compliant dynamic trotting.', 'Unlike stiff factory robots, quadruped hip actuators act like virtual springs that absorb landing impacts electronically!', (g, m) => {
-        for (const x of [-0.52, 0.52]) for (const z of [-0.28, 0.28]) {
-          cyl(g, 0.125, 0.125, 0.14, 24, m.primary, [x, 0.16, z], [Math.PI / 2, 0, 0]);
-          cyl(g, 0.095, 0.095, 0.16, 20, m.darkSteel, [x, 0.16, z + Math.sign(z) * 0.03], [Math.PI / 2, 0, 0]);
+        const bumperBlack = mat(0x111827, { roughness: 0.68, metalness: 0.25 });
+        for (const x of [-0.50, 0.50]) for (const z of [-0.22, 0.22]) {
+          const s = Math.sign(z);
+          // Abduction (roll) actuator housing integrated along the longitudinal axis
+          cyl(g, 0.105, 0.105, 0.18, 28, m.primary, [x - Math.sign(x) * 0.04, 0.16, z * 0.88], [0, 0, Math.PI / 2]);
+          cyl(g, 0.092, 0.092, 0.19, 24, m.darkSteel, [x - Math.sign(x) * 0.04, 0.16, z * 0.88], [0, 0, Math.PI / 2]);
+          // Outer cylindrical harmonic-drive hip flexion drum with black protective bumper ring
+          cyl(g, 0.128, 0.128, 0.115, 32, m.primary, [x, 0.16, z + s * 0.045], [Math.PI / 2, 0, 0]);
+          torus(g, 0.126, 0.016, bumperBlack, [x, 0.16, z + s * 0.095], [0, 0, 0]);
+          cyl(g, 0.098, 0.098, 0.135, 28, m.darkSteel, [x, 0.16, z + s * 0.055], [Math.PI / 2, 0, 0]);
+          cyl(g, 0.058, 0.058, 0.148, 22, m.alu, [x, 0.16, z + s * 0.06], [Math.PI / 2, 0, 0]);
+          // Machined cooling fins & perimeter titanium hex bolts on the actuator face
+          for (let r = 0; r < 12; r++) {
+            const a = (r / 12) * Math.PI * 2;
+            const bx = x + Math.cos(a) * 0.082;
+            const by = 0.16 + Math.sin(a) * 0.082;
+            cyl(g, 0.006, 0.006, 0.014, 6, m.chrome, [bx, by, z + s * 0.122], [Math.PI / 2, 0, 0]);
+          }
         }
       }],
       ['articulated-legs-paws', '4× Carbon-Fiber Femur/Tibia Legs & High-Grip Spherical Rubber Paws', 'Quadruped Limbs', true, [0, -1.35, 0], 'Four 3-DOF articulated legs with belt-driven knee joints and replaceable spherical rubber foot pads.', 'Routing the knee motor up near the hip and driving the lower leg with a toothed belt keeps the ankles super light and fast!', (g, m) => {
-        for (const x of [-0.52, 0.52]) for (const z of [-0.32, 0.32]) {
-          rbox(g, 0.085, 0.42, 0.055, 0.02, m.primary, [x - 0.09, -0.02, z], [0, 0, 0.42]);
-          cyl(g, 0.055, 0.055, 0.07, 18, m.darkSteel, [x - 0.17, -0.19, z], [Math.PI / 2, 0, 0]);
-          rbox(g, 0.055, 0.44, 0.045, 0.015, m.darkSteel, [x - 0.08, -0.38, z], [0, 0, -0.36]);
-          sphere(g, 0.052, 16, mat(0x0f172a, { roughness: 0.8 }), [x, -0.56, z]);
+        const rubberMat = mat(0x0f172a, { roughness: 0.86, metalness: 0.08 });
+        // Sculpted curved upper leg (femur) profile with Spot-style structural cutout pocket
+        const femurPts = [
+          [-0.055, 0.04], [0.055, 0.04], [0.048, -0.14],
+          [0.012, -0.34], [-0.042, -0.38], [-0.062, -0.18],
+        ];
+        // Sculpted curved reverse-knee lower leg (tibia) profile tapering cleanly to the ankle
+        const tibiaPts = [
+          [-0.036, 0.02], [0.038, 0.02], [0.032, -0.18],
+          [0.018, -0.38], [-0.018, -0.38], [-0.042, -0.16],
+        ];
+        for (const x of [-0.50, 0.50]) for (const z of [-0.305, 0.305]) {
+          const legGroup = new THREE.Group();
+          legGroup.position.set(x, 0.16, z);
+          g.add(legGroup);
+          // Upper femur swung backward at agile trotting angle
+          const femur = new THREE.Group();
+          femur.rotation.z = -0.46;
+          legGroup.add(femur);
+          extrudeProfile(femur, femurPts, 0.048, m.primary, [0, 0, 0], [0, 0, 0], { bevel: true, bevelThickness: 0.007, bevelSize: 0.006 });
+          // Recessed carbon-fiber inlay & internal belt tensioner pocket inside the femur
+          rbox(femur, 0.042, 0.22, 0.054, 0.01, m.carbon, [-0.006, -0.16, 0]);
+          // Internal hydraulic/spring damper strut alongside the femur
+          cyl(femur, 0.012, 0.012, 0.24, 12, m.chrome, [0.038, -0.17, 0], [0, 0, -0.08]);
+          for (let sc = -0.22; sc <= -0.10; sc += 0.022) {
+            torus(femur, 0.017, 0.004, m.darkSteel, [0.038, sc, 0], [Math.PI / 2, 0, 0]);
+          }
+          // Knee joint pivot housing (at bottom of femur: local [0, -0.36, 0] -> world offset [-0.16, -0.32, 0])
+          const kx = -0.16, ky = -0.32;
+          cyl(legGroup, 0.056, 0.056, 0.068, 24, m.darkSteel, [kx, ky, 0], [Math.PI / 2, 0, 0]);
+          cyl(legGroup, 0.036, 0.036, 0.076, 18, m.alu, [kx, ky, 0], [Math.PI / 2, 0, 0]);
+          torus(legGroup, 0.054, 0.01, rubberMat, [kx, ky, 0], [0, 0, 0]);
+          // Lower tibia angled forward from knee back under hip center of gravity
+          const tibia = new THREE.Group();
+          tibia.position.set(kx, ky, 0);
+          tibia.rotation.z = 0.40;
+          legGroup.add(tibia);
+          extrudeProfile(tibia, tibiaPts, 0.038, m.darkSteel, [0, 0, 0], [0, 0, 0], { bevel: true, bevelThickness: 0.005, bevelSize: 0.005 });
+          // Protective yellow shin guard & flexible umbilical sensor cable along tibia
+          rbox(tibia, 0.016, 0.24, 0.042, 0.005, m.primary, [0.026, -0.17, 0]);
+          tube(legGroup, [[0, -0.05, 0], [kx - 0.03, ky + 0.04, 0], [kx + 0.05, ky - 0.16, 0]], 0.007, rubberMat);
+          // Spherical vulcanized rubber paw foot with tread grooves & ankle strain gauge collar
+          const fx = -0.01, fy = -0.68;
+          cyl(legGroup, 0.026, 0.032, 0.045, 16, m.alu, [fx, fy + 0.038, 0]);
+          sphere(legGroup, 0.054, 22, rubberMat, [fx, fy, 0]);
+          for (const tz of [-0.02, 0, 0.02]) {
+            torus(legGroup, 0.051, 0.005, mat(0x1e293b, { roughness: 0.9 }), [fx, fy, tz], [0, Math.PI / 2, 0]);
+          }
         }
       }],
       ['hot-swap-lithium-battery', '605 Wh Hot-Swappable Belly Lithium-Ion Battery Pack', 'Power System', false, [0, -1.15, -1.15], 'Bottom-latching IP65 sealed lithium-ion battery pack with active BMS and wireless charging pads.', 'The robot automatically walks back to its floor dock and squats onto charging pads when its battery drops below 15%!', (g, m) => {
-        rbox(g, 0.78, 0.12, 0.36, 0.025, m.darkSteel, [0, 0.05, 0]);
+        rbox(g, 0.78, 0.11, 0.34, 0.024, m.darkSteel, [0, 0.065, 0]);
+        rbox(g, 0.72, 0.025, 0.30, 0.01, m.primary, [0, 0.012, 0]);
+        // Machined belly heatsink fins & quarter-turn cam latch handles
+        for (let fx = -0.30; fx <= 0.30; fx += 0.05) {
+          box(g, 0.018, 0.016, 0.28, m.alu, [fx, 0.002, 0]);
+        }
+        for (const lx of [-0.28, 0.28]) {
+          cyl(g, 0.024, 0.024, 0.018, 16, m.chrome, [lx, 0.002, 0]);
+        }
+        // Copper dock charging contact pads at front belly
+        for (const cz of [-0.06, 0.06]) {
+          box(g, 0.045, 0.008, 0.028, mat(0xd97706, { metalness: 0.88, roughness: 0.2 }), [0.34, 0.002, cz]);
+        }
       }],
       ['stereo-depth-camera-array', '5× 360° Stereo Depth & Time-of-Flight Obstacle Camera Modules', 'Perception', false, [1.55, 0.25, 0], 'Front, left, right, and rear infrared stereo depth cameras building a real-time 3D terrain heightmap.', 'Five stereo camera pairs compute 3D depth maps 30 times per second so the robot never steps into a hole on stairs!', (g, m) => {
-        rbox(g, 0.14, 0.14, 0.34, 0.03, m.darkSteel, [0.68, 0.17, 0]);
-        for (const z of [-0.1, 0.1]) cyl(g, 0.028, 0.028, 0.04, 16, m.glass, [0.75, 0.17, z], [0, 0, Math.PI / 2]);
+        const lensGlass = mat(0x0284c7, { roughness: 0.05, metalness: 0.2, transparent: true, opacity: 0.85 });
+        const irProjector = emissiveMat(0xef4444, 0.8);
+        // Front nose dual-angled stereo depth & ToF optical bay
+        rbox(g, 0.15, 0.125, 0.33, 0.025, m.darkSteel, [0.64, 0.18, 0], [0, 0, -0.18]);
+        for (const z of [-0.105, -0.042, 0.042, 0.105]) {
+          cyl(g, 0.022, 0.022, 0.028, 18, m.chrome, [0.71, 0.175, z], [0, 0, Math.PI / 2]);
+          sphere(g, 0.018, 16, lensGlass, [0.722, 0.175, z]);
+        }
+        cyl(g, 0.012, 0.012, 0.025, 14, irProjector, [0.712, 0.195, 0], [0, 0, Math.PI / 2]);
+        // Rear tail stereo depth camera module
+        rbox(g, 0.11, 0.10, 0.26, 0.02, m.darkSteel, [-0.62, 0.18, 0]);
+        for (const z of [-0.075, 0.075]) {
+          cyl(g, 0.020, 0.020, 0.024, 16, m.chrome, [-0.675, 0.18, z], [0, 0, Math.PI / 2]);
+          sphere(g, 0.016, 14, lensGlass, [-0.686, 0.18, z]);
+        }
+        // Left & right side-looking stereo camera pods recessed into torso flanks
+        for (const side of [-1, 1]) {
+          rbox(g, 0.28, 0.075, 0.035, 0.012, m.darkSteel, [0, 0.185, side * 0.212]);
+          for (const cx of [-0.08, 0.08]) {
+            cyl(g, 0.018, 0.018, 0.022, 16, m.chrome, [cx, 0.185, side * 0.228], [Math.PI / 2, 0, 0]);
+            sphere(g, 0.014, 14, lensGlass, [cx, 0.185, side * 0.236]);
+          }
+        }
       }],
-      ['spinning-3d-lidar-payload', 'Dorsal 16-Channel 3D Spinning LiDAR & Edge AI GPU Computer', 'Autonomous SLAM', true, [-0.35, 1.55, 0], 'Top payload rail carrying a 360° laser LiDAR puck (`driveAnim="fan"`), thermal camera, and Jetson Orin AI module.', 'The spinning LiDAR shoots 300,000 laser pulses per second to build a millimeter-accurate digital twin of factories and caves!', (g, m) => {
-        rbox(g, 0.56, 0.08, 0.3, 0.02, m.alu, [-0.14, 0.34, 0]);
-        const puck = new THREE.Group(); puck.position.set(-0.24, 0.44, 0); puck.userData.driveAnim = 'fan'; g.add(puck);
-        cyl(puck, 0.085, 0.085, 0.1, 24, m.chrome, [0, 0, 0]);
-        cyl(puck, 0.088, 0.088, 0.04, 24, m.glass, [0, 0, 0]);
+      ['spinning-3d-lidar-payload', 'Dorsal 16-Channel 3D Spinning LiDAR & Edge AI GPU Computer', 'Autonomous SLAM', true, [-0.35, 1.55, 0], 'Top payload rail carrying a 360° laser LiDAR puck, thermal camera, and Jetson Orin AI module.', 'The spinning LiDAR shoots 300,000 laser pulses per second to build a millimeter-accurate digital twin of factories and caves!', (g, m) => {
+        // Anodized extruded aluminum T-slot dorsal payload mounting rails
+        for (const rz of [-0.13, 0.13]) {
+          box(g, 0.92, 0.022, 0.032, m.alu, [-0.02, 0.312, rz]);
+        }
+        // Ruggedized Spot CORE AI GPU payload enclosure with machined cooling fins
+        rbox(g, 0.44, 0.085, 0.28, 0.018, m.darkSteel, [-0.18, 0.355, 0]);
+        for (let fx = -0.34; fx <= -0.02; fx += 0.035) {
+          box(g, 0.014, 0.018, 0.26, m.alu, [fx, 0.402, 0]);
+        }
+        // Elevated shock-isolated Velodyne/Ouster 3D LiDAR pedestal tower & protective cage
+        cyl(g, 0.068, 0.082, 0.065, 22, m.darkSteel, [-0.26, 0.425, 0]);
+        const puck = new THREE.Group(); puck.position.set(-0.26, 0.485, 0); puck.userData.driveAnim = 'fan'; puck.userData.spinAxis = 'y'; g.add(puck);
+        cyl(puck, 0.082, 0.082, 0.085, 28, m.chrome, [0, 0, 0]);
+        cyl(puck, 0.085, 0.085, 0.042, 28, mat(0x0f172a, { roughness: 0.12, metalness: 0.8 }), [0, 0, 0]);
+        cyl(puck, 0.083, 0.083, 0.02, 24, m.alu, [0, 0.042, 0]);
+        // Roll-over protective arch over the LiDAR puck + Dual MIMO Wi-Fi/5G antennas
+        for (const az of [-0.095, 0.095]) {
+          tube(g, [[-0.36, 0.40, az], [-0.36, 0.555, az], [-0.16, 0.555, az], [-0.16, 0.40, az]], 0.008, m.darkSteel);
+          cyl(g, 0.009, 0.012, 0.18, 12, m.darkSteel, [-0.42, 0.46, az * 1.25], [-0.18 * Math.sign(az), 0, 0.22]);
+        }
+        // Braided rugged DB25/M12 power-and-data umbilical cable into the dorsal port
+        tube(g, [[-0.38, 0.35, 0.08], [-0.46, 0.33, 0.08], [-0.46, 0.29, 0.04]], 0.011, m.darkSteel);
       }],
       ['dorsal-manipulator-arm', '6-DOF Dorsal Robotic Manipulator Arm & Jaw Camera Gripper', 'Mobile Manipulation', true, [0.85, 1.45, 0], 'Top-mounted 6-DOF articulated arm with a camera-equipped jaw that opens doors and turns industrial valves.', 'When the robot grasps a heavy door handle, its 4 legs lean back automatically so the whole body helps pull the door open!', (g, m) => {
-        cyl(g, 0.11, 0.12, 0.12, 22, m.darkSteel, [0.28, 0.35, 0]);
-        rbox(g, 0.52, 0.075, 0.075, 0.02, m.primary, [0.48, 0.52, 0], [0, 0, 0.38]);
-        sphere(g, 0.06, 16, m.darkSteel, [0.7, 0.61, 0]);
-        rbox(g, 0.44, 0.06, 0.06, 0.015, m.darkSteel, [0.88, 0.54, 0], [0, 0, -0.28]);
-        for (const z of [-0.04, 0.04]) box(g, 0.12, 0.025, 0.02, m.chrome, [1.12, 0.48, z]);
+        // J1 Turret base & J2 Shoulder pitch harmonic drive drum
+        cyl(g, 0.115, 0.128, 0.09, 26, m.darkSteel, [0.24, 0.345, 0]);
+        cyl(g, 0.088, 0.088, 0.13, 24, m.primary, [0.24, 0.41, 0], [Math.PI / 2, 0, 0]);
+        cyl(g, 0.062, 0.062, 0.145, 20, m.darkSteel, [0.24, 0.41, 0], [Math.PI / 2, 0, 0]);
+        // Sculpted upper arm boom with yellow truss shroud
+        rbox(g, 0.48, 0.072, 0.078, 0.018, m.primary, [0.43, 0.54, 0], [0, 0, 0.48]);
+        rbox(g, 0.38, 0.036, 0.084, 0.008, m.darkSteel, [0.43, 0.54, 0], [0, 0, 0.48]);
+        // J3 Elbow actuator drum
+        cyl(g, 0.062, 0.062, 0.105, 22, m.darkSteel, [0.64, 0.65, 0], [Math.PI / 2, 0, 0]);
+        cyl(g, 0.042, 0.042, 0.115, 18, m.alu, [0.64, 0.65, 0], [Math.PI / 2, 0, 0]);
+        // Forearm tube & J4/J5/J6 spherical wrist joints
+        rbox(g, 0.42, 0.056, 0.056, 0.014, m.darkSteel, [0.83, 0.57, 0], [0, 0, -0.36]);
+        cyl(g, 0.032, 0.032, 0.38, 18, m.carbon, [0.83, 0.57, 0], [0, 0, Math.PI / 2 - 0.36]);
+        sphere(g, 0.046, 18, m.alu, [1.02, 0.495, 0]);
+        // Claw gripper housing with integrated 4K optical inspection camera + LED ring inside the jaw
+        rbox(g, 0.085, 0.068, 0.088, 0.014, m.primary, [1.08, 0.485, 0]);
+        cyl(g, 0.018, 0.018, 0.025, 16, m.glass, [1.125, 0.485, 0], [0, 0, Math.PI / 2]);
+        // Articulated upper & lower serrated gripper jaws
+        rbox(g, 0.135, 0.022, 0.062, 0.006, m.darkSteel, [1.17, 0.515, 0], [0, 0, 0.12]);
+        rbox(g, 0.135, 0.022, 0.062, 0.006, m.darkSteel, [1.17, 0.455, 0], [0, 0, -0.12]);
+        for (const jx of [1.14, 1.17, 1.20]) {
+          box(g, 0.012, 0.008, 0.056, m.chrome, [jx, 0.502, 0]);
+          box(g, 0.012, 0.008, 0.056, m.chrome, [jx, 0.468, 0]);
+        }
+        // External high-flex umbilical harness along the arm
+        tube(g, [[0.24, 0.46, 0.055], [0.45, 0.59, 0.055], [0.64, 0.69, 0.048], [0.92, 0.55, 0.038]], 0.009, m.darkSteel);
       }],
-      ['locomotion-imu-motherboard', '6-Axis Tactical IMU Gyroscope, Locomotion Computer & Cooling Blower', 'Flight Control', false, [0, 0.65, -1.45], 'Internal vibration-isolated Inertial Measurement Unit (IMU), real-time reflex controller, and sealed heat-pipe blower.', 'Even if you kick the robot sideways on gravel, its IMU gyroscope fires reflex commands to the legs in 2 milliseconds!', (g) => {
-        rbox(g, 0.68, 0.08, 0.32, 0.02, screenMat('dashboard'), [0, 0.18, 0]);
+      ['locomotion-imu-motherboard', '6-Axis Tactical IMU Gyroscope, Locomotion Computer & Cooling Blower', 'Flight Control', false, [0, 0.65, -1.45], 'Internal vibration-isolated Inertial Measurement Unit (IMU), real-time reflex controller, and sealed heat-pipe blower.', 'Even if you kick the robot sideways on gravel, its IMU gyroscope fires reflex commands to the legs in 2 milliseconds!', (g, m) => {
+        rbox(g, 0.72, 0.045, 0.28, 0.012, screenMat('dashboard'), [0, 0.175, 0]);
+        // Gold-anodized tactical 6-axis MEMS IMU module at the exact center of mass
+        rbox(g, 0.11, 0.042, 0.11, 0.008, mat(0xd97706, { metalness: 0.85, roughness: 0.22 }), [0, 0.21, 0]);
+        // Copper heat-pipes & twin centrifugal cooling blowers
+        for (const bx of [-0.24, 0.24]) {
+          cyl(g, 0.065, 0.065, 0.032, 20, m.darkSteel, [bx, 0.205, 0]);
+          cyl(g, 0.042, 0.042, 0.036, 16, m.alu, [bx, 0.205, 0]);
+        }
+        buildWiringHarness(g, [[-0.32, 0.20, -0.09], [0, 0.205, -0.09], [0.32, 0.20, -0.09]], 4, 0.005);
       }],
     ],
     quiz: [
@@ -848,60 +1018,252 @@ export const CONSTRUCTION_MODELS = [
     desc: 'Giant agricultural harvesting factory on wheels that cuts crops, threshes grain in an axial-flow rotor, winnows chaff over reciprocating sieves, and unloads on the go.',
     primaryHex: 0x15803d,
     partsSpec: [
-      ['draper-header-spinning-reel', '40-Foot Cutterbar Header, 6-Bat Pickup Reel & Cross Auger', 'Crop Cutting', true, [2.15, -0.35, 0], 'Reciprocating sickle-bar knives, 6-bat spinning reel (`driveAnim="fan"`), and spiral cross-auger feeding stalks to the center.', 'The combine gets its name because it "combines" 3 separate farm jobs—reaping, threshing, and winnowing—into one machine!', (g, m) => {
+      ['draper-header-spinning-reel', '40-Foot Cutterbar Header, 6-Bat Pickup Reel & Cross Auger', 'Crop Cutting', true, [2.15, -0.35, 0], 'Reciprocating sickle-bar knives, 6-bat spinning pickup reel, and spiral cross-auger feeding stalks to the center.', 'The combine gets its name because it "combines" 3 separate farm jobs—reaping, threshing, and winnowing—into one machine!', (g, m) => {
         const jdYellow = carPaint(0xfacc15);
-        rbox(g, 0.38, 0.26, 2.35, 0.03, m.primary, [1.56, -0.36, 0]);
-        for (const side of [-1.16, 1.16]) rbox(g, 0.48, 0.34, 0.06, 0.02, m.primary, [1.6, -0.32, side]);
-        // Cross auger with spiral flights
-        cyl(g, 0.11, 0.11, 2.24, 20, m.alu, [1.52, -0.32, 0], [Math.PI / 2, 0, 0]);
-        for (let z = -1.0; z <= 1.0; z += 0.16) torus(g, 0.14, 0.012, jdYellow, [1.52, -0.32, z], [0.2, 0, 0]);
-        // 6-bat hexagonal spinning pickup reel
-        const reel = new THREE.Group(); reel.position.set(1.74, -0.14, 0); reel.userData.driveAnim = 'fan'; g.add(reel);
-        cyl(reel, 0.04, 0.04, 2.26, 16, jdYellow, [0, 0, 0], [Math.PI / 2, 0, 0]);
+        const beltMat = mat(0x1e293b, { roughness: 0.85, metalness: 0.1 });
+        // Sculpted curved header backsheet & cutterbar floor trough (extruded L-trough profile)
+        const headerPts = [
+          [1.38, -0.14], [1.46, -0.14], [1.44, -0.42],
+          [1.82, -0.44], [1.84, -0.48], [1.36, -0.48],
+        ];
+        extrudeProfile(g, headerPts, 2.44, m.primary, [0, 0, 0], [0, 0, 0], { bevel: true, bevelThickness: 0.01, bevelSize: 0.01 });
+        // Left & right rubber draper conveyor belts with vulcanized cleats feeding crop to center
+        for (const side of [-1, 1]) {
+          box(g, 0.32, 0.025, 0.96, beltMat, [1.62, -0.43, side * 0.64]);
+          for (let cz = 0.18; cz <= 1.10; cz += 0.13) {
+            box(g, 0.30, 0.012, 0.012, jdYellow, [1.62, -0.415, side * cz]);
+          }
+          // Sculpted header end-wall plates + Hydraulic reel lift/fore-aft support arms
+          rbox(g, 0.52, 0.38, 0.045, 0.015, m.primary, [1.60, -0.28, side * 1.22]);
+          rbox(g, 0.56, 0.06, 0.035, 0.01, jdYellow, [1.62, -0.08, side * 1.21], [0, 0, -0.18]);
+          cyl(g, 0.018, 0.018, 0.38, 12, m.chrome, [1.54, -0.16, side * 1.18], [0, 0, -0.45]);
+          // Pointed yellow aerodynamic crop dividers & outer crop lifters at both ends of header
+          cone(g, 0.085, 0.44, 14, jdYellow, [1.96, -0.40, side * 1.22], [0, 0, -Math.PI / 2 + 0.12]);
+          sphere(g, 0.082, 14, m.primary, [1.76, -0.39, side * 1.22]);
+        }
+        // Reciprocating chrome sickle cutterbar guard teeth along the entire 40-ft leading edge
+        box(g, 0.06, 0.018, 2.42, m.darkSteel, [1.83, -0.455, 0]);
+        for (let kz = -1.16; kz <= 1.16; kz += 0.065) {
+          cone(g, 0.018, 0.065, 4, m.chrome, [1.88, -0.455, kz], [0, Math.PI / 4, -Math.PI / 2]);
+        }
+        // Center stainless feed drum + Full-width cross-auger tube with opposing left/right spiral flighting
+        cyl(g, 0.115, 0.115, 2.36, 24, m.alu, [1.53, -0.30, 0], [Math.PI / 2, 0, 0]);
+        cyl(g, 0.135, 0.135, 0.42, 20, m.chrome, [1.53, -0.30, 0], [Math.PI / 2, 0, 0]);
+        for (let z = -1.12; z <= 1.12; z += 0.085) {
+          if (Math.abs(z) < 0.18) continue;
+          const tilt = z < 0 ? 0.28 : -0.28;
+          torus(g, 0.155, 0.011, jdYellow, [1.53, -0.30, z], [tilt, 0, 0]);
+        }
+        // 6-bat hexagonal spinning pickup reel with eccentric spider rings & crop tines
+        const reel = new THREE.Group(); reel.position.set(1.78, -0.10, 0); reel.userData.driveAnim = 'fan'; reel.userData.spinAxis = 'z'; g.add(reel);
+        cyl(reel, 0.036, 0.036, 2.38, 18, m.darkSteel, [0, 0, 0], [Math.PI / 2, 0, 0]);
+        for (const sz of [-1.16, -0.58, 0, 0.58, 1.16]) {
+          torus(reel, 0.22, 0.012, jdYellow, [0, 0, sz], [0, 0, 0]);
+          for (let s = 0; s < 6; s++) {
+            const sa = (s / 6) * Math.PI * 2;
+            box(reel, 0.014, 0.22, 0.014, jdYellow, [Math.cos(sa) * 0.11, Math.sin(sa) * 0.11, sz], [0, 0, sa + Math.PI / 2]);
+          }
+        }
         for (let b = 0; b < 6; b++) {
           const a = (b / 6) * Math.PI * 2;
-          box(reel, 0.02, 0.02, 2.24, jdYellow, [Math.cos(a) * 0.22, Math.sin(a) * 0.22, 0]);
+          const bx = Math.cos(a) * 0.22;
+          const by = Math.sin(a) * 0.22;
+          cyl(reel, 0.014, 0.014, 2.36, 10, jdYellow, [bx, by, 0], [Math.PI / 2, 0, 0]);
+          // Curved spring-steel pickup fingers/tines along each reel bat
+          for (let tz = -1.12; tz <= 1.12; tz += 0.11) {
+            box(reel, 0.006, 0.068, 0.006, m.darkSteel, [bx + Math.cos(a - 0.4) * 0.03, by + Math.sin(a - 0.4) * 0.03, tz], [0, 0, a - 0.4]);
+          }
         }
-        for (const sz of [-1.1, 0, 1.1]) torus(reel, 0.22, 0.012, jdYellow, [0, 0, sz], [0, 0, 0]);
       }],
       ['feederhouse-chain-conveyor', 'Pivoting Feederhouse Elevator & Stone Trap Drum', 'Crop Intake', true, [1.35, -0.65, 0], 'Slatted chain conveyor throat lifting cut crop stalks from the header up into the threshing rotor.', 'An acoustic stone-trap door in the feederhouse hears rocks clanking and dumps them onto the ground before they hit the rotor!', (g, m) => {
-        rbox(g, 0.82, 0.3, 0.58, 0.03, m.primary, [1.02, -0.18, 0], [0, 0, -0.35]);
+        const jdYellow = carPaint(0xfacc15);
+        //Heavy welded rectangular feederhouse housing angled down to header
+        rbox(g, 0.86, 0.30, 0.56, 0.025, m.primary, [1.02, -0.18, 0], [0, 0, -0.34]);
+        rbox(g, 0.78, 0.22, 0.60, 0.018, m.darkSteel, [1.02, -0.18, 0], [0, 0, -0.34]);
+        // Internal slatted chain conveyor bars + acoustic stone-trap drum at throat base
+        cyl(g, 0.09, 0.09, 0.62, 18, jdYellow, [0.68, -0.06, 0], [Math.PI / 2, 0, 0]);
+        cyl(g, 0.08, 0.08, 0.62, 18, m.alu, [1.34, -0.30, 0], [Math.PI / 2, 0, 0]);
+        // Twin hydraulic header-lift cylinders + yellow PTO telescoping driveline shafts
+        for (const side of [-1, 1]) {
+          cyl(g, 0.042, 0.042, 0.48, 16, m.darkSteel, [0.82, -0.34, side * 0.24], [0, 0, -1.18]);
+          cyl(g, 0.028, 0.028, 0.44, 14, m.chrome, [1.08, -0.26, side * 0.24], [0, 0, -1.18]);
+          cyl(g, 0.026, 0.026, 0.68, 12, jdYellow, [1.02, -0.14, side * 0.33], [0, 0, Math.PI / 2 - 0.34]);
+        }
       }],
-      ['axial-flow-threshing-rotor', 'Dual Axial-Flow Threshing & Separating Rotor Cages (Cutaway)', 'Internal Threshing', false, [0.15, 0.55, 1.55], 'Spinning rasp-bar cylinders and concave grates that rub grain kernels out of the heads via gentle centrifugal force.', 'Instead of smashing kernels, the spinning rotor rubs crop against crop in a spiral path to save 99% of the grain intact!', (g) => {
-        for (const z of [-0.18, 0.18]) cyl(g, 0.16, 0.16, 1.38, 24, carPaint(0xfacc15), [-0.05, 0.08, z], [0, 0, Math.PI / 2]);
-        populateGearboxCad(g, { pos: [-0.68, 0.08, 0], scale: 0.008 });
+      ['axial-flow-threshing-rotor', 'Dual Axial-Flow Threshing & Separating Rotor Cages (Cutaway)', 'Internal Threshing', false, [0.15, 0.55, 1.55], 'Spinning rasp-bar cylinders and concave grates that rub grain kernels out of the heads via gentle centrifugal force.', 'Instead of smashing kernels, the spinning rotor rubs crop against crop in a spiral path to save 99% of the grain intact!', (g, m) => {
+        const jdYellow = carPaint(0xfacc15);
+        // Twin counter-rotating X9 axial-flow rotors with spiral threshing rasp bars & separating tines
+        for (const z of [-0.19, 0.19]) {
+          cyl(g, 0.145, 0.145, 1.36, 24, jdYellow, [-0.06, 0.10, z], [0, 0, Math.PI / 2]);
+          cone(g, 0.145, 0.24, 24, m.chrome, [0.74, 0.10, z], [0, 0, -Math.PI / 2]);
+          // Spiral helical threshing rasp elements along the rotor drum
+          for (let rx = -0.64; rx <= 0.54; rx += 0.12) {
+            torus(g, 0.158, 0.014, m.darkSteel, [rx, 0.10, z], [0.22, Math.PI / 2, 0]);
+          }
+          // Bottom perforated concave grates wrapping underneath each rotor
+          for (let cx = -0.58; cx <= 0.48; cx += 0.18) {
+            torus(g, 0.185, 0.010, m.alu, [cx, 0.08, z], [0, Math.PI / 2, 0]);
+          }
+        }
+        populateGearboxCad(g, { pos: [-0.74, 0.10, 0], scale: 0.008 });
       }],
       ['cleaning-shoe-sieves-fan', 'Reciprocating Chaffer/Sieve Cleaning Shoe & Cross-Flow Blower', 'Winnowing & Cleaning', false, [-0.35, -0.85, -1.45], 'Shaking louvered sieves and a high-volume air fan that blows light chaff out the back while heavy clean grain falls through.', 'Just like tossing wheat in the wind, a giant fan underneath blows away light straw while heavy grain drops into the clean elevator!', (g, m) => {
-        rbox(g, 1.15, 0.14, 0.68, 0.02, m.alu, [-0.15, -0.18, 0]);
-        cyl(g, 0.14, 0.14, 0.64, 18, m.darkSteel, [0.42, -0.22, 0], [Math.PI / 2, 0, 0]);
+        // Upper chaffer & lower clean-grain reciprocating sieve frames with adjustable louvers
+        rbox(g, 1.18, 0.14, 0.72, 0.018, m.darkSteel, [-0.16, -0.18, 0]);
+        for (let lx = -0.66; lx <= 0.34; lx += 0.075) {
+          box(g, 0.04, 0.012, 0.66, m.alu, [lx, -0.105, 0], [0, 0, 0.25]);
+          box(g, 0.04, 0.012, 0.66, m.chrome, [lx, -0.165, 0], [0, 0, 0.25]);
+        }
+        // Quadruple cross-flow turbine cleaning fan housing at the front of the shoe
+        cyl(g, 0.135, 0.135, 0.68, 22, carPaint(0xfacc15), [0.38, -0.22, 0], [Math.PI / 2, 0, 0]);
+        cyl(g, 0.095, 0.095, 0.72, 18, m.darkSteel, [0.38, -0.22, 0], [Math.PI / 2, 0, 0]);
+        // Clean grain cross-augers & vertical clean grain bucket elevator leg on starboard side
+        cyl(g, 0.055, 0.055, 0.74, 16, m.alu, [-0.08, -0.28, 0], [Math.PI / 2, 0, 0]);
+        rbox(g, 0.14, 0.78, 0.12, 0.015, m.primary, [0.05, 0.14, 0.42]);
       }],
       ['grain-tank-unloading-auger', '420-Bushel Folding Grain Hopper & 27-Ft Unloading Auger Boom', 'Grain Storage', true, [-0.25, 1.55, -1.15], 'Top-mounted 14,800-liter grain hopper and swing-out turret auger that unloads 4.5 bushels per second into a tractor cart.', 'A modern combine can fill an entire semi-truck trailer with golden wheat in less than 2 minutes without even stopping!', (g, m) => {
-        rbox(g, 1.24, 0.44, 0.98, 0.04, m.primary, [-0.05, 0.44, 0]);
-        rbox(g, 1.14, 0.14, 0.88, 0.02, carPaint(0xfacc15), [-0.05, 0.68, 0]);
-        // Vertical auger turret column + continuous swing-out unloading auger boom + connected yellow discharge boot
-        cyl(g, 0.10, 0.11, 0.42, 18, m.primary, [-0.25, 0.52, -0.38]);
-        tube(g, [[-0.25, 0.66, -0.38], [-0.62, 0.82, -0.88], [-0.95, 0.92, -1.35]], 0.082, m.primary);
-        cyl(g, 0.088, 0.068, 0.24, 16, carPaint(0xfacc15), [-0.95, 0.82, -1.36]);
+        const jdYellow = carPaint(0xfacc15);
+        const wheatMat = mat(0xeab308, { roughness: 0.78, metalness: 0.05 });
+        // Main grain tank hopper bin sitting behind cab
+        rbox(g, 1.18, 0.36, 0.94, 0.035, m.primary, [-0.04, 0.42, 0]);
+        // Flared folding upper hopper extensions (trapezoidal outward-flaring covers)
+        for (const side of [-1, 1]) {
+          rbox(g, 1.14, 0.20, 0.04, 0.012, jdYellow, [-0.04, 0.66, side * 0.49], [-side * 0.24, 0, 0]);
+        }
+        for (const [fx, tilt] of [[0.52, -0.22], [-0.60, 0.22]]) {
+          rbox(g, 0.04, 0.20, 0.96, 0.012, m.primary, [fx, 0.66, 0], [0, 0, tilt]);
+        }
+        // Golden harvested wheat grain mounded inside the open top hopper + cross-tank bubble-up auger
+        rbox(g, 1.06, 0.12, 0.88, 0.05, wheatMat, [-0.04, 0.62, 0]);
+        sphere(g, 0.44, 20, wheatMat, [-0.04, 0.46, 0]);
+        cyl(g, 0.042, 0.042, 0.92, 14, m.alu, [-0.04, 0.70, 0], [Math.PI / 2, 0, 0]);
+        // Heavy vertical turret sump column on port side + high-arc 27-ft swing-out unloading auger boom
+        cyl(g, 0.115, 0.125, 0.54, 22, m.primary, [-0.24, 0.52, -0.38]);
+        sphere(g, 0.125, 18, jdYellow, [-0.24, 0.78, -0.38]);
+        tube(g, [[-0.24, 0.78, -0.38], [-0.58, 0.90, -0.88], [-0.96, 0.98, -1.42]], 0.086, m.primary);
+        // Top structural suspension truss rod & hydraulic swing cylinder along the auger boom
+        tube(g, [[-0.24, 0.90, -0.38], [-0.60, 0.99, -0.88], [-0.92, 1.04, -1.36]], 0.016, m.darkSteel);
+        // Pivoting yellow grain discharge boot spout at tip of auger
+        cyl(g, 0.092, 0.068, 0.28, 18, jdYellow, [-0.96, 0.86, -1.43], [0.18, 0, 0]);
       }],
       ['gps-autosteer-harvest-cab', 'Glass Panoramic Cab, StarFire GPS Dome & Harvest Monitor', 'Operator & Autonomy', true, [0.85, 1.35, 0], 'Sound-insulated glass cab with RTK centimeter-accurate GPS dome and real-time optical yield/moisture sensors.', 'The yellow GPS dome on the cab roof steers the 25-ton combine down crop rows Hands-Free within 2 centimeters!', (g, m) => {
-        rbox(g, 0.62, 0.58, 0.76, 0.04, m.glass, [0.68, 0.38, 0]);
-        rbox(g, 0.68, 0.07, 0.82, 0.02, m.primary, [0.68, 0.68, 0]);
-        sphere(g, 0.09, 18, 14, carPaint(0xfacc15), [0.84, 0.75, 0]);
+        const jdYellow = carPaint(0xfacc15);
+        const lightMat = emissiveMat(0xfef9c3, 2.5);
+        // Cab floor platform & cantilevered operator deck
+        rbox(g, 0.74, 0.06, 0.92, 0.018, m.darkSteel, [0.70, 0.08, 0]);
+        // Forward-raked panoramic curved glass greenhouse with angled thin ROPS A/B pillars
+        const cabGlassPts = [
+          [0.38, 0.10], [0.94, 0.10], [1.06, 0.68], [0.42, 0.68],
+        ];
+        extrudeProfile(g, cabGlassPts, 0.74, m.glass, [0, 0, 0], [0, 0, 0], { bevel: true, bevelThickness: 0.015, bevelSize: 0.012 });
+        // Forward-raked structural A-pillars & B-pillars + front windshield wiper arm
+        for (const sz of [-0.37, 0.37]) {
+          tube(g, [[0.93, 0.11, sz], [1.05, 0.68, sz]], 0.018, m.darkSteel);
+          tube(g, [[0.40, 0.11, sz], [0.43, 0.68, sz]], 0.022, m.darkSteel);
+          // Telescoping wide-angle heated exterior mirrors + amber warning beacons
+          tube(g, [[0.96, 0.56, sz], [0.98, 0.56, sz * 1.42], [0.98, 0.40, sz * 1.42]], 0.010, m.darkSteel);
+          rbox(g, 0.03, 0.16, 0.07, 0.008, m.darkSteel, [0.98, 0.46, sz * 1.44]);
+          cyl(g, 0.022, 0.026, 0.045, 14, emissiveMat(0xf59e0b, 2.0), [0.88, 0.75, sz * 1.05]);
+        }
+        // Sculpted overhanging green & dark-charcoal cab roof canopy with 8 stadium LED worklights
+        rbox(g, 0.76, 0.065, 0.86, 0.022, m.primary, [0.74, 0.70, 0]);
+        rbox(g, 0.70, 0.035, 0.80, 0.015, m.darkSteel, [0.74, 0.67, 0]);
+        for (let lz = -0.32; lz <= 0.32; lz += 0.09) {
+          rbox(g, 0.03, 0.028, 0.055, 0.006, lightMat, [1.11, 0.695, lz]);
+        }
+        // Iconic yellow John Deere StarFire RTK GPS receiver dome mounted front-center on cab roof
+        rbox(g, 0.16, 0.03, 0.18, 0.01, m.darkSteel, [0.98, 0.735, 0]);
+        sphere(g, 0.088, 20, jdYellow, [0.98, 0.765, 0]);
+        // Interior leather air-suspension seat, steering column, CommandARM hydrostat lever & dual Gen-4 touchscreens
+        rbox(g, 0.22, 0.24, 0.24, 0.025, mat(0x78350f, { roughness: 0.6 }), [0.64, 0.24, 0]);
+        rbox(g, 0.07, 0.30, 0.22, 0.02, mat(0x78350f, { roughness: 0.6 }), [0.54, 0.36, 0], [0, 0, 0.14]);
+        cyl(g, 0.022, 0.028, 0.26, 12, m.darkSteel, [0.86, 0.24, 0], [0, 0, -0.38]);
+        torus(g, 0.075, 0.012, m.darkSteel, [0.81, 0.36, 0], [0, Math.PI / 2, -0.38]);
+        rbox(g, 0.025, 0.12, 0.15, 0.006, screenMat('dashboard'), [0.82, 0.34, 0.22], [0, -0.35, -0.15]);
+        // Port-side catwalk landing platform + 6-rung boarding ladder with yellow tubular safety handrails
+        rbox(g, 0.46, 0.035, 0.24, 0.01, m.alu, [0.68, 0.08, -0.56]);
+        for (const lx of [0.54, 0.78]) {
+          tube(g, [[lx, 0.08, -0.66], [lx, -0.50, -0.78]], 0.012, jdYellow);
+          tube(g, [[lx, 0.08, -0.66], [lx, 0.44, -0.66], [lx, 0.44, -0.44]], 0.012, jdYellow);
+        }
+        for (let r = 0; r < 6; r++) {
+          const ry = 0.04 - r * 0.10;
+          const rz = -0.67 - r * 0.02;
+          box(g, 0.24, 0.014, 0.035, m.alu, [0.66, ry, rz]);
+        }
       }],
       ['turbodiesel-residue-chopper', '13.6L Twin-Turbo Diesel Engine (CAD) & High-Speed Straw Chopper', 'Powertrain & Residue', true, [-1.65, 0.45, 0], '700-hp rear diesel engine (CAD) plus a 3,000-RPM flail chopper and dual-disc spreader at the tail.', 'Spinning knives at the tail chop leftover stalks into fine mulch and spread it 40 feet wide to fertilize next year’s soil!', (g, m) => {
-        populateEngineCad(g, { pos: [-0.95, 0.28, 0], scale: 0.0016, primaryColor: 0x15803d });
-        rbox(g, 0.92, 0.54, 0.9, 0.04, m.primary, [-1.02, 0.18, 0]);
-        for (const z of [-0.26, 0.26]) cyl(g, 0.18, 0.18, 0.04, 18, carPaint(0xfacc15), [-1.52, -0.04, z]);
-      }],
-      ['high-flotation-drive-wheels', 'Front Rubber Crawler Tracks / Duals & Steerable Rear Axle', 'Running Gear', true, [0, -1.45, 0], 'Massive front agricultural traction wheels/tracks (`driveRole="wheel"`) and wide-angle steerable rear wheels.', 'Giant front flotation tires spread the combine’s weight over a huge footprint so it doesn’t compact the farm soil!', (g, m) => {
         const jdYellow = carPaint(0xfacc15);
-        for (const z of [-0.62, 0.62]) {
-          const fw = new THREE.Group(); fw.position.set(0.45, -0.34, z); fw.userData.driveRole = 'wheel'; g.add(fw);
-          cyl(fw, 0.34, 0.34, 0.28, 28, m.darkSteel, [0, 0, 0], [Math.PI / 2, 0, 0]);
-          cyl(fw, 0.18, 0.18, 0.3, 20, jdYellow, [0, 0, 0], [Math.PI / 2, 0, 0]);
-          const rw = new THREE.Group(); rw.position.set(-0.95, -0.44, z * 0.92); rw.userData.driveRole = 'wheel'; g.add(rw);
-          cyl(rw, 0.22, 0.22, 0.2, 24, m.darkSteel, [0, 0, 0], [Math.PI / 2, 0, 0]);
-          cyl(rw, 0.11, 0.11, 0.22, 18, jdYellow, [0, 0, 0], [Math.PI / 2, 0, 0]);
+        populateEngineCad(g, { pos: [-0.88, 0.26, 0], scale: 0.0016, primaryColor: 0x15803d });
+        // Sculpted tapered John Deere X9 body side-panels (extruded profile tapering sleekly to the tail)
+        const bodySidePts = [
+          [-1.56, -0.02], [-1.38, -0.22], [0.34, -0.22],
+          [0.42, 0.32], [-1.18, 0.38], [-1.52, 0.24],
+        ];
+        extrudeProfile(g, bodySidePts, 0.92, m.primary, [0, 0, 0], [0, 0, 0], { bevel: true, bevelThickness: 0.025, bevelSize: 0.02 });
+        // Iconic John Deere leaping-gold X9 diagonal side-stripe decals & gullwing door seams on both flanks
+        const stripePts = [
+          [-1.44, 0.08], [-0.82, 0.08], [-0.46, 0.22], [0.32, 0.22],
+          [0.32, 0.28], [-0.50, 0.28], [-0.86, 0.15], [-1.48, 0.15],
+        ];
+        for (const side of [-1, 1]) {
+          extrudeProfile(g, stripePts, 0.012, jdYellow, [0, 0, side * 0.478], [0, 0, 0], { bevel: false });
+          // Side radiator rotary air-screen intake drum & service louvers
+          rbox(g, 0.42, 0.24, 0.02, 0.008, m.darkSteel, [-0.96, 0.18, side * 0.475]);
+          // Rear safety tail-lights & hazard markers
+          rbox(g, 0.03, 0.055, 0.12, 0.008, emissiveMat(0xef4444, 1.8), [-1.54, 0.14, side * 0.36]);
+        }
+        // Upper rear engine deck cowling, air pre-cleaner intake & chrome/black vertical exhaust stack
+        rbox(g, 0.78, 0.14, 0.84, 0.03, m.darkSteel, [-0.94, 0.42, 0]);
+        cyl(g, 0.048, 0.048, 0.46, 18, m.darkSteel, [-0.72, 0.66, 0.32]);
+        tube(g, [[-0.72, 0.88, 0.32], [-0.78, 0.96, 0.34]], 0.044, m.chrome);
+        cyl(g, 0.085, 0.085, 0.14, 20, m.darkSteel, [-0.98, 0.54, -0.26]);
+        // Tail residue hood deflector & twin horizontal spinning straw-spreader discs
+        rbox(g, 0.38, 0.24, 0.82, 0.025, jdYellow, [-1.42, -0.06, 0], [0, 0, 0.28]);
+        for (const z of [-0.24, 0.24]) {
+          cyl(g, 0.20, 0.20, 0.035, 22, jdYellow, [-1.54, -0.14, z]);
+          for (let b = 0; b < 6; b++) {
+            const ba = (b / 6) * Math.PI * 2;
+            box(g, 0.08, 0.025, 0.014, m.darkSteel, [-1.54 + Math.cos(ba) * 0.13, -0.155, z + Math.sin(ba) * 0.13], [0, ba, 0]);
+          }
+        }
+      }],
+      ['high-flotation-drive-wheels', 'Front Rubber Crawler Tracks / Duals & Steerable Rear Axle', 'Running Gear', true, [0, -1.45, 0], 'Massive front agricultural traction wheels/tracks and wide-angle steerable rear wheels.', 'Giant front flotation tires spread the combine’s weight over a huge footprint so it doesn’t compact the farm soil!', (g, m) => {
+        const jdYellow = carPaint(0xfacc15);
+        const tireRubber = mat(0x111827, { roughness: 0.88, metalness: 0.06 });
+        // Heavy front planetary final-drive transaxle beam + rear oscillating steering axle beam
+        cyl(g, 0.085, 0.085, 1.32, 20, m.darkSteel, [0.46, -0.34, 0], [Math.PI / 2, 0, 0]);
+        rbox(g, 0.16, 0.14, 1.18, 0.02, m.darkSteel, [-0.98, -0.44, 0]);
+        for (const z of [-0.66, 0.66]) {
+          const s = Math.sign(z);
+          // Massive front high-flotation R1W deep-lug agricultural drive wheel (`driveRole="wheel"`)
+          const fw = new THREE.Group(); fw.position.set(0.46, -0.34, z); fw.userData.driveRole = 'wheel'; g.add(fw);
+          cyl(fw, 0.35, 0.35, 0.32, 32, tireRubber, [0, 0, 0], [Math.PI / 2, 0, 0]);
+          torus(fw, 0.30, 0.065, tireRubber, [0, 0, s * 0.11], [0, 0, 0]);
+          torus(fw, 0.30, 0.065, tireRubber, [0, 0, -s * 0.11], [0, 0, 0]);
+          // Deep-dish John Deere yellow steel rim, planetary hub cap & 12 lug bolts
+          cyl(fw, 0.20, 0.20, 0.33, 24, jdYellow, [0, 0, 0], [Math.PI / 2, 0, 0]);
+          cyl(fw, 0.15, 0.18, 0.06, 24, m.darkSteel, [0, 0, s * 0.145], [Math.PI / 2, 0, 0]);
+          cyl(fw, 0.085, 0.085, 0.36, 18, jdYellow, [0, 0, 0], [Math.PI / 2, 0, 0]);
+          // 18 Angled chevron agricultural traction tread lugs around the front tire
+          for (let l = 0; l < 18; l++) {
+            const a = (l / 18) * Math.PI * 2;
+            const lx = Math.cos(a) * 0.355;
+            const ly = Math.sin(a) * 0.355;
+            box(fw, 0.026, 0.042, 0.16, tireRubber, [lx, ly, -0.06], [0.35, 0, a]);
+            box(fw, 0.026, 0.042, 0.16, tireRubber, [lx, ly, 0.06], [-0.35, 0, a]);
+          }
+          // Steerable rear agricultural wheel (`driveRole="wheel"`) with chevron lugs & yellow rim
+          const rw = new THREE.Group(); rw.position.set(-0.98, -0.44, z * 0.88); rw.userData.driveRole = 'wheel'; g.add(rw);
+          cyl(rw, 0.23, 0.23, 0.22, 28, tireRubber, [0, 0, 0], [Math.PI / 2, 0, 0]);
+          torus(rw, 0.19, 0.048, tireRubber, [0, 0, s * 0.075], [0, 0, 0]);
+          torus(rw, 0.19, 0.048, tireRubber, [0, 0, -s * 0.075], [0, 0, 0]);
+          cyl(rw, 0.125, 0.125, 0.235, 22, jdYellow, [0, 0, 0], [Math.PI / 2, 0, 0]);
+          cyl(rw, 0.058, 0.058, 0.255, 16, m.darkSteel, [0, 0, 0], [Math.PI / 2, 0, 0]);
+          for (let l = 0; l < 14; l++) {
+            const a = (l / 14) * Math.PI * 2;
+            box(rw, 0.022, 0.032, 0.21, tireRubber, [Math.cos(a) * 0.234, Math.sin(a) * 0.234, 0], [0, 0, a]);
+          }
         }
       }],
     ],
@@ -997,11 +1359,11 @@ export const CONSTRUCTION_MODELS = [
         rbox(g, 0.12, 0.16, 0.12, 0.015, m.darkSteel, [cx - 0.04, cy - 0.04, cz]);
         rbox(g, 0.02, 0.07, 0.09, 0.005, screenMat('dashboard'), [cx + 0.12, cy - 0.02, cz - 0.05], [0, 0.3, 0]);
         // Spinning 3-cup wind anemometer on cab roof
-        const anem = new THREE.Group(); anem.position.set(cx + 0.10, cy + 0.24, cz + 0.08); anem.userData.driveAnim = 'fan'; g.add(anem);
+        const anem = new THREE.Group(); anem.position.set(cx + 0.10, cy + 0.24, cz + 0.08); anem.userData.driveAnim = 'fan'; anem.userData.spinAxis = 'y'; g.add(anem);
         cyl(anem, 0.005, 0.005, 0.08, 8, m.chrome, [0, -0.02, 0]);
         for (let a = 0; a < 3; a++) {
           const ang = (a / 3) * Math.PI * 2;
-          sphere(anem, 0.016, 10, 10, m.primary, [Math.cos(ang) * 0.04, 0.02, Math.sin(ang) * 0.04]);
+          sphere(anem, 0.016, 10, m.primary, [Math.cos(ang) * 0.04, 0.02, Math.sin(ang) * 0.04]);
         }
       }],
       ['apex-cathead-pendants', 'Pyramidal 4-Chord A-Frame Tower Head (Apex) & Pendant Tie-Rods', 'Tension Suspension', true, [-0.35, 1.75, 0], 'Towering 4-chord lattice A-frame cathead pinnacle with aviation beacon and 4 solid steel tension pendant rods.', 'Just like the towers of a suspension bridge, the A-frame apex transfers the weight of the long boom into steel tension rods!', (g, m) => {

@@ -1,5 +1,6 @@
 // Web Audio API synthesized sound effects + Web Speech API Read Aloud for Inside Out Studio.
 // Zero external audio files or network calls. Respects the user's mute toggle.
+import { getLangMeta } from './i18n.js';
 
 let ctx = null;
 let muted = false;
@@ -195,12 +196,34 @@ export function speakText(text) {
   try {
     window.speechSynthesis.cancel();
     const utter = new SpeechSynthesisUtterance(String(text));
+    const meta = getLangMeta();
+    const speechLang = meta?.speechLang || 'en-US';
+    utter.lang = speechLang;
     utter.rate = 0.96;
-    utter.pitch = 1.06;
+    utter.pitch = 1.04;
     const voices = window.speechSynthesis.getVoices ? window.speechSynthesis.getVoices() : [];
-    const localEn = voices.find((v) => v.localService && /^en/i.test(v.lang))
-      || voices.find((v) => /^en/i.test(v.lang));
-    if (localEn) utter.voice = localEn;
+    let matchVoice = null;
+    if (meta?.code === 'zh-HK') {
+      matchVoice =
+        voices.find((v) => v.localService && /zh[-_]HK|yue/i.test(v.lang)) ||
+        voices.find((v) => /zh[-_]HK|yue/i.test(v.lang) || /cantonese|hong\s*kong|sin[-_]?ji/i.test(v.name)) ||
+        voices.find((v) => /^zh/i.test(v.lang));
+    } else if (meta?.code === 'zh-CN') {
+      matchVoice =
+        voices.find((v) => v.localService && /zh[-_](CN|SG)|cmn/i.test(v.lang)) ||
+        voices.find((v) => /zh[-_](CN|SG)|cmn/i.test(v.lang)) ||
+        voices.find((v) => /^zh/i.test(v.lang));
+    } else {
+      const prefix = speechLang.split('-')[0].toLowerCase();
+      const exactRe = new RegExp(`^${speechLang.replace('-', '[-_]')}`, 'i');
+      const prefixRe = new RegExp(`^${prefix}\\b`, 'i');
+      matchVoice =
+        voices.find((v) => v.localService && exactRe.test(v.lang)) ||
+        voices.find((v) => exactRe.test(v.lang)) ||
+        voices.find((v) => v.localService && prefixRe.test(v.lang)) ||
+        voices.find((v) => prefixRe.test(v.lang));
+    }
+    if (matchVoice) utter.voice = matchVoice;
     window.speechSynthesis.speak(utter);
     return true;
   } catch {

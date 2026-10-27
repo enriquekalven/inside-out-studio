@@ -14,21 +14,36 @@
   <script type="module" src="js/main.js"></script>
 </head>
 <body>
-  <a class="skip-link" href="#main">Skip to content</a>
+  <a class="skip-link" id="skip-link" href="#main">Skip to content</a>
 
   <header class="topbar">
     <button id="home-btn" class="btn btn-ghost btn-home" type="button" hidden>
-      <span aria-hidden="true">🏠</span> Home
+      <span aria-hidden="true">🏠</span> <span id="home-btn-text">Home</span>
     </button>
-    <p class="brand"><span class="brand-icon" aria-hidden="true">🔧</span> Inside Out Studio</p>
+    <p class="brand"><span class="brand-icon" aria-hidden="true">🔧</span> <span id="brand-title">Inside Out Studio</span></p>
     <div class="topbar-right">
+      <label class="lang-picker" for="lang-select">
+        <span class="lang-globe" aria-hidden="true">🌐</span>
+        <select id="lang-select" class="lang-select" aria-label="Select Language">
+          <option value="en">🇺🇸 English</option>
+          <option value="zh-CN">🇨🇳 中文 (普通话)</option>
+          <option value="zh-HK">🇭🇰 廣東話 (粵語)</option>
+          <option value="es">🇪🇸 Español</option>
+          <option value="fr">🇫🇷 Français</option>
+          <option value="de">🇩🇪 Deutsch</option>
+          <option value="pt">🇧🇷 Português</option>
+          <option value="it">🇮🇹 Italiano</option>
+          <option value="ja">🇯🇵 日本語</option>
+          <option value="ko">🇰🇷 한국어</option>
+        </select>
+      </label>
       <p class="star-total" id="star-total" aria-live="polite">
         <span aria-hidden="true">⭐</span>
         <span id="star-count">0</span><span class="star-max" id="star-max">/96</span>
-        <span class="visually-hidden">stars earned</span>
+        <span class="visually-hidden" id="stars-earned-sr">stars earned</span>
       </p>
       <button id="sound-btn" class="btn btn-icon" type="button" aria-pressed="true">
-        <span id="sound-icon" aria-hidden="true">🔊</span><span class="visually-hidden">Sound</span>
+        <span id="sound-icon" aria-hidden="true">🔊</span><span class="visually-hidden" id="sound-sr">Sound</span>
       </button>
     </div>
   </header>
@@ -37,11 +52,11 @@
     <section id="home-screen" class="screen home" aria-labelledby="home-title">
       <div class="home-intro">
         <h1 id="home-title">Explode &amp; explore how the world works from the inside out!</h1>
-        <p class="lead">Pick any real-world supercar, airliner, submarine, smartphone, rocket engine, laptop, or building—switch between 31 iconic models, blow them apart in 3D, and earn stars!</p>
+        <p class="lead" id="home-lead">Pick any real-world supercar, airliner, submarine, smartphone, rocket engine, laptop, or building—switch between 67 iconic models, blow them apart in 3D, and earn stars!</p>
       </div>
       <ul id="object-grid" class="object-grid"></ul>
       <div class="home-footer">
-        <p class="small-print">Inside Out Studio • Works offline. No ads, no tracking, nothing leaves this device.</p>
+        <p class="small-print" id="home-footer-text">Inside Out Studio • Works offline. No ads, no tracking, nothing leaves this device.</p>
         <button id="reset-btn" class="btn btn-small btn-ghost" type="button">Reset my stars</button>
       </div>
     </section>
@@ -52,11 +67,11 @@
           <h1 id="lab-title" class="lab-title"></h1>
           <p id="lab-subtitle" class="lab-subtitle"></p>
         </div>
-        <nav class="modes" aria-label="Ways to play">
-          <button type="button" class="mode-btn" data-mode="explore" aria-pressed="true"><span aria-hidden="true">🔍</span> Explore <span class="mode-stars" data-stars="explore"></span></button>
-          <button type="button" class="mode-btn" data-mode="find" aria-pressed="false"><span aria-hidden="true">🎯</span> Find It! <span class="mode-stars" data-stars="find"></span></button>
-          <button type="button" class="mode-btn" data-mode="build" aria-pressed="false"><span aria-hidden="true">🧩</span> Build It! <span class="mode-stars" data-stars="build"></span></button>
-          <button type="button" class="mode-btn" data-mode="quiz" aria-pressed="false"><span aria-hidden="true">❓</span> Quiz <span class="mode-stars" data-stars="quiz"></span></button>
+        <nav class="modes" id="modes-nav" aria-label="Ways to play">
+          <button type="button" class="mode-btn" data-mode="explore" aria-pressed="true"><span aria-hidden="true">🔍</span> <span class="mode-btn-label" data-mode-label="explore">Explore</span> <span class="mode-stars" data-stars="explore"></span></button>
+          <button type="button" class="mode-btn" data-mode="find" aria-pressed="false"><span aria-hidden="true">🎯</span> <span class="mode-btn-label" data-mode-label="find">Find It!</span> <span class="mode-stars" data-stars="find"></span></button>
+          <button type="button" class="mode-btn" data-mode="build" aria-pressed="false"><span aria-hidden="true">🧩</span> <span class="mode-btn-label" data-mode-label="build">Build It!</span> <span class="mode-stars" data-stars="build"></span></button>
+          <button type="button" class="mode-btn" data-mode="quiz" aria-pressed="false"><span aria-hidden="true">❓</span> <span class="mode-btn-label" data-mode-label="quiz">Quiz</span> <span class="mode-stars" data-stars="quiz"></span></button>
           <button type="button" class="mode-btn mode-btn-drive" data-mode="drive" aria-pressed="false"><span id="mode-drive-icon" aria-hidden="true">🏎️</span> <span id="mode-drive-text">Drive It!</span> <span class="mode-stars" data-stars="drive"></span></button>
         </nav>
       </div>
@@ -97,8 +112,8 @@
           </div>
           <p class="stage-loading" id="stage-loading" hidden>Getting the studio ready…</p>
           <div class="stage-error" id="stage-error" hidden role="alert">
-            <p class="stage-error-title">Oh no! This browser can't show 3D models.</p>
-            <p>Try a newer browser like Chrome, Safari, Edge or Firefox.</p>
+            <p class="stage-error-title" id="stage-error-title">Oh no! This browser can't show 3D models.</p>
+            <p id="stage-error-body">Try a newer browser like Chrome, Safari, Edge or Firefox.</p>
           </div>
           <p class="stage-tip" id="stage-tip" aria-hidden="true">Drag to spin • Pinch or scroll to zoom • Tap any part • Click 🏎️ Drive It! to test-drive</p>
           <div class="stage-hud" id="stage-hud">
@@ -106,7 +121,7 @@
               <span id="explode-icon" aria-hidden="true">💥</span> <span id="explode-text">Explode!</span>
             </button>
             <button id="assemble-btn" class="btn btn-secondary" type="button">
-              <span aria-hidden="true">🧩</span> <span>Assemble!</span>
+              <span aria-hidden="true">🧩</span> <span id="assemble-text">Assemble!</span>
             </button>
             <button id="drive-btn" class="btn btn-drive" type="button" aria-pressed="false" title="Launch interactive Test-Drive &amp; Dyno Simulator">
               <span id="drive-btn-icon" aria-hidden="true">🏎️</span> <span id="drive-btn-text">Drive It!</span>
@@ -118,16 +133,16 @@
             </label>
             <div class="hud-tools">
               <button id="xray-btn" class="btn btn-icon" type="button" aria-pressed="false" title="X-Ray / Cutaway view">
-                <span aria-hidden="true">🩻</span><span class="visually-hidden">X-Ray Cutaway view</span>
+                <span aria-hidden="true">🩻</span><span class="visually-hidden" id="xray-sr">X-Ray Cutaway view</span>
               </button>
               <button id="spin-btn" class="btn btn-icon" type="button" aria-pressed="false" title="Auto-rotate 3D model">
-                <span aria-hidden="true">🔄</span><span class="visually-hidden">Auto-rotate 3D model</span>
+                <span aria-hidden="true">🔄</span><span class="visually-hidden" id="spin-sr">Auto-rotate 3D model</span>
               </button>
               <button id="labels-btn" class="btn btn-icon" type="button" aria-pressed="false" title="Show part names">
-                <span aria-hidden="true">🏷️</span><span class="visually-hidden">Show part names</span>
+                <span aria-hidden="true">🏷️</span><span class="visually-hidden" id="labels-sr">Show part names</span>
               </button>
               <button id="view-btn" class="btn btn-icon" type="button" title="Reset the view">
-                <span aria-hidden="true">🎥</span><span class="visually-hidden">Reset the view</span>
+                <span aria-hidden="true">🎥</span><span class="visually-hidden" id="view-sr">Reset the view</span>
               </button>
             </div>
           </div>
@@ -151,7 +166,7 @@
     <div class="dialog-body">
       <p class="dialog-emoji" aria-hidden="true">🤔</p>
       <h2 id="confirm-title">Start over?</h2>
-      <p>This clears all your stars and found parts on this device.</p>
+      <p id="confirm-body">This clears all your stars and found parts on this device.</p>
       <div class="dialog-actions">
         <button id="confirm-yes" class="btn btn-danger" type="button">Yes, clear my stars</button>
         <button id="confirm-no" class="btn btn-secondary" type="button">No, keep them</button>

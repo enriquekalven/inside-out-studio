@@ -3,12 +3,276 @@
 import * as THREE from '../../vendor/three.module.js';
 import {
   mat, carPaint, brushedMetal, chromeMat, carbonFiberMat, glassMat, emissiveMat, screenMat, solarGridTexture,
-  box, rbox, cyl, sphere, torus, cone, tube, extrudeProfile, buildHexBoltArray, buildFinArray, buildWiringHarness,
+  brakeRotorTexture, box, rbox, cyl, sphere, torus, cone, tube, extrudeProfile, buildHexBoltArray, buildFinArray, buildWiringHarness,
 } from '../materials.js';
 import {
   populateIngenuityCad, populateWatchCad, populateBikeCad, populateEngineCad, populateGearboxCad,
 } from '../cad_loader.js';
+import { surfaceGrid, addSmoothMesh } from '../loft.js';
 import { buildBlackHawkModel } from './uh60_black_hawk.js';
+
+function evalStationPoint(st, theta) {
+  const sinT = Math.sin(theta);
+  const cosT = Math.cos(theta);
+  const ry = sinT <= 0 ? (st.rTop ?? st.ry ?? 0.2) : (st.rBot ?? st.ry ?? 0.2);
+  const rz = st.rz ?? 0.2;
+  const n = st.n ?? 2.0;
+  const exp = 2.0 / n;
+  let yLocal = -Math.sign(sinT) * Math.pow(Math.abs(sinT), exp) * ry;
+  let zLocal = Math.sign(cosT) * Math.pow(Math.abs(cosT), exp) * rz;
+  if (st.chine) {
+    const chineBoost = Math.pow(Math.abs(cosT), 3.0) * st.chine;
+    zLocal *= 1.0 + chineBoost;
+    yLocal *= 1.0 - 0.18 * chineBoost;
+  }
+  if (st.flatBottom && yLocal < -ry * st.flatBottom) {
+    yLocal = -ry * st.flatBottom;
+  }
+  return [st.x, (st.y ?? 0) + yLocal, (st.zCenter ?? 0) + zLocal];
+}
+
+function buildMultiSectionLoft(
+  group,
+  stations,
+  {
+    radialSegs = 40,
+    material,
+    pos = [0, 0, 0],
+    rot = [0, 0, 0],
+    capStart = true,
+    capEnd = true,
+    uOffset = 0,
+    vMin = 0,
+    vMax = 1,
+  } = {},
+) {
+  const numStations = stations.length;
+  const ringVerts = radialSegs + 1;
+  const positions = [];
+  const uvs = [];
+  const indices = [];
+
+  for (let i = 0; i < numStations; i++) {
+    const st = stations[i];
+    const v = vMin + (i / Math.max(1, numStations - 1)) * (vMax - vMin);
+    for (let j = 0; j <= radialSegs; j++) {
+      const u = j / radialSegs;
+      const theta = (u + uOffset) * Math.PI * 2;
+      const [px, py, pz] = evalStationPoint(st, theta);
+      positions.push(px, py, pz);
+      uvs.push(u, v);
+    }
+  }
+
+  const flip = stations[numStations - 1].x < stations[0].x;
+  for (let i = 0; i < numStations - 1; i++) {
+    for (let j = 0; j < radialSegs; j++) {
+      const a = i * ringVerts + j;
+      const b = (i + 1) * ringVerts + j;
+      const c = (i + 1) * ringVerts + (j + 1);
+      const d = i * ringVerts + (j + 1);
+      if (flip) {
+        indices.push(a, b, d, b, c, d);
+      } else {
+        indices.push(a, d, b, b, d, c);
+      }
+    }
+  }
+
+  if (capStart) {
+    const st0 = stations[0];
+    if ((st0.ry ?? st0.rTop ?? 0) > 0.004 && (st0.rz ?? 0) > 0.004) {
+      const cIdx = positions.length / 3;
+      positions.push(st0.x, st0.y ?? 0, st0.zCenter ?? 0);
+      uvs.push(0.5, vMin);
+      for (let j = 0; j < radialSegs; j++) {
+        if (flip) indices.push(cIdx, j + 1, j);
+        else indices.push(cIdx, j, j + 1);
+      }
+    }
+  }
+
+  if (capEnd) {
+    const stEnd = stations[numStations - 1];
+    if ((stEnd.ry ?? stEnd.rTop ?? 0) > 0.004 && (stEnd.rz ?? 0) > 0.004) {
+      const base = (numStations - 1) * ringVerts;
+      const cIdx = positions.length / 3;
+      positions.push(stEnd.x, stEnd.y ?? 0, stEnd.zCenter ?? 0);
+      uvs.push(0.5, vMax);
+      for (let j = 0; j < radialSegs; j++) {
+        if (flip) indices.push(cIdx, base + j, base + j + 1);
+        else indices.push(cIdx, base + j + 1, base + j);
+      }
+    }
+  }
+
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  geo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+  geo.setIndex(indices);
+  geo.computeVertexNormals();
+
+  const mesh = new THREE.Mesh(geo, material);
+  mesh.position.set(pos[0], pos[1], pos[2]);
+  mesh.rotation.set(rot[0], rot[1], rot[2]);
+  mesh.castShadow = true;
+  mesh.receiveShadow = true;
+  group.add(mesh);
+  return mesh;
+}
+
+function evalLoftSurfacePointAndNormal(stations, x, theta) {
+  let idx = 0;
+  if (x <= stations[0].x) {
+    idx = 0;
+  } else if (x >= stations[stations.length - 1].x) {
+    idx = Math.max(0, stations.length - 2);
+  } else {
+    for (let i = 0; i < stations.length - 1; i++) {
+      if (x >= stations[i].x && x <= stations[i + 1].x) {
+        idx = i;
+        break;
+      }
+    }
+  }
+  const a = stations[idx];
+  const b = stations[Math.min(stations.length - 1, idx + 1)];
+  const spanX = b.x - a.x;
+  const t = Math.abs(spanX) > 1e-6 ? Math.min(1, Math.max(0, (x - a.x) / spanX)) : 0;
+  const pA = evalStationPoint(a, theta);
+  const pB = evalStationPoint(b, theta);
+  const px = pA[0] + (pB[0] - pA[0]) * t;
+  const py = pA[1] + (pB[1] - pA[1]) * t;
+  const pz = pA[2] + (pB[2] - pA[2]) * t;
+
+  const cyA = a.y ?? 0;
+  const czA = a.zCenter ?? 0;
+  const cyB = b.y ?? 0;
+  const czB = b.zCenter ?? 0;
+  const cy = cyA + (cyB - cyA) * t;
+  const cz = czA + (czB - czA) * t;
+
+  const ryVec = py - cy;
+  const rzVec = pz - cz;
+  const rLen = Math.hypot(ryVec, rzVec) || 1;
+  const ury = ryVec / rLen;
+  const urz = rzVec / rLen;
+
+  const rA = (pA[1] - cyA) * ury + (pA[2] - czA) * urz;
+  const rB = (pB[1] - cyB) * ury + (pB[2] - czB) * urz;
+  const drdx = Math.abs(spanX) > 1e-5 ? (rB - rA) / spanX : 0;
+
+  let nx = -drdx;
+  let ny = ury;
+  let nz = urz;
+  const nMag = Math.hypot(nx, ny, nz) || 1;
+  nx /= nMag;
+  ny /= nMag;
+  nz /= nMag;
+
+  return { px, py, pz, nx, ny, nz };
+}
+
+function buildConformalLoftPatch(
+  group,
+  stations,
+  {
+    xFront,
+    xBack,
+    angBottomFront,
+    angTopFront,
+    angBottomBack,
+    angTopBack,
+    offset = 0.004,
+    uSteps = 12,
+    vSteps = 8,
+    material,
+  } = {},
+) {
+  const rawU = [];
+  for (let iu = 0; iu <= uSteps; iu++) rawU.push(iu / uSteps);
+  const xMin = Math.min(xFront, xBack);
+  const xMax = Math.max(xFront, xBack);
+  const dxTotal = xBack - xFront;
+  if (Math.abs(dxTotal) > 1e-6) {
+    for (const st of stations) {
+      if (st.x > xMin + 1e-4 && st.x < xMax - 1e-4) {
+        rawU.push((st.x - xFront) / dxTotal);
+      }
+    }
+  }
+  rawU.sort((a, b) => a - b);
+  const uList = [rawU[0]];
+  for (let k = 1; k < rawU.length; k++) {
+    if (rawU[k] - uList[uList.length - 1] > 1e-3) {
+      uList.push(rawU[k]);
+    }
+  }
+  if (1.0 - uList[uList.length - 1] > 1e-4) uList.push(1.0);
+  else uList[uList.length - 1] = 1.0;
+
+  const effOffset = Math.max(offset, 0.006) + Math.max(0, offset - 0.004);
+  const positions = [];
+  const normalsHint = [];
+  const uvs = [];
+  const indices = [];
+
+  const uCount = uList.length - 1;
+  for (let iu = 0; iu <= uCount; iu++) {
+    const u = uList[iu];
+    const x = xFront + (xBack - xFront) * u;
+    const aBot = angBottomFront + (angBottomBack - angBottomFront) * u;
+    const aTop = angTopFront + (angTopBack - angTopFront) * u;
+    for (let iv = 0; iv <= vSteps; iv++) {
+      const v = iv / vSteps;
+      const angFromCrown = aBot + (aTop - aBot) * v;
+      const theta = -Math.PI / 2 + angFromCrown;
+      const { px, py, pz, nx, ny, nz } = evalLoftSurfacePointAndNormal(stations, x, theta);
+      positions.push(
+        px + nx * effOffset,
+        py + ny * effOffset,
+        pz + nz * effOffset,
+      );
+      normalsHint.push(nx, ny, nz);
+      uvs.push(u, v);
+    }
+  }
+
+  const row = vSteps + 1;
+  for (let iu = 0; iu < uCount; iu++) {
+    for (let iv = 0; iv < vSteps; iv++) {
+      const a = iu * row + iv;
+      const b = (iu + 1) * row + iv;
+      const c = (iu + 1) * row + (iv + 1);
+      const d = iu * row + (iv + 1);
+
+      const ax = positions[a * 3], ay = positions[a * 3 + 1], az = positions[a * 3 + 2];
+      const bx = positions[b * 3] - ax, by = positions[b * 3 + 1] - ay, bz = positions[b * 3 + 2] - az;
+      const dx = positions[d * 3] - ax, dy = positions[d * 3 + 1] - ay, dz = positions[d * 3 + 2] - az;
+      const fnx = by * dz - bz * dy;
+      const fny = bz * dx - bx * dz;
+      const fnz = bx * dy - by * dx;
+      const hnx = normalsHint[a * 3], hny = normalsHint[a * 3 + 1], hnz = normalsHint[a * 3 + 2];
+      if (fnx * hnx + fny * hny + fnz * hnz >= 0) {
+        indices.push(a, b, d, b, c, d);
+      } else {
+        indices.push(a, d, b, b, d, c);
+      }
+    }
+  }
+
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  geo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+  geo.setIndex(indices);
+  geo.computeVertexNormals();
+
+  const mesh = new THREE.Mesh(geo, material);
+  mesh.castShadow = true;
+  mesh.receiveShadow = true;
+  group.add(mesh);
+  return mesh;
+}
 
 function addSpinHub(g, pos, blades, radius, chord, bladeMat, hubMat, axis = 'y') {
   const spin = new THREE.Group();
@@ -64,116 +328,349 @@ function buildH145Model() {
   const rescueWhite = carPaint(0xf8fafc);
   const darkCarbon = carbonFiberMat([5, 5]);
   const alu = brushedMetal(0xe2e8f0, { metalness: 0.88, roughness: 0.2 });
-  const canopyGlass = glassMat(0x0c192c, 0.74);
-  const skyGlass = glassMat(0x0284c7, 0.58);
+  const darkTi = brushedMetal(0x334155, { metalness: 0.86, roughness: 0.24 });
+  const canopyGlass = glassMat(0x0c192c, 0.72);
+  const skyGlass = glassMat(0x0284c7, 0.56);
+  const gasketBlack = mat(0x0f172a, { roughness: 0.65, metalness: 0.2 });
+
+  // 30-Station True 3D Lofted Airbus H145 D3 Fuselage Definition (from rear clamshell bay x=-0.56 to rounded nose radome x=+1.38)
+  const h145FuselageStations = [
+    { x: -0.56, y: 0.11, rTop: 0.065, rBot: 0.055, rz: 0.075, n: 2.1, flatBottom: 0.82 },
+    { x: -0.52, y: 0.09, rTop: 0.115, rBot: 0.095, rz: 0.145, n: 2.2, flatBottom: 0.82 },
+    { x: -0.47, y: 0.07, rTop: 0.165, rBot: 0.145, rz: 0.205, n: 2.3, flatBottom: 0.83 },
+    { x: -0.42, y: 0.04, rTop: 0.215, rBot: 0.195, rz: 0.255, n: 2.4, flatBottom: 0.84 },
+    { x: -0.36, y: 0.02, rTop: 0.248, rBot: 0.235, rz: 0.285, n: 2.48, flatBottom: 0.85 },
+    { x: -0.30, y: 0.01, rTop: 0.265, rBot: 0.255, rz: 0.302, n: 2.52, flatBottom: 0.85 },
+    { x: -0.22, y: 0.01, rTop: 0.272, rBot: 0.262, rz: 0.312, n: 2.55, flatBottom: 0.86 },
+    { x: -0.14, y: 0.01, rTop: 0.274, rBot: 0.264, rz: 0.315, n: 2.55, flatBottom: 0.86 },
+    { x: -0.04, y: 0.01, rTop: 0.275, rBot: 0.265, rz: 0.316, n: 2.55, flatBottom: 0.86 },
+    { x: 0.06,  y: 0.01, rTop: 0.275, rBot: 0.265, rz: 0.316, n: 2.55, flatBottom: 0.86 },
+    { x: 0.16,  y: 0.01, rTop: 0.275, rBot: 0.265, rz: 0.316, n: 2.55, flatBottom: 0.86 },
+    { x: 0.26,  y: 0.01, rTop: 0.275, rBot: 0.265, rz: 0.316, n: 2.55, flatBottom: 0.86 },
+    { x: 0.36,  y: 0.01, rTop: 0.274, rBot: 0.265, rz: 0.315, n: 2.55, flatBottom: 0.86 },
+    { x: 0.46,  y: 0.01, rTop: 0.273, rBot: 0.264, rz: 0.314, n: 2.52, flatBottom: 0.86 },
+    { x: 0.56,  y: 0.01, rTop: 0.270, rBot: 0.262, rz: 0.310, n: 2.48, flatBottom: 0.86 },
+    { x: 0.64,  y: 0.00, rTop: 0.266, rBot: 0.258, rz: 0.305, n: 2.42, flatBottom: 0.85 },
+    { x: 0.72,  y: 0.00, rTop: 0.258, rBot: 0.252, rz: 0.298, n: 2.36, flatBottom: 0.84 },
+    { x: 0.80,  y: -0.01, rTop: 0.242, rBot: 0.244, rz: 0.288, n: 2.30, flatBottom: 0.83 },
+    { x: 0.88,  y: -0.02, rTop: 0.218, rBot: 0.232, rz: 0.274, n: 2.24, flatBottom: 0.82 },
+    { x: 0.96,  y: -0.03, rTop: 0.190, rBot: 0.216, rz: 0.256, n: 2.18, flatBottom: 0.80 },
+    { x: 1.04,  y: -0.05, rTop: 0.160, rBot: 0.194, rz: 0.234, n: 2.12, flatBottom: 0.78 },
+    { x: 1.11,  y: -0.06, rTop: 0.132, rBot: 0.168, rz: 0.208, n: 2.08, flatBottom: 0.75 },
+    { x: 1.18,  y: -0.07, rTop: 0.104, rBot: 0.138, rz: 0.176, n: 2.04, flatBottom: 0.72 },
+    { x: 1.24,  y: -0.08, rTop: 0.078, rBot: 0.105, rz: 0.140, n: 2.02 },
+    { x: 1.29,  y: -0.09, rTop: 0.055, rBot: 0.072, rz: 0.102, n: 2.00 },
+    { x: 1.33,  y: -0.095, rTop: 0.036, rBot: 0.045, rz: 0.066, n: 2.00 },
+    { x: 1.36,  y: -0.10, rTop: 0.020, rBot: 0.024, rz: 0.035, n: 2.00 },
+    { x: 1.38,  y: -0.10, rTop: 0.006, rBot: 0.006, rz: 0.008, n: 2.00 },
+  ];
+
+  // 22-Station Lofted Upper Turboshaft Doghouse & Transmission Deck Cowling
+  const h145EngineDeckStations = [
+    { x: -0.58, y: 0.30, rTop: 0.045, rBot: 0.02, rz: 0.085, n: 2.1, flatBottom: 0.85 },
+    { x: -0.50, y: 0.31, rTop: 0.085, rBot: 0.03, rz: 0.145, n: 2.2, flatBottom: 0.85 },
+    { x: -0.42, y: 0.31, rTop: 0.125, rBot: 0.04, rz: 0.185, n: 2.3, flatBottom: 0.86 },
+    { x: -0.30, y: 0.31, rTop: 0.155, rBot: 0.05, rz: 0.205, n: 2.35, flatBottom: 0.88 },
+    { x: -0.16, y: 0.31, rTop: 0.168, rBot: 0.05, rz: 0.215, n: 2.35, flatBottom: 0.88 },
+    { x: 0.00,  y: 0.31, rTop: 0.175, rBot: 0.05, rz: 0.218, n: 2.35, flatBottom: 0.88 },
+    { x: 0.16,  y: 0.31, rTop: 0.178, rBot: 0.05, rz: 0.215, n: 2.35, flatBottom: 0.88 },
+    { x: 0.30,  y: 0.31, rTop: 0.165, rBot: 0.05, rz: 0.198, n: 2.30, flatBottom: 0.88 },
+    { x: 0.44,  y: 0.30, rTop: 0.135, rBot: 0.04, rz: 0.168, n: 2.25, flatBottom: 0.86 },
+    { x: 0.56,  y: 0.29, rTop: 0.088, rBot: 0.03, rz: 0.125, n: 2.15, flatBottom: 0.85 },
+    { x: 0.65,  y: 0.27, rTop: 0.038, rBot: 0.02, rz: 0.072, n: 2.05, flatBottom: 0.85 },
+    { x: 0.70,  y: 0.26, rTop: 0.010, rBot: 0.01, rz: 0.025, n: 2.00, flatBottom: 0.85 },
+  ];
 
   const parts = [
     { id: 'h145-bearingless-5blade-rotor', name: 'Hingeless 5-Blade Bearingless Carbon-Flexbeam Main Rotor', category: 'Rotor System', isOuter: true, explodeOffset: [0, 1.55, 0],
       desc: 'H145 D3 bearingless 5-blade composite flexbeam rotor hub with aerodynamic spherical mast cap, integrated pitch-control cuffs, swashplate, and swept parabolic noise-reducing blades.',
       funFact: 'Eliminating mechanical hinges and bearings cuts cabin vibration in half—vital for critically injured patients in a flying ICU!',
       build(g) {
-        addSpinHub(g, [0.16, 0.74, 0], 5, 1.46, 0.102, darkCarbon, alu, 'y');
-        sphere(g, 0.088, 18, 12, darkCarbon, [0.16, 0.77, 0]);
-        cyl(g, 0.05, 0.065, 0.24, 20, alu, [0.16, 0.58, 0]);
-        torus(g, 0.12, 0.018, chromeMat(), [0.16, 0.54, 0], [Math.PI / 2, 0, 0]);
+        addSpinHub(g, [0.16, 0.74, 0], 5, 1.48, 0.105, darkCarbon, alu, 'y');
+        // Aerodynamic composite mast fairing cap + vibration absorber pendulum weights
+        sphere(g, 0.092, 22, 16, darkCarbon, [0.16, 0.77, 0]).scale.set(1.0, 0.62, 1.0);
+        cyl(g, 0.048, 0.062, 0.26, 24, alu, [0.16, 0.58, 0]);
+        // Rotating & stationary titanium swashplate rings + 3 pitch-control rods & scissor links
+        torus(g, 0.115, 0.016, chromeMat(), [0.16, 0.55, 0], [Math.PI / 2, 0, 0]);
+        torus(g, 0.105, 0.014, darkTi, [0.16, 0.52, 0], [Math.PI / 2, 0, 0]);
+        for (let i = 0; i < 5; i++) {
+          const a = (i / 5) * Math.PI * 2;
+          cyl(g, 0.006, 0.006, 0.18, 8, chromeMat(), [0.16 + Math.cos(a) * 0.105, 0.64, Math.sin(a) * 0.105]);
+        }
       } },
     { id: 'fenestron-shrouded-tail-rotor', name: '10-Blade Uneven-Spaced Fenestron Shrouded Tail Rotor & Stabilizers', category: 'Anti-Torque & Safety', isOuter: true, explodeOffset: [-1.85, 0.35, 0],
       desc: 'High-clearance composite tailboom, horizontal stabilizer with twin endplate fins, and vertical tail shroud enclosing a 10-blade ducted anti-torque fan with stator guide vanes.',
       funFact: 'Enclosing the tail rotor inside a shroud protects ground paramedics walking behind the helicopter during mountain rescues!',
       build(g) {
-        cyl(g, 0.072, 0.145, 1.28, 22, rescueRed, [-0.95, 0.24, 0], [0, 0, -Math.PI / 2 + 0.03]);
-        rbox(g, 0.22, 0.028, 0.78, 0.008, rescueYellow, [-1.18, 0.26, 0]);
-        for (const s of [-1, 1]) rbox(g, 0.24, 0.20, 0.024, 0.008, rescueRed, [-1.18, 0.28, s * 0.39]);
-        cyl(g, 0.28, 0.28, 0.12, 28, rescueYellow, [-1.66, 0.30, 0], [Math.PI / 2, 0, 0]);
-        torus(g, 0.24, 0.038, rescueRed, [-1.66, 0.30, 0]);
-        const finPts = [[-1.52, 0.48], [-1.80, 0.48], [-1.92, 0.84], [-1.68, 0.84]];
-        extrudeProfile(g, finPts, 0.07, rescueRed, [0, 0, 0], [0, 0, 0], 0.015);
-        addSpinHub(g, [-1.66, 0.30, 0], 10, 0.21, 0.032, darkCarbon, alu, 'z');
+        // Multi-station lofted high-set composite tailboom tapering from rear upper cabin to Fenestron shroud
+        const tailBoomStations = [
+          { x: -1.52, y: 0.28, rTop: 0.075, rBot: 0.068, rz: 0.062, n: 2.0 },
+          { x: -1.32, y: 0.27, rTop: 0.084, rBot: 0.076, rz: 0.072, n: 2.0 },
+          { x: -1.10, y: 0.26, rTop: 0.096, rBot: 0.088, rz: 0.084, n: 2.05 },
+          { x: -0.86, y: 0.25, rTop: 0.112, rBot: 0.102, rz: 0.098, n: 2.1 },
+          { x: -0.62, y: 0.24, rTop: 0.132, rBot: 0.118, rz: 0.118, n: 2.15 },
+          { x: -0.44, y: 0.23, rTop: 0.145, rBot: 0.128, rz: 0.135, n: 2.2 },
+        ];
+        buildMultiSectionLoft(g, tailBoomStations, { radialSegs: 28, material: rescueRed });
+        // Conformal yellow & white ambulance bands along tailboom + aerodynamic Coanda strakes
+        for (const s of [-1, 1]) {
+          buildConformalLoftPatch(g, tailBoomStations, {
+            xFront: -0.52, xBack: -1.46,
+            angBottomFront: 1.35 * s, angTopFront: 1.75 * s,
+            angBottomBack: 1.35 * s, angTopBack: 1.75 * s,
+            offset: 0.003, uSteps: 8, vSteps: 4, material: rescueYellow,
+          });
+          buildConformalLoftPatch(g, tailBoomStations, {
+            xFront: -0.52, xBack: -1.46,
+            angBottomFront: 0.85 * s, angTopFront: 1.32 * s,
+            angBottomBack: 0.85 * s, angTopBack: 1.32 * s,
+            offset: 0.003, uSteps: 8, vSteps: 4, material: rescueWhite,
+          });
+        }
+        // Horizontal stabilizer airfoil + swept red/yellow endplate vertical fins
+        rbox(g, 0.24, 0.026, 0.82, 0.009, rescueYellow, [-1.18, 0.27, 0], [0, 0, 0.04]);
+        for (const s of [-1, 1]) {
+          const endFinPts = [[-1.06, 0.16], [-1.30, 0.18], [-1.36, 0.42], [-1.14, 0.40]];
+          extrudeProfile(g, endFinPts, 0.022, rescueRed, [0, 0, s * 0.41], [0, s * -0.05, 0], 0.006);
+          rbox(g, 0.21, 0.045, 0.026, 0.006, rescueYellow, [-1.25, 0.40, s * 0.41]);
+        }
+        // Deeply sculpted shrouded Fenestron tail-rotor housing (fairing body + annular duct + swept dorsal fin + ventral bumper)
+        const shroudFairingStations = [
+          { x: -1.94, y: 0.32, rTop: 0.04, rBot: 0.04, rz: 0.018, n: 2.0 },
+          { x: -1.86, y: 0.31, rTop: 0.28, rBot: 0.26, rz: 0.052, n: 2.0 },
+          { x: -1.68, y: 0.30, rTop: 0.33, rBot: 0.31, rz: 0.068, n: 2.0 },
+          { x: -1.52, y: 0.29, rTop: 0.26, rBot: 0.24, rz: 0.064, n: 2.0 },
+          { x: -1.42, y: 0.28, rTop: 0.11, rBot: 0.10, rz: 0.062, n: 2.0 },
+        ];
+        buildMultiSectionLoft(g, shroudFairingStations, { radialSegs: 32, material: rescueRed });
+        // Recessed Fenestron annular duct throat (yellow inner wall + red sculpted lip torus + 8 stator guide vanes)
+        cyl(g, 0.235, 0.235, 0.142, 32, rescueYellow, [-1.68, 0.30, 0], [Math.PI / 2, 0, 0]);
+        for (const s of [-1, 1]) {
+          torus(g, 0.238, 0.032, rescueRed, [-1.68, 0.30, s * 0.056]);
+        }
+        for (let v = 0; v < 8; v++) {
+          const va = (v / 8) * Math.PI * 2 + 0.2;
+          box(g, 0.21, 0.012, 0.035, alu, [-1.68 + Math.cos(va) * 0.115, 0.30 + Math.sin(va) * 0.115, -0.02], [0, 0, va]);
+        }
+        // Swept upper vertical tail fin & anti-collision beacon + ventral tail bumper skid
+        const finPts = [[-1.50, 0.54], [-1.84, 0.54], [-1.98, 0.92], [-1.72, 0.92]];
+        extrudeProfile(g, finPts, 0.058, rescueRed, [0, 0, 0], [0, 0, 0], 0.016);
+        rbox(g, 0.26, 0.08, 0.062, 0.012, rescueYellow, [-1.85, 0.89, 0]);
+        sphere(g, 0.024, 14, 12, emissiveMat(0xef4444, 2.2), [-1.82, 0.95, 0]);
+        tube(g, [[-1.58, 0.04, 0], [-1.72, -0.09, 0], [-1.84, -0.06, 0]], 0.014, alu);
+        addSpinHub(g, [-1.68, 0.30, 0.01], 10, 0.215, 0.030, darkCarbon, alu, 'z');
       } },
     { id: 'twin-arriel-2e-turboshafts', name: 'Twin Safran Arriel 2E FADEC Turboshafts & Splayed Exhausts', category: 'Propulsion', isOuter: false, explodeOffset: [0, 1.15, -1.35],
       desc: 'Dual-channel FADEC turboshafts delivering 894 shp each with side mesh air intakes, titanium fireproof deck, main bevel gearbox, and splayed heat-shielded exhaust ejectors.',
       funFact: 'If one engine fails during a mountain rescue hover, the surviving engine automatically boosts above 100% power in under a second!',
       build(g) {
         populateGearboxCad(g, { pos: [0.16, 0.38, 0], scale: 0.011 });
-        const cowlPts = [[-0.45, 0.26], [0.55, 0.26], [0.68, 0.38], [0.42, 0.50], [-0.36, 0.50], [-0.52, 0.36]];
-        extrudeProfile(g, cowlPts, 0.40, rescueWhite, [0, 0, 0], [0, 0, 0], 0.035);
-        for (const z of [-0.16, 0.16]) {
-          cyl(g, 0.088, 0.10, 0.54, 18, alu, [0.02, 0.40, z], [0, 0, Math.PI / 2]);
-          cyl(g, 0.068, 0.078, 0.20, 16, brushedMetal(0x334155), [-0.36, 0.40, z * 1.18], [0, -0.22 * Math.sign(z), Math.PI / 2]);
+        // True 3D multi-station lofted upper engine deck cowling (replaces old flat extruded white block!)
+        buildMultiSectionLoft(g, h145EngineDeckStations, { radialSegs: 36, material: rescueWhite });
+        // Conformal red & yellow upper cowling accent bands + recessed black mesh side engine air intakes
+        for (const s of [-1, 1]) {
+          buildConformalLoftPatch(g, h145EngineDeckStations, {
+            xFront: 0.56, xBack: -0.44,
+            angBottomFront: 0.85 * s, angTopFront: 1.38 * s,
+            angBottomBack: 0.85 * s, angTopBack: 1.38 * s,
+            offset: 0.003, uSteps: 10, vSteps: 5, material: rescueRed,
+          });
+          // Recessed dark intake plenum scoop + stainless FOD mesh screen
+          rbox(g, 0.28, 0.085, 0.035, 0.01, gasketBlack, [0.06, 0.38, s * 0.205], [0, s * 0.06, 0]);
+          rbox(g, 0.16, 0.055, 0.038, 0.006, darkTi, [-0.22, 0.38, s * 0.195], [0, s * 0.08, 0]);
+          // Internal Safran Arriel 2E turboshaft core + angled heat-blued inconel exhaust ejector nozzle
+          cyl(g, 0.075, 0.085, 0.48, 20, alu, [-0.04, 0.38, s * 0.11], [0, 0, Math.PI / 2]);
+          cyl(g, 0.062, 0.074, 0.22, 20, darkTi, [-0.46, 0.39, s * 0.135], [0.08, -0.26 * s, Math.PI / 2]);
+          torus(g, 0.064, 0.008, chromeMat(), [-0.55, 0.39, s * 0.162], [0, Math.PI / 2 - 0.26 * s, 0]);
         }
       } },
     { id: 'helionix-cockpit-clamshell-bay', name: 'Lofted Composite Medevac Fuselage, Sliding Doors & Rear Clamshell Bay', category: 'Airframe & Cabin Shell', isOuter: true, explodeOffset: [0, 0.15, 1.35],
       desc: 'Contoured composite red/white/yellow HEMS air-ambulance fuselage with flush conformal livery stripes, wide sliding side doors, and rear clamshell cargo doors.',
       funFact: 'The rear clamshell doors open wide right under the high tailboom so paramedics can slide a wheeled stretcher straight into the cabin!',
       build(g) {
-        // Lofted teardrop H145 fuselage with flush conformal livery bands (no protruding boxes!)
-        const bodyPts = [
-          [-0.44, -0.20], [0.82, -0.22], [1.20, -0.16], [1.34, -0.03],
-          [1.14, 0.14], [0.76, 0.28], [-0.34, 0.28], [-0.48, 0.14],
-        ];
-        extrudeProfile(g, bodyPts, 0.56, rescueRed, [0, 0, 0], [0, 0, 0], 0.075);
+        // 1. True 3D Multi-Station Lofted Airbus H145 Fuselage (28 stations × 40 radial segments — smooth compound curves!)
+        buildMultiSectionLoft(g, h145FuselageStations, { radialSegs: 40, material: rescueRed });
+
+        // 2. Conformal HEMS White Upper Cabin Band, High-Vis Sulfur-Yellow Lower Cheatline & Red Cross Rescue Emblems
         for (const s of [-1, 1]) {
-          // Conformal yellow & white side livery bands + Red Cross medical emblem + sliding cabin doors with 3 framed windows
-          rbox(g, 1.18, 0.065, 0.018, 0.008, rescueYellow, [0.18, -0.06, s * 0.312]);
-          rbox(g, 0.92, 0.16, 0.016, 0.008, rescueWhite, [0.08, 0.10, s * 0.310]);
-          box(g, 0.09, 0.028, 0.022, rescueRed, [-0.18, 0.10, s * 0.315]);
-          box(g, 0.028, 0.09, 0.022, rescueRed, [-0.18, 0.10, s * 0.315]);
-          for (const wx of [0.46, 0.14, -0.18]) {
-            rbox(g, 0.20, 0.15, 0.024, 0.01, canopyGlass, [wx, 0.09, s * 0.315]);
+          // Conformal white upper cabin ambulance band wrapping smoothly around the lofted hull
+          buildConformalLoftPatch(g, h145FuselageStations, {
+            xFront: 0.64, xBack: -0.38,
+            angBottomFront: 0.58 * s, angTopFront: 1.52 * s,
+            angBottomBack: 0.58 * s, angTopBack: 1.52 * s,
+            offset: 0.0035, uSteps: 14, vSteps: 8, material: rescueWhite,
+          });
+          // Conformal high-visibility yellow lower medevac stripe running from nose cheek to rear clamshell
+          buildConformalLoftPatch(g, h145FuselageStations, {
+            xFront: 1.18, xBack: -0.44,
+            angBottomFront: 1.56 * s, angTopFront: 1.92 * s,
+            angBottomBack: 1.54 * s, angTopBack: 1.90 * s,
+            offset: 0.004, uSteps: 18, vSteps: 6, material: rescueYellow,
+          });
+          // Conformal 3-pane dark-tinted cabin windows with black gasket frames along sliding door & aft cabin
+          for (const [wxFront, wxBack] of [[0.56, 0.34], [0.26, 0.04], [-0.04, -0.26]]) {
+            buildConformalLoftPatch(g, h145FuselageStations, {
+              xFront: wxFront + 0.015, xBack: wxBack - 0.015,
+              angBottomFront: 0.72 * s, angTopFront: 1.36 * s,
+              angBottomBack: 0.72 * s, angTopBack: 1.36 * s,
+              offset: 0.0055, uSteps: 6, vSteps: 6, material: gasketBlack,
+            });
+            buildConformalLoftPatch(g, h145FuselageStations, {
+              xFront: wxFront, xBack: wxBack,
+              angBottomFront: 0.76 * s, angTopFront: 1.32 * s,
+              angBottomBack: 0.76 * s, angTopBack: 1.32 * s,
+              offset: 0.007, uSteps: 6, vSteps: 6, material: canopyGlass,
+            });
           }
+          // Red Cross Medical Rescue Emblem on aft cabin flank + upper/lower sliding cabin door rails & door handle
+          box(g, 0.095, 0.030, 0.014, rescueRed, [-0.33, 0.09, s * 0.308]);
+          box(g, 0.030, 0.095, 0.014, rescueRed, [-0.33, 0.09, s * 0.308]);
+          box(g, 0.82, 0.012, 0.018, alu, [0.16, 0.23, s * 0.295]);
+          box(g, 0.82, 0.014, 0.022, alu, [0.16, -0.19, s * 0.298]);
+          rbox(g, 0.055, 0.018, 0.022, 0.004, gasketBlack, [0.58, -0.02, s * 0.314]);
         }
-        // Rear clamshell loading doors seam & handles
-        rbox(g, 0.16, 0.24, 0.44, 0.03, rescueYellow, [-0.44, 0.02, 0], [0, 0, -0.45]);
+        // 3. Rear Clamshell Ambulance Loading Doors (conformal yellow safety panels, center seam & dual tinted rear windows)
+        for (const s of [-1, 1]) {
+          buildConformalLoftPatch(g, h145FuselageStations, {
+            xFront: -0.38, xBack: -0.54,
+            angBottomFront: 0.25 * s, angTopFront: 1.45 * s,
+            angBottomBack: 0.25 * s, angTopBack: 1.45 * s,
+            offset: 0.0045, uSteps: 6, vSteps: 6, material: rescueYellow,
+          });
+          buildConformalLoftPatch(g, h145FuselageStations, {
+            xFront: -0.40, xBack: -0.50,
+            angBottomFront: 0.45 * s, angTopFront: 1.05 * s,
+            angBottomBack: 0.45 * s, angTopBack: 1.05 * s,
+            offset: 0.0065, uSteps: 5, vSteps: 5, material: canopyGlass,
+          });
+        }
       } },
     { id: 'panoramic-bubble-windshield-helionix', name: 'Framed Panoramic Bubble Canopy, Skylights & 3-Screen Helionix Cockpit', category: 'Cockpit & Avionics', isOuter: true, explodeOffset: [1.45, 0.35, 0],
       desc: 'Framed two-piece curved polycarbonate bubble windshield with center post, twin wipers, overhead blue-tinted skylights, lower chin windows, 3-screen Helionix glass dash, and dual cyclic/collective controls.',
       funFact: 'The H145’s 4-axis Helionix autopilot can automatically bring the helicopter to a stable hover in zero-visibility mountain clouds!',
       build(g) {
-        // Framed left & right bubble windshield panes + center post + overhead skylights + chin windows
-        box(g, 0.46, 0.022, 0.022, rescueRed, [1.02, 0.11, 0], [0, 0, -0.48]);
+        // 1. Compound-Curved Conformal Left & Right Panoramic Cockpit Windshields hugging the lofted nose
         for (const s of [-1, 1]) {
-          rbox(g, 0.44, 0.23, 0.24, 0.035, canopyGlass, [0.98, 0.09, s * 0.135], [s * 0.08, s * -0.18, -0.46]);
-          rbox(g, 0.26, 0.02, 0.18, 0.006, skyGlass, [0.80, 0.275, s * 0.13], [0, 0, -0.14]);
-          rbox(g, 0.22, 0.09, 0.022, 0.008, canopyGlass, [1.12, -0.11, s * 0.24]);
-          box(g, 0.15, 0.01, 0.01, darkCarbon, [1.06, 0.04, s * 0.12], [0, 0, -0.46]);
-          rbox(g, 0.13, 0.21, 0.13, 0.014, darkCarbon, [0.74, -0.02, s * 0.14]);
+          // Black weatherstrip perimeter frame + curved polycarbonate bubble windshield
+          buildConformalLoftPatch(g, h145FuselageStations, {
+            xFront: 1.19, xBack: 0.67,
+            angBottomFront: 0.05 * s, angTopFront: 1.24 * s,
+            angBottomBack: 0.05 * s, angTopBack: 1.32 * s,
+            offset: 0.005, uSteps: 14, vSteps: 10, material: gasketBlack,
+          });
+          buildConformalLoftPatch(g, h145FuselageStations, {
+            xFront: 1.17, xBack: 0.69,
+            angBottomFront: 0.09 * s, angTopFront: 1.18 * s,
+            angBottomBack: 0.09 * s, angTopBack: 1.26 * s,
+            offset: 0.007, uSteps: 14, vSteps: 10, material: canopyGlass,
+          });
+          // Conformal overhead blue-tinted cockpit roof skylight windows
+          buildConformalLoftPatch(g, h145FuselageStations, {
+            xFront: 0.88, xBack: 0.65,
+            angBottomFront: 0.12 * s, angTopFront: 0.56 * s,
+            angBottomBack: 0.12 * s, angTopBack: 0.58 * s,
+            offset: 0.008, uSteps: 8, vSteps: 6, material: skyGlass,
+          });
+          // Conformal lower chin bubble observation windows for vertical landing visibility
+          buildConformalLoftPatch(g, h145FuselageStations, {
+            xFront: 1.26, xBack: 1.02,
+            angBottomFront: 1.62 * s, angTopFront: 2.28 * s,
+            angBottomBack: 1.62 * s, angTopBack: 2.22 * s,
+            offset: 0.006, uSteps: 8, vSteps: 6, material: canopyGlass,
+          });
+          // Conformal painted rescue-red A-pillar divider between windshield & cockpit side door window
+          buildConformalLoftPatch(g, h145FuselageStations, {
+            xFront: 0.94, xBack: 0.88,
+            angBottomFront: 0.08 * s, angTopFront: 1.30 * s,
+            angBottomBack: 0.08 * s, angTopBack: 1.30 * s,
+            offset: 0.009, uSteps: 4, vSteps: 8, material: rescueRed,
+          });
+          // Pantograph windshield wiper blade + pilot & co-pilot crashworthy bucket seats + cyclic stick
+          box(g, 0.22, 0.008, 0.012, darkCarbon, [1.04, 0.08, s * 0.11], [0, s * -0.22, -0.52]);
+          rbox(g, 0.14, 0.22, 0.13, 0.016, darkCarbon, [0.76, -0.04, s * 0.13]);
+          cyl(g, 0.007, 0.009, 0.16, 10, darkCarbon, [0.88, -0.08, s * 0.13], [0, 0, -0.18]);
         }
-        rbox(g, 0.14, 0.12, 0.44, 0.018, screenMat('dashboard'), [0.94, 0.02, 0]);
-        sphere(g, 0.095, 18, 14, rescueRed, [1.34, -0.05, 0]);
+        // Center windshield mullion post (conformal rescue-red strip down the nose centerline)
+        buildConformalLoftPatch(g, h145FuselageStations, {
+          xFront: 1.20, xBack: 0.66,
+          angBottomFront: -0.07, angTopFront: 0.07,
+          angBottomBack: -0.07, angTopBack: 0.07,
+          offset: 0.009, uSteps: 12, vSteps: 4, material: rescueRed,
+        });
+        // 3-Screen Airbus Helionix glass cockpit instrument panel + anti-glare brow + nose weather radar radome cap
+        rbox(g, 0.15, 0.11, 0.42, 0.018, screenMat('dashboard'), [0.96, 0.01, 0], [0, 0, -0.22]);
+        rbox(g, 0.18, 0.032, 0.44, 0.012, gasketBlack, [0.98, 0.07, 0]);
+        for (const s of [-1, 1]) {
+          cyl(g, 0.004, 0.006, 0.11, 8, chromeMat(), [1.26, -0.02, s * 0.12], [0, 0, Math.PI / 2]);
+        }
       } },
     { id: 'hems-icu-stretcher-life-support', name: 'Roll-In Stryker ICU Medical Stretcher, Ventilator & Paramedic Seats', category: 'Flying ICU Interior', isOuter: false, explodeOffset: [-0.95, 0.15, -1.35],
       desc: 'Roll-in aluminum ambulance stretcher with yellow high-vis mattress, overhead medical oxygen/defibrillator/ventilator rack, and two swiveling flight-doctor seats.',
       funFact: 'Every H145 air ambulance carries the same ventilator, defibrillator, blood warmer, and ultrasound gear as a hospital trauma bay!',
       build(g) {
-        rbox(g, 0.72, 0.045, 0.20, 0.015, rescueYellow, [0.02, -0.04, -0.08]);
-        rbox(g, 0.74, 0.025, 0.22, 0.008, alu, [0.02, -0.08, -0.08]);
-        rbox(g, 0.42, 0.22, 0.12, 0.015, alu, [-0.04, 0.06, 0.16]);
-        rbox(g, 0.14, 0.10, 0.02, 0.005, screenMat('ios'), [-0.04, 0.10, 0.095]);
+        // Roll-in Stryker aluminum stretcher rails, folding undercarriage & high-vis yellow segmented mattress
+        rbox(g, 0.76, 0.048, 0.21, 0.016, rescueYellow, [0.04, -0.05, -0.08]);
+        rbox(g, 0.22, 0.055, 0.19, 0.014, rescueYellow, [0.34, -0.01, -0.08], [0, 0, -0.35]);
+        rbox(g, 0.78, 0.024, 0.23, 0.008, alu, [0.04, -0.09, -0.08]);
+        // Medical ICU rack with Corpuls defibrillator monitor, Dräger ventilator & twin white/blue oxygen cylinders
+        rbox(g, 0.46, 0.24, 0.13, 0.016, alu, [-0.04, 0.05, 0.16]);
+        rbox(g, 0.15, 0.11, 0.022, 0.005, screenMat('ios'), [-0.04, 0.09, 0.092]);
+        cyl(g, 0.026, 0.026, 0.22, 14, rescueWhite, [-0.18, 0.04, 0.16]);
+        cyl(g, 0.026, 0.026, 0.22, 14, carPaint(0x0284c7), [0.10, 0.04, 0.16]);
+        // Flight paramedic & emergency doctor swiveling cabin seats
+        rbox(g, 0.13, 0.20, 0.13, 0.014, carPaint(0x1d4ed8), [0.36, -0.03, 0.12]);
       } },
     { id: 'rescue-winch-searchlight-flir', name: 'Goodrich 90m Hydraulic Rescue Hoist, Hook & TrakkaBeam Searchlight', category: 'Search & Rescue Gear', isOuter: true, explodeOffset: [0.65, 0.55, 1.45],
       desc: 'Roof-mounted Goodrich 90-meter hydraulic rescue winch boom with cable & rescue hook, belly TrakkaBeam A800 searchlight, and nose FLIR thermal camera.',
       funFact: 'The external rescue winch can hoist two people (272 kg) simultaneously up from a cliff face or sinking ship while hovering!',
       build(g) {
-        cyl(g, 0.038, 0.038, 0.18, 16, rescueYellow, [0.28, 0.34, 0.36], [0, 0, Math.PI / 2]);
-        cyl(g, 0.014, 0.014, 0.22, 10, alu, [0.28, 0.30, 0.26], [Math.PI / 2, 0, 0]);
-        cyl(g, 0.004, 0.004, 0.28, 8, chromeMat(), [0.28, 0.18, 0.38]);
-        torus(g, 0.022, 0.006, rescueYellow, [0.28, 0.03, 0.38]);
-        cyl(g, 0.048, 0.055, 0.09, 16, darkCarbon, [0.62, -0.28, -0.22], [0, 0, Math.PI / 2]);
+        // Roof-mounted Goodrich hydraulic rescue hoist drum, aerodynamic yellow pod & cantilevered strut
+        cyl(g, 0.042, 0.042, 0.20, 20, rescueYellow, [0.28, 0.33, 0.36], [0, 0, Math.PI / 2]);
+        sphere(g, 0.042, 16, 12, rescueYellow, [0.38, 0.33, 0.36]);
+        cyl(g, 0.015, 0.015, 0.24, 12, alu, [0.28, 0.29, 0.25], [Math.PI / 2 - 0.18, 0, 0]);
+        // Steel hoist cable, elastomeric bump stop & rescue hook
+        cyl(g, 0.004, 0.004, 0.30, 8, chromeMat(), [0.34, 0.17, 0.38]);
+        cyl(g, 0.016, 0.020, 0.04, 12, gasketBlack, [0.34, 0.04, 0.38]);
+        torus(g, 0.022, 0.006, rescueYellow, [0.34, 0.00, 0.38]);
+        // Belly TrakkaBeam A800 searchlight on pan/tilt gimbal + nose FLIR thermal imaging turret
+        cyl(g, 0.052, 0.058, 0.10, 20, darkCarbon, [0.62, -0.30, -0.22], [0, 0, Math.PI / 2 - 0.25]);
+        cyl(g, 0.044, 0.044, 0.015, 20, emissiveMat(0xe0f2fe, 2.0), [0.67, -0.31, -0.22], [0, 0, Math.PI / 2 - 0.25]);
+        sphere(g, 0.054, 18, 14, darkTi, [1.26, -0.21, 0.08]);
+        sphere(g, 0.026, 14, 12, skyGlass, [1.30, -0.22, 0.08]);
       } },
     { id: 'tubular-aluminum-skid-gear', name: 'Energy-Absorbing Tubular Aluminum Skids, Snow Pads & Wire Cutters', category: 'Landing Gear', isOuter: false, explodeOffset: [0, -1.35, 0],
       desc: 'Cross-tube aluminum landing skids with bear-paw snow settling protectors, long paramedic boarding steps, and upper/lower wire-strike protection cutters.',
       funFact: 'The curved cross-tubes bend like giant leaf springs to absorb hard emergency landings on rocky alpine ledges!',
       build(g) {
-        for (const s of [-1, 1]) {
-          cyl(g, 0.025, 0.025, 1.62, 16, alu, [0.26, -0.44, s * 0.42], [0, 0, Math.PI / 2]);
-          tube(g, [[1.06, -0.44, s * 0.42], [1.16, -0.41, s * 0.42], [1.22, -0.35, s * 0.42]], 0.024, alu);
-          rbox(g, 0.24, 0.016, 0.12, 0.005, rescueYellow, [-0.36, -0.45, s * 0.42]);
-          rbox(g, 0.56, 0.016, 0.06, 0.005, alu, [0.28, -0.34, s * 0.38]);
-          for (const x of [-0.14, 0.68]) {
-            cyl(g, 0.024, 0.024, 0.30, 14, alu, [x, -0.32, s * 0.35], [s * 0.36, 0, 0]);
-          }
+        // Continuous arched forward & aft aluminum cross-tubes curving from fuselage belly down to skid tubes
+        for (const xCross of [-0.16, 0.68]) {
+          tube(g, [
+            [xCross, -0.44, -0.42],
+            [xCross, -0.30, -0.32],
+            [xCross, -0.24, -0.22],
+            [xCross, -0.24, 0.22],
+            [xCross, -0.30, 0.32],
+            [xCross, -0.44, 0.42],
+          ], 0.024, alu);
         }
-        box(g, 0.022, 0.16, 0.01, darkCarbon, [0.96, 0.34, 0], [0, 0, -0.35]);
+        for (const s of [-1, 1]) {
+          // Longitudinal tubular steel/aluminum skid runners with curved upturned nose tips & rear tow rings
+          tube(g, [
+            [-0.48, -0.44, s * 0.42],
+            [0.26, -0.44, s * 0.42],
+            [1.04, -0.44, s * 0.42],
+            [1.16, -0.41, s * 0.42],
+            [1.23, -0.34, s * 0.42],
+          ], 0.025, alu);
+          // Bear-paw snow settling pads at rear of skids + full-length paramedic boarding step rails
+          rbox(g, 0.26, 0.016, 0.13, 0.006, rescueYellow, [-0.34, -0.455, s * 0.42]);
+          rbox(g, 0.68, 0.016, 0.065, 0.006, darkCarbon, [0.26, -0.34, s * 0.365]);
+        }
+        // Upper roof & lower belly WSPS (Wire Strike Protection System) mechanical cable cutters
+        const upperCutterPts = [[0.84, 0.25], [0.98, 0.24], [1.06, 0.42], [0.96, 0.42]];
+        extrudeProfile(g, upperCutterPts, 0.014, darkCarbon, [0, 0, 0], [0, 0, 0], 0.003);
+        const lowerCutterPts = [[0.92, -0.23], [1.06, -0.21], [1.14, -0.36], [1.02, -0.36]];
+        extrudeProfile(g, lowerCutterPts, 0.014, darkCarbon, [0, 0, 0], [0, 0, 0], 0.003);
       } },
   ];
   return {
@@ -570,7 +1067,7 @@ function buildSwissChronographModel() {
       } },
   ];
   return {
-    id: 'swiss-chronograph-watch', name: 'Swiss Automatic Mechanical Chronograph', brand: 'Haute Horlogerie / Khronos CAD', badge: '28,800 vph • Column Wheel • 10 Horological Layers',
+    id: 'swiss-chronograph-watch', name: 'Swiss Automatic Mechanical Chronograph', brand: 'Haute Horlogerie Geneva', badge: '28,800 vph • Column Wheel • 10 Horological Layers',
     desc: 'High-complication self-winding mechanical chronograph exploding into 10 authentic horological layers: Cerachrom tachymeter bezel & sapphire crystal, lumed hands, Panda tri-compax dial, Oyster case, Triplock crown & pushers, coiled mainspring barrel, 4-wheel going train, 8-pillar column wheel, Côtes de Genève bridges, and Swiss lever escapement.',
     cameraPos: [2.8, 2.2, 2.8], parts,
     quiz: [
@@ -1077,7 +1574,7 @@ function buildCarbonRoadBikeModel() {
       category: 'Frame & Aero',
       isOuter: true,
       explodeOffset: [0, 1.25, 0],
-      desc: 'Real Three.js CarbonFrameBike CAD Kamm-tail carbon main triangle, dropped aero seatstays, bottom bracket shell, and internal Di2/hydraulic routing.',
+      desc: 'Precision-molded Kamm-tail carbon main triangle, dropped aero seatstays, bottom bracket shell, and internal Di2/hydraulic routing.',
       funFact: 'High-modulus carbon-fiber road frames weigh under 700 grams—less than a full water bottle—yet survive 100+ km/h mountain descents!',
       build(g) {
         populateBikeCad(g, { zone: 'frame' });
@@ -1251,9 +1748,9 @@ function buildCarbonRoadBikeModel() {
   return {
     id: 'carbon-aero-road-bike',
     name: 'Tour-Grade Carbon Aero Bike',
-    brand: 'Pro Peloton / Three.js CAD',
+    brand: 'UCI WorldTour Aero Monocoque',
     badge: '6.8 kg UCI Limit • 12-Speed Di2 • Power Meter • Real CAD',
-    desc: 'Ultra-lightweight 10-part carbon-fiber WorldTour racing bicycle built from the Three.js CarbonFrameBike CAD with bladed aero fork, integrated bar-stem cockpit, 3D-printed lattice saddle, dual-sided power meter crankset, clipless carbon pedals, 12-speed electronic drivetrain, flat-mount hydraulic disc brakes, 50mm wheelset, and aero bidons.',
+    desc: 'Ultra-lightweight 10-part carbon-fiber WorldTour racing bicycle featuring a Toray T1100 monocoque aero frame, bladed aero fork, integrated bar-stem cockpit, 3D-printed lattice saddle, dual-sided power meter crankset, clipless carbon pedals, 12-speed electronic drivetrain, flat-mount hydraulic disc brakes, 50mm wheelset, and aero bidons.',
     cameraPos: [3.2, 1.8, 3.2],
     parts,
     quiz: [
@@ -1268,6 +1765,7 @@ function buildCarbonRoadBikeModel() {
 function buildDucatiPanigaleModel() {
   const ducatiRed = carPaint(0xd40000);
   const corseWhite = carPaint(0xf8fafc);
+  const tricoloreGreen = carPaint(0x16a34a);
   const ohlinsGold = brushedMetal(0xf59e0b, { metalness: 0.92, roughness: 0.14 });
   const magnesiumBronze = brushedMetal(0x926c44, { metalness: 0.86, roughness: 0.24 });
   const alu = brushedMetal(0xd8dee9, { metalness: 0.90, roughness: 0.18 });
@@ -1277,6 +1775,38 @@ function buildDucatiPanigaleModel() {
   const carbon = carbonFiberMat([6, 6]);
   const tireRubber = mat(0x0f172a, { roughness: 0.78 });
   const alcantara = mat(0x111827, { roughness: 0.88 });
+  const rotorDiscMat = new THREE.MeshStandardMaterial({
+    color: 0xffffff,
+    map: brakeRotorTexture(),
+    metalness: 0.88,
+    roughness: 0.18,
+  });
+
+  // 18-Station Sculpted Muscular 17L Ducati Fuel Tank Loft (from rear seat waist x=-0.16 to front airbox cover x=0.45)
+  const panigaleTankStations = [
+    { x: -0.16, y: 0.24, rTop: 0.032, rBot: 0.030, rz: 0.058, n: 2.1, flatBottom: 0.80 },
+    { x: -0.10, y: 0.25, rTop: 0.055, rBot: 0.045, rz: 0.088, n: 2.15, flatBottom: 0.80 },
+    { x: -0.02, y: 0.27, rTop: 0.082, rBot: 0.058, rz: 0.118, n: 2.2, flatBottom: 0.82 },
+    { x: 0.06,  y: 0.29, rTop: 0.108, rBot: 0.068, rz: 0.148, n: 2.25, chine: 0.15, flatBottom: 0.82 },
+    { x: 0.14,  y: 0.31, rTop: 0.128, rBot: 0.075, rz: 0.172, n: 2.3, chine: 0.22, flatBottom: 0.82 },
+    { x: 0.22,  y: 0.32, rTop: 0.138, rBot: 0.078, rz: 0.182, n: 2.3, chine: 0.25, flatBottom: 0.82 },
+    { x: 0.30,  y: 0.32, rTop: 0.125, rBot: 0.072, rz: 0.168, n: 2.25, chine: 0.20, flatBottom: 0.80 },
+    { x: 0.38,  y: 0.32, rTop: 0.092, rBot: 0.055, rz: 0.132, n: 2.15, flatBottom: 0.78 },
+    { x: 0.43,  y: 0.33, rTop: 0.052, rBot: 0.035, rz: 0.085, n: 2.05, flatBottom: 0.75 },
+    { x: 0.46,  y: 0.33, rTop: 0.018, rBot: 0.015, rz: 0.035, n: 2.0 },
+  ];
+
+  // 16-Station Compound-Curved Aerodynamic Front Nose Cowl Loft (from upper fairing ears x=0.48 to sharp nose tip x=0.96)
+  const panigaleNoseStations = [
+    { x: 0.48, y: 0.36, rTop: 0.075, rBot: 0.055, rz: 0.195, n: 2.1, chine: 0.28, flatBottom: 0.65 },
+    { x: 0.56, y: 0.34, rTop: 0.082, rBot: 0.068, rz: 0.188, n: 2.1, chine: 0.32, flatBottom: 0.65 },
+    { x: 0.64, y: 0.32, rTop: 0.084, rBot: 0.076, rz: 0.175, n: 2.05, chine: 0.35, flatBottom: 0.62 },
+    { x: 0.72, y: 0.29, rTop: 0.078, rBot: 0.072, rz: 0.155, n: 2.0, chine: 0.36, flatBottom: 0.58 },
+    { x: 0.80, y: 0.26, rTop: 0.064, rBot: 0.058, rz: 0.128, n: 1.95, chine: 0.34, flatBottom: 0.55 },
+    { x: 0.87, y: 0.24, rTop: 0.044, rBot: 0.040, rz: 0.092, n: 1.9, chine: 0.28 },
+    { x: 0.92, y: 0.23, rTop: 0.026, rBot: 0.024, rz: 0.054, n: 1.9, chine: 0.20 },
+    { x: 0.96, y: 0.22, rTop: 0.008, rBot: 0.008, rz: 0.016, n: 2.0 },
+  ];
 
   const parts = [
     { id: 'desmosedici-v4-engine', name: '998cc 90° Desmosedici Stradale R V4 Engine & Open STM Dry Clutch (CAD)', category: 'Powertrain', isOuter: false, explodeOffset: [0, -0.45, 1.35],
@@ -1291,16 +1821,16 @@ function buildDucatiPanigaleModel() {
         rbox(g, 0.19, 0.045, 0.24, 0.01, magnesiumBronze, [0.31, 0.09, 0], [0, 0, -0.58]);
         rbox(g, 0.18, 0.22, 0.23, 0.02, alu, [0.02, 0.08, 0], [0, 0, 0.72]);
         rbox(g, 0.19, 0.045, 0.24, 0.01, magnesiumBronze, [-0.05, 0.15, 0], [0, 0, 0.72]);
-        // Right-side STM EVO-SBK open dry clutch with slotted carbon housing, red anodized pressure plate & 6 coil springs
-        cyl(g, 0.11, 0.11, 0.045, 24, magnesiumBronze, [0.02, -0.13, 0.135], [Math.PI / 2, 0, 0]);
-        torus(g, 0.088, 0.014, carbon, [0.02, -0.13, 0.162]);
-        cyl(g, 0.068, 0.068, 0.018, 20, ducatiRed, [0.02, -0.13, 0.158], [Math.PI / 2, 0, 0]);
+        // Right-side STM EVO-SBK open dry clutch with bronze magnesium case, slotted carbon guard, red pressure plate & 6 gold springs
+        cyl(g, 0.115, 0.115, 0.048, 28, magnesiumBronze, [0.02, -0.13, 0.135], [Math.PI / 2, 0, 0]);
+        torus(g, 0.092, 0.015, carbon, [0.02, -0.13, 0.164]);
+        cyl(g, 0.072, 0.072, 0.020, 24, ducatiRed, [0.02, -0.13, 0.160], [Math.PI / 2, 0, 0]);
         for (let i = 0; i < 6; i++) {
           const a = (i / 6) * Math.PI * 2;
-          cyl(g, 0.012, 0.012, 0.024, 10, ohlinsGold, [0.02 + Math.cos(a) * 0.044, -0.13 + Math.sin(a) * 0.044, 0.165], [Math.PI / 2, 0, 0]);
+          cyl(g, 0.013, 0.013, 0.026, 12, ohlinsGold, [0.02 + Math.cos(a) * 0.046, -0.13 + Math.sin(a) * 0.046, 0.168], [Math.PI / 2, 0, 0]);
         }
         // Left-side magnesium alternator cover & water pump + Samco red silicone coolant hoses
-        cyl(g, 0.095, 0.095, 0.038, 22, magnesiumBronze, [0.08, -0.12, -0.135], [Math.PI / 2, 0, 0]);
+        cyl(g, 0.098, 0.098, 0.040, 24, magnesiumBronze, [0.08, -0.12, -0.135], [Math.PI / 2, 0, 0]);
         tube(g, [[0.14, -0.08, -0.14], [0.28, -0.02, -0.15], [0.42, 0.04, -0.13]], 0.013, ducatiRed);
         // Curved dual-stage aluminum water radiator (upper) & oil cooler (lower) behind front wheel
         rbox(g, 0.055, 0.24, 0.30, 0.01, darkMetal, [0.44, 0.02, 0], [0, 0, -0.36]);
@@ -1360,16 +1890,24 @@ function buildDucatiPanigaleModel() {
       desc: '600mm hollow cast-aluminum single-sided left swingarm with adjustable pivot height, eccentric rear hub carrier, DID Gold 520 drive chain, carbon chain guard, and CNC billet rearset footpegs.',
       funFact: 'Because the entire swingarm wraps only around the left side of the rear wheel, pit crews can swap a slick tire in seconds using a single central titanium axle nut!',
       build(g) {
-        // Sculpted curved left-side single-sided swingarm casting with central truss window
-        const swingOuter = [
-          [-0.04, -0.08], [-0.36, -0.09], [-0.80, -0.18], [-0.80, -0.27],
-          [-0.44, -0.28], [-0.04, -0.22],
+        // Multi-station lofted hollow cast-aluminum single-sided left swingarm (replaces flat extrude!)
+        const swingStations = [
+          { x: -0.80, y: -0.22, rTop: 0.048, rBot: 0.048, rz: 0.032, zCenter: -0.118, n: 2.2 },
+          { x: -0.62, y: -0.20, rTop: 0.058, rBot: 0.064, rz: 0.038, zCenter: -0.122, n: 2.3 },
+          { x: -0.38, y: -0.18, rTop: 0.072, rBot: 0.078, rz: 0.042, zCenter: -0.125, n: 2.35 },
+          { x: -0.18, y: -0.16, rTop: 0.068, rBot: 0.068, rz: 0.040, zCenter: -0.120, n: 2.3 },
+          { x: -0.04, y: -0.15, rTop: 0.055, rBot: 0.055, rz: 0.045, zCenter: -0.105, n: 2.2 },
         ];
-        extrudeProfile(g, swingOuter, 0.075, alu, [0, 0, -0.115], [0, 0, 0], 0.014);
-        // Dark recessed structural truss window & carbon-fiber lower swingarm protector + upper chain hugger
-        rbox(g, 0.28, 0.055, 0.082, 0.01, darkMetal, [-0.38, -0.18, -0.115], [0, 0, 0.12]);
-        const huggerPts = [[-0.36, -0.06], [-0.74, -0.01], [-0.88, -0.08], [-0.62, 0.05], [-0.34, -0.02]];
-        extrudeProfile(g, huggerPts, 0.19, carbon, [0, 0, 0], [0, 0, 0], 0.012);
+        buildMultiSectionLoft(g, swingStations, { radialSegs: 28, material: alu });
+        // Dark recessed structural truss pocket & sculpted 3D carbon-fiber rear tire hugger fender
+        rbox(g, 0.28, 0.048, 0.088, 0.01, darkMetal, [-0.38, -0.18, -0.125], [0, 0, 0.12]);
+        const huggerStations = [
+          { x: -0.86, y: 0.06, rTop: 0.012, rBot: 0.008, rz: 0.075, n: 2.0, flatBottom: 0.8 },
+          { x: -0.72, y: 0.10, rTop: 0.016, rBot: 0.010, rz: 0.102, n: 2.1, flatBottom: 0.8 },
+          { x: -0.56, y: 0.06, rTop: 0.016, rBot: 0.010, rz: 0.105, n: 2.1, flatBottom: 0.8 },
+          { x: -0.42, y: -0.05, rTop: 0.014, rBot: 0.010, rz: 0.095, n: 2.1, flatBottom: 0.8 },
+        ];
+        buildMultiSectionLoft(g, huggerStations, { radialSegs: 24, material: carbon });
         // Gold DID 520 racing chain upper & lower runs + rear anodized aluminum sprocket carrier
         rbox(g, 0.68, 0.016, 0.018, 0.003, ohlinsGold, [-0.44, -0.12, -0.105], [0, 0, 0.14]);
         rbox(g, 0.68, 0.016, 0.018, 0.003, ohlinsGold, [-0.44, -0.26, -0.105], [0, 0, -0.04]);
@@ -1394,10 +1932,10 @@ function buildDucatiPanigaleModel() {
         for (const s of [-1, 1]) {
           const z = s * 0.115;
           // Gold anodized outer fork stanchions + blue/red compression/rebound top caps
-          cyl(g, 0.027, 0.025, 0.40, 20, ohlinsGold, [0.60, 0.16, z], [0, 0, 0.40]);
-          cyl(g, 0.028, 0.028, 0.018, 16, brushedMetal(s < 0 ? 0x2563eb : 0xdc2626), [0.52, 0.34, z], [0, 0, 0.40]);
+          cyl(g, 0.028, 0.026, 0.40, 22, ohlinsGold, [0.60, 0.16, z], [0, 0, 0.40]);
+          cyl(g, 0.029, 0.029, 0.018, 16, brushedMetal(s < 0 ? 0x2563eb : 0xdc2626), [0.52, 0.34, z], [0, 0, 0.40]);
           // TiN gold-coated lower inner sliders + CNC radial brake caliper axle bottoms + pressurized gas reservoirs
-          cyl(g, 0.021, 0.021, 0.28, 18, ohlinsGold, [0.72, -0.09, z], [0, 0, 0.40]);
+          cyl(g, 0.022, 0.022, 0.28, 20, ohlinsGold, [0.72, -0.09, z], [0, 0, 0.40]);
           rbox(g, 0.075, 0.085, 0.044, 0.01, alu, [0.78, -0.21, z], [0, 0, 0.40]);
           cyl(g, 0.016, 0.016, 0.09, 14, ohlinsGold, [0.74, -0.19, z + s * 0.022], [0, 0, 0.40]);
           // Clip-on handlebars, Domino race grips, Brembo radial master cylinders, fluid reservoirs & lever guards
@@ -1442,33 +1980,40 @@ function buildDucatiPanigaleModel() {
             torus(w, 0.226, 0.0055, ducatiRed, [0, 0, side * (rimWidth * 0.48)]);
             torus(w, 0.218, 0.0035, corseWhite, [0, 0, side * (rimWidth * 0.48)]);
           }
-          // Central wheel hub + 10 thin Y-shaped Marchesini forged spokes
+          // Central wheel hub + 3-split-Y-spoke (6 paired Y-branches) forged Marchesini magnesium spokes
           cyl(w, 0.056, 0.056, rimWidth + 0.02, 22, darkMetal, [0, 0, 0], [Math.PI / 2, 0, 0]);
           cyl(w, 0.028, 0.028, rimWidth + 0.05, 16, titanium, [0, 0, 0], [Math.PI / 2, 0, 0]);
-          for (let s = 0; s < 10; s++) {
-            const a = (s / 10) * Math.PI * 2 + (s % 2 === 0 ? 0.09 : -0.09);
-            rbox(w, 0.175, 0.015, 0.020, 0.004, darkMetal, [Math.cos(a) * 0.132, Math.sin(a) * 0.132, 0], [0, 0, a + (s % 2 === 0 ? 0.18 : -0.18)]);
+          for (let s = 0; s < 3; s++) {
+            const baseA = (s / 3) * Math.PI * 2;
+            // Inner root stem of Y-spoke
+            rbox(w, 0.085, 0.024, 0.024, 0.005, darkMetal, [Math.cos(baseA) * 0.078, Math.sin(baseA) * 0.078, 0], [0, 0, baseA]);
+            // Left and right Y-branches reaching the rim
+            for (const branch of [-1, 1]) {
+              const a = baseA + branch * 0.24;
+              rbox(w, 0.125, 0.016, 0.020, 0.004, darkMetal, [Math.cos(a) * 0.162, Math.sin(a) * 0.162, 0], [0, 0, a + branch * 0.22]);
+            }
           }
           if (isFront) {
-            // Dual 330mm Brembo T-Drive floating steel brake rotors + gold anodized carriers + radial Stylema R calipers + carbon cooling ducts
+            // Dual 330mm cross-drilled Brembo T-Drive floating steel brake rotors + gold anodized carriers + radial Stylema R calipers
             for (const s of [-1, 1]) {
               const z = s * 0.072;
-              torus(w, 0.168, 0.022, chromeMat(), [0, 0, z]);
-              torus(w, 0.122, 0.012, ohlinsGold, [0, 0, z]);
+              cyl(w, 0.175, 0.175, 0.007, 36, rotorDiscMat, [0, 0, z], [Math.PI / 2, 0, 0]);
+              torus(w, 0.172, 0.005, chromeMat(), [0, 0, z]);
+              torus(w, 0.118, 0.011, ohlinsGold, [0, 0, z]);
               for (let b = 0; b < 10; b++) {
                 const ba = (b / 10) * Math.PI * 2;
-                cyl(w, 0.005, 0.005, 0.012, 8, darkMetal, [Math.cos(ba) * 0.142, Math.sin(ba) * 0.142, z], [Math.PI / 2, 0, 0]);
+                cyl(w, 0.0055, 0.0055, 0.012, 8, ohlinsGold, [Math.cos(ba) * 0.132, Math.sin(ba) * 0.132, z], [Math.PI / 2, 0, 0]);
               }
-              // Radial Brembo Stylema R monobloc caliper + GP4 carbon brake cooling scoop
-              rbox(g, 0.092, 0.058, 0.044, 0.012, alu, [x - 0.145, -0.15, z], [0, 0, 0.52]);
-              rbox(g, 0.045, 0.018, 0.046, 0.004, ducatiRed, [x - 0.15, -0.15, z], [0, 0, 0.52]);
-              rbox(g, 0.11, 0.065, 0.036, 0.008, carbon, [x - 0.11, -0.19, z * 1.15], [0, 0, 0.42]);
+              // Radial Brembo Stylema R monobloc 4-piston caliper + cooling fins + GP4 carbon brake cooling scoop
+              rbox(g, 0.095, 0.062, 0.046, 0.012, titanium, [x - 0.148, -0.15, z], [0, 0, 0.52]);
+              rbox(g, 0.048, 0.018, 0.048, 0.004, ducatiRed, [x - 0.152, -0.15, z], [0, 0, 0.52]);
+              rbox(g, 0.115, 0.068, 0.038, 0.008, carbon, [x - 0.11, -0.19, z * 1.15], [0, 0, 0.42]);
             }
           } else {
-            // Single-sided exposed right wheel face with central titanium cone nut & left-side 245mm rear brake disc
-            cyl(w, 0.042, 0.032, 0.035, 18, ohlinsGold, [0, 0, 0.095], [Math.PI / 2, 0, 0]);
-            torus(w, 0.122, 0.016, chromeMat(), [0, 0, -0.088]);
-            rbox(g, 0.068, 0.045, 0.038, 0.008, alu, [x + 0.10, -0.12, -0.088], [0, 0, -0.45]);
+            // Single-sided exposed right wheel face with central titanium cone nut & left-side 245mm cross-drilled rear brake disc
+            cyl(w, 0.044, 0.034, 0.036, 20, ohlinsGold, [0, 0, 0.095], [Math.PI / 2, 0, 0]);
+            cyl(w, 0.128, 0.128, 0.007, 32, rotorDiscMat, [0, 0, -0.088], [Math.PI / 2, 0, 0]);
+            rbox(g, 0.072, 0.048, 0.038, 0.008, titanium, [x + 0.10, -0.12, -0.088], [0, 0, -0.45]);
           }
         }
       } },
@@ -1476,94 +2021,212 @@ function buildDucatiPanigaleModel() {
       desc: 'Hand-brushed 17-liter aluminum fuel tank extending under the rider seat, two-tone Ducati Red/exposed aluminum knee recesses, Alcantara race saddle, and twin open-tunnel aerodynamic tail cowling.',
       funFact: 'Just like a MotoGP prototype, part of the Panigale V4 R’s 17-liter aluminum fuel tank sits underneath the rider’s seat to centralize mass!',
       build(g) {
-        // 1. Sculpted Muscular 17L Fuel Tank (tapered multi-layered profile + exposed brushed aluminum knee recesses)
-        const tankCenterPts = [[-0.16, 0.18], [0.36, 0.24], [0.45, 0.39], [0.18, 0.49], [-0.14, 0.35]];
-        extrudeProfile(g, tankCenterPts, 0.18, ducatiRed, [0, 0, 0], [0, 0, 0], 0.038);
+        // 1. True 3D Multi-Station Lofted Muscular 17L Fuel Tank (smooth organic curvature, replaces boxy extruded slabs!)
+        buildMultiSectionLoft(g, panigaleTankStations, { radialSegs: 36, material: ducatiRed });
+        // Conformal exposed hand-brushed aluminum knee recesses & white Ducati Corse shoulder stripes on both tank flanks
         for (const s of [-1, 1]) {
-          // Sculpted flared tank shoulders + exposed brushed-aluminum knee grip pockets
-          const tankSidePts = [[-0.12, 0.20], [0.32, 0.25], [0.38, 0.38], [0.16, 0.46], [-0.10, 0.33]];
-          extrudeProfile(g, tankSidePts, 0.08, ducatiRed, [0, 0, s * 0.095], [s * -0.08, 0, 0], 0.028);
-          const aluKneePts = [[-0.12, 0.21], [0.14, 0.25], [0.12, 0.38], [-0.10, 0.33]];
-          extrudeProfile(g, aluKneePts, 0.025, alu, [0, 0, s * 0.138], [s * -0.08, 0, 0], 0.008);
+          buildConformalLoftPatch(g, panigaleTankStations, {
+            xFront: 0.16, xBack: -0.14,
+            angBottomFront: 0.72 * s, angTopFront: 1.48 * s,
+            angBottomBack: 0.65 * s, angTopBack: 1.45 * s,
+            offset: 0.0035, uSteps: 10, vSteps: 6, material: alu,
+          });
+          buildConformalLoftPatch(g, panigaleTankStations, {
+            xFront: 0.36, xBack: 0.02,
+            angBottomFront: 0.42 * s, angTopFront: 0.62 * s,
+            angBottomBack: 0.42 * s, angTopBack: 0.62 * s,
+            offset: 0.004, uSteps: 8, vSteps: 4, material: corseWhite,
+          });
         }
-        // CNC billet quick-release racing fuel cap + tank breather hose
-        cyl(g, 0.034, 0.034, 0.016, 18, alu, [0.24, 0.475, 0], [0, 0, -0.22]);
-        cyl(g, 0.022, 0.022, 0.020, 12, darkMetal, [0.24, 0.478, 0], [0, 0, -0.22]);
-        // 2. Contoured Non-Slip Alcantara Racing Saddle + Corse Red Rear Bum Stop
-        rbox(g, 0.33, 0.048, 0.21, 0.018, alcantara, [-0.26, 0.215, 0], [0, 0, 0.14]);
-        rbox(g, 0.09, 0.065, 0.18, 0.02, ducatiRed, [-0.41, 0.265, 0], [0, 0, 0.38]);
-        // 3. Signature Panigale V4 Split "Flying Buttress" Aerodynamic Tail Cowling with Open Air Channels
-        const tailSpinePts = [[-0.38, 0.23], [-0.84, 0.41], [-0.92, 0.45], [-0.66, 0.37], [-0.36, 0.30]];
-        extrudeProfile(g, tailSpinePts, 0.10, ducatiRed, [0, 0, 0], [0, 0, 0], 0.02);
-        // White MotoGP number board graphic on tail spine
-        rbox(g, 0.22, 0.015, 0.11, 0.004, corseWhite, [-0.64, 0.39, 0], [0, 0, -0.36]);
+        // CNC billet quick-release racing fuel cap + front airbox carbon vent
+        cyl(g, 0.035, 0.035, 0.016, 20, alu, [0.23, 0.455, 0], [0, 0, -0.18]);
+        cyl(g, 0.022, 0.022, 0.020, 14, darkMetal, [0.23, 0.458, 0], [0, 0, -0.18]);
+        rbox(g, 0.08, 0.022, 0.09, 0.006, carbon, [0.39, 0.385, 0], [0, 0, -0.32]);
+
+        // 2. Contoured 3D Non-Slip Alcantara Racing Saddle + Sculpted Ducati Corse Bum Stop
+        const saddleStations = [
+          { x: -0.40, y: 0.24, rTop: 0.025, rBot: 0.018, rz: 0.095, n: 2.3, flatBottom: 0.8 },
+          { x: -0.28, y: 0.22, rTop: 0.028, rBot: 0.020, rz: 0.112, n: 2.3, flatBottom: 0.8 },
+          { x: -0.16, y: 0.21, rTop: 0.026, rBot: 0.018, rz: 0.085, n: 2.2, flatBottom: 0.8 },
+          { x: -0.10, y: 0.22, rTop: 0.020, rBot: 0.015, rz: 0.055, n: 2.1, flatBottom: 0.8 },
+        ];
+        buildMultiSectionLoft(g, saddleStations, { radialSegs: 28, material: alcantara });
+
+        // 3. Upswept Twin-Spar Monoposto Tail Section with Open "Flying Buttress" Air Channels
+        const tailCenterStations = [
+          { x: -0.94, y: 0.46, rTop: 0.012, rBot: 0.010, rz: 0.018, n: 2.0 },
+          { x: -0.82, y: 0.42, rTop: 0.028, rBot: 0.022, rz: 0.052, n: 2.1 },
+          { x: -0.66, y: 0.36, rTop: 0.042, rBot: 0.032, rz: 0.075, n: 2.2 },
+          { x: -0.50, y: 0.30, rTop: 0.048, rBot: 0.035, rz: 0.085, n: 2.25 },
+          { x: -0.38, y: 0.26, rTop: 0.045, rBot: 0.030, rz: 0.078, n: 2.2 },
+        ];
+        buildMultiSectionLoft(g, tailCenterStations, { radialSegs: 28, material: ducatiRed });
+        // Conformal white & green Italian Tricolore MotoGP number board on tail spine
+        buildConformalLoftPatch(g, tailCenterStations, {
+          xFront: -0.46, xBack: -0.80,
+          angBottomFront: -0.55, angTopFront: 0.55,
+          angBottomBack: -0.55, angTopBack: 0.55,
+          offset: 0.0035, uSteps: 8, vSteps: 6, material: corseWhite,
+        });
+        // Left & Right sculpted outer flying-buttress tail wing fairings framing open air channels
         for (const s of [-1, 1]) {
-          const wingTailPts = [[-0.40, 0.22], [-0.88, 0.41], [-0.95, 0.46], [-0.72, 0.41], [-0.42, 0.29]];
-          extrudeProfile(g, wingTailPts, 0.045, ducatiRed, [0, 0, s * 0.095], [s * 0.16, s * -0.06, 0], 0.014);
+          const tailWingStations = [
+            { x: -0.94, y: 0.46, rTop: 0.014, rBot: 0.012, rz: 0.014, zCenter: s * 0.028, n: 2.0 },
+            { x: -0.78, y: 0.41, rTop: 0.026, rBot: 0.022, rz: 0.024, zCenter: s * 0.078, n: 2.1, chine: 0.25 },
+            { x: -0.58, y: 0.33, rTop: 0.032, rBot: 0.024, rz: 0.026, zCenter: s * 0.105, n: 2.15, chine: 0.25 },
+            { x: -0.40, y: 0.25, rTop: 0.026, rBot: 0.020, rz: 0.022, zCenter: s * 0.095, n: 2.1 },
+          ];
+          buildMultiSectionLoft(g, tailWingStations, { radialSegs: 24, material: ducatiRed });
           // Twin boomerang-shaped glowing crimson LED taillight blades under tail arch
-          rbox(g, 0.14, 0.022, 0.055, 0.006, emissiveMat(0xef4444, 2.4), [-0.87, 0.415, s * 0.065], [0, s * 0.18, -0.36]);
+          tube(g, [
+            [-0.78, 0.39, s * 0.075],
+            [-0.86, 0.42, s * 0.058],
+            [-0.92, 0.44, s * 0.028],
+          ], 0.009, emissiveMat(0xef4444, 2.5));
         }
       } },
     { id: 'motogp-biplane-winglets-fairing', name: 'Sculpted Nose Fairing, Double-Bubble Screen, Shark-Gill Panels & Biplane Winglets', category: 'Aerodynamics & Body', isOuter: true, explodeOffset: [0.65, 1.10, 0],
       desc: 'Multi-piece wind-tunnel sculpted front nose fairing with dual ram-air nostrils, squinting V-shaped LED DRL headlights, polycarbonate double-bubble racing windscreen, twin-extractor shark-gill side fairings, carbon belly pan, and MotoGP biplane carbon downforce winglets.',
       funFact: 'At 300 km/h (186 mph), the sculpted carbon biplane winglets press the front tire into the asphalt with 37 kg (82 lbs) of aerodynamic downforce!',
       build(g) {
-        // 1. Sculpted Tapered Nose Cone (narrower at tip, flaring outward to handlebars) + White Corse Nose Number Plate
-        const noseCenterPts = [[0.58, 0.24], [0.95, 0.23], [0.88, 0.34], [0.64, 0.44], [0.54, 0.36]];
-        extrudeProfile(g, noseCenterPts, 0.17, ducatiRed, [0, 0, 0], [0, 0, 0], 0.028);
-        rbox(g, 0.18, 0.016, 0.13, 0.004, corseWhite, [0.78, 0.36, 0], [0, 0, -0.46]);
+        // 1. Compound-Curved 3D Lofted Front Nose Cowl (replaces boxy extruded slabs!)
+        buildMultiSectionLoft(g, panigaleNoseStations, { radialSegs: 36, material: ducatiRed });
+        // Conformal Ducati Corse white nose number plate & Italian Tricolore pinstripe
+        buildConformalLoftPatch(g, panigaleNoseStations, {
+          xFront: 0.90, xBack: 0.62,
+          angBottomFront: -0.48, angTopFront: 0.48,
+          angBottomBack: -0.52, angTopBack: 0.52,
+          offset: 0.0035, uSteps: 8, vSteps: 6, material: corseWhite,
+        });
+        buildConformalLoftPatch(g, panigaleNoseStations, {
+          xFront: 0.89, xBack: 0.63,
+          angBottomFront: -0.56, angTopFront: -0.48,
+          angBottomBack: -0.60, angTopBack: -0.52,
+          offset: 0.004, uSteps: 8, vSteps: 3, material: tricoloreGreen,
+        });
+
         for (const s of [-1, 1]) {
-          // Angled left/right nose cheeks swept back at 22° so the nose is sharp and wedge-shaped (never a flat block!)
-          const noseCheekPts = [[0.52, 0.20], [0.91, 0.22], [0.82, 0.33], [0.58, 0.41], [0.46, 0.32]];
-          extrudeProfile(g, noseCheekPts, 0.065, ducatiRed, [0.02, 0, s * 0.105], [s * -0.14, s * -0.24, 0], 0.022);
-          // Deep recessed black ram-air intake nostrils + aggressive squinting LED DRL headlight brow + micro-projector lenses
-          rbox(g, 0.09, 0.042, 0.068, 0.008, mat(0x090d16, { roughness: 0.9 }), [0.88, 0.24, s * 0.075], [0, s * -0.26, -0.25]);
-          rbox(g, 0.15, 0.018, 0.075, 0.005, emissiveMat(0xf8fafc, 2.5), [0.86, 0.275, s * 0.095], [s * 0.15, s * -0.28, -0.34]);
-          rbox(g, 0.06, 0.024, 0.048, 0.006, emissiveMat(0xe0f2fe, 2.0), [0.84, 0.255, s * 0.105], [0, s * -0.28, -0.34]);
+          // Recessed twin ram-air intake nostrils under nose brow + aggressive V-shaped Panigale LED DRL light tubes
+          rbox(g, 0.11, 0.036, 0.058, 0.008, mat(0x090d16, { roughness: 0.9 }), [0.86, 0.235, s * 0.058], [0, s * -0.28, -0.28]);
+          tube(g, [
+            [0.92, 0.235, s * 0.028],
+            [0.85, 0.258, s * 0.078],
+            [0.75, 0.295, s * 0.132],
+            [0.81, 0.278, s * 0.145],
+          ], 0.0075, emissiveMat(0xf8fafc, 2.6));
+          sphere(g, 0.018, 14, 12, emissiveMat(0xe0f2fe, 2.2), [0.83, 0.25, s * 0.092]);
           // Aero stealth winglet rear-view mirrors with integrated amber LED turn signals on upper nose ears
-          rbox(g, 0.09, 0.014, 0.11, 0.004, darkMetal, [0.64, 0.45, s * 0.19], [s * 0.28, s * -0.22, -0.25]);
-          rbox(g, 0.05, 0.008, 0.07, 0.002, emissiveMat(0xf59e0b, 1.8), [0.66, 0.452, s * 0.21], [s * 0.28, s * -0.22, -0.25]);
+          rbox(g, 0.085, 0.012, 0.115, 0.004, darkMetal, [0.58, 0.43, s * 0.195], [s * 0.28, s * -0.22, -0.25]);
+          rbox(g, 0.048, 0.007, 0.075, 0.002, emissiveMat(0xf59e0b, 1.8), [0.60, 0.432, s * 0.215], [s * 0.28, s * -0.22, -0.25]);
         }
 
-        // 2. Curved Polycarbonate Double-Bubble Racing Windscreen (transparent with dark smoke lower border)
-        const screenPts = [[0.58, 0.39], [0.82, 0.32], [0.68, 0.47], [0.47, 0.55], [0.44, 0.48]];
-        extrudeProfile(g, screenPts, 0.21, glassMat(0xbae6fd, 0.34), [0, 0, 0], [0, 0, 0], 0.025);
+        // 2. True 3D Compound-Curved Double-Bubble Polycarbonate Racing Windscreen (`surfaceGrid` dome — zero flat sides!)
+        const screenGeo = surfaceGrid(
+          (u, v) => {
+            // u = 0 (front nose brow x=0.78) -> u = 1 (upper rear edge x=0.42)
+            // v = 0..1 across width (-1..+1)
+            const w = (v - 0.5) * 2;
+            const arch = 1 - w * w;
+            const doubleBubble = Math.max(0, 1 - Math.pow(w / 0.65, 2)) * 0.042 * Math.sin(u * Math.PI * 0.85);
+            const x = 0.78 - u * 0.35 - (1 - arch) * 0.08;
+            const y = 0.33 + u * 0.20 + arch * 0.045 + doubleBubble;
+            const z = w * (0.095 + u * 0.055);
+            return [x, y, z];
+          },
+          { ns: 16, nt: 18, outward: [0.3, 1, 0] },
+        );
+        addSmoothMesh(g, screenGeo, glassMat(0xbae6fd, 0.36));
 
-        // 3. Left & Right Sculpted Side Fairings with Dual Shark-Gill Hot-Air Extractor Louvers & Lower Belly Pan
+        // 3. Compound-Curved Left & Right Shark-Gill Side Fairings Wrapping Organically Around the V4 Engine
         for (const s of [-1, 1]) {
-          const z = s * 0.155;
-          // Upper/mid side fairing panel wrapping around radiator and V4 cylinder head
-          const sideFairingPts = [
-            [0.14, 0.12], [0.54, -0.10], [0.68, 0.08], [0.66, 0.28],
-            [0.44, 0.34], [0.16, 0.22],
-          ];
-          extrudeProfile(g, sideFairingPts, 0.048, ducatiRed, [0, 0, z], [s * -0.07, s * -0.04, 0], 0.016);
-          // White Ducati Corse racing stripe + dark shark-gill hot-air extractor cutouts (upper & lower gills)
-          rbox(g, 0.28, 0.032, 0.052, 0.004, corseWhite, [0.42, 0.18, z + s * 0.004], [s * -0.07, 0, 0.32]);
+          const fairingGeo = surfaceGrid(
+            (u, v) => {
+              // u = 0 (lower belly edge) -> u = 1 (upper shoulder edge below tank/bars)
+              // v = 0 (rear edge exposing bronze clutch) -> v = 1 (front wheel arch edge)
+              const xRear = 0.08 + u * 0.06;
+              const xFront = 0.56 + Math.sin(u * Math.PI) * 0.16;
+              const x = xRear + (xFront - xRear) * v;
+              const yBot = -0.18 + (1 - v) * 0.14;
+              const yTop = 0.24 + v * 0.11;
+              const y = yBot + (yTop - yBot) * u;
+              const bow = Math.sin(u * Math.PI) * 0.048 + Math.sin(v * Math.PI) * 0.022;
+              const z = s * (0.118 + bow);
+              return [x, y, z];
+            },
+            { ns: 16, nt: 18, outward: [0, 0, s] },
+          );
+          addSmoothMesh(g, fairingGeo, ducatiRed);
+
+          // Conformal white/green Ducati Corse diagonal livery band on side fairing
+          const stripeGeo = surfaceGrid(
+            (u, v) => {
+              const uSub = 0.42 + u * 0.18;
+              const vSub = 0.18 + v * 0.68;
+              const xRear = 0.08 + uSub * 0.06;
+              const xFront = 0.56 + Math.sin(uSub * Math.PI) * 0.16;
+              const x = xRear + (xFront - xRear) * vSub;
+              const yBot = -0.18 + (1 - vSub) * 0.14;
+              const yTop = 0.24 + vSub * 0.11;
+              const y = yBot + (yTop - yBot) * uSub;
+              const bow = Math.sin(uSub * Math.PI) * 0.048 + Math.sin(vSub * Math.PI) * 0.022;
+              const z = s * (0.122 + bow);
+              return [x, y, z];
+            },
+            { ns: 6, nt: 12, outward: [0, 0, s] },
+          );
+          addSmoothMesh(g, stripeGeo, corseWhite);
+
+          // Upper & lower sculpted Shark-Gill hot-air extractor louvers + recessed dark cooling vents
           for (let gill = 0; gill < 3; gill++) {
-            const gx = 0.32 + gill * 0.075;
-            const gy = 0.06 + gill * 0.025;
-            rbox(g, 0.045, 0.12, 0.054, 0.005, mat(0x090d16, { roughness: 0.9 }), [gx, gy, z], [s * -0.07, 0, -0.38]);
+            const gx = 0.30 + gill * 0.072;
+            const gy = 0.05 + gill * 0.028;
+            rbox(g, 0.038, 0.125, 0.018, 0.004, mat(0x090d16, { roughness: 0.9 }), [gx, gy, s * 0.162], [s * -0.12, s * -0.10, -0.38]);
+            rbox(g, 0.016, 0.130, 0.022, 0.003, ducatiRed, [gx + 0.018, gy, s * 0.168], [s * -0.12, s * -0.18, -0.38]);
           }
-          // Lower aerodynamic belly pan (silver/carbon Ducati Corse sponsor chin spoiler with lower cooling louvers)
-          const bellyPts = [[-0.22, -0.26], [0.42, -0.26], [0.56, -0.10], [0.18, -0.02], [-0.14, -0.14]];
-          extrudeProfile(g, bellyPts, 0.044, alu, [0, 0, s * 0.135], [s * 0.10, 0, 0], 0.012);
-          rbox(g, 0.24, 0.045, 0.048, 0.004, carbon, [0.06, -0.22, s * 0.138], [s * 0.10, 0, 0.06]);
 
-          // 4. MotoGP Carbon-Fiber Biplane Box Winglets (upper & lower curved airfoil blades + sculpted endplate)
-          box(g, 0.21, 0.014, 0.13, carbon, [0.66, 0.24, s * 0.23], [s * 0.18, s * -0.12, -0.26]);
-          box(g, 0.17, 0.012, 0.11, carbon, [0.62, 0.185, s * 0.22], [s * 0.18, s * -0.12, -0.26]);
-          rbox(g, 0.19, 0.082, 0.012, 0.004, carbon, [0.64, 0.21, s * 0.29], [0, s * -0.12, -0.26]);
-          rbox(g, 0.14, 0.016, 0.014, 0.003, ducatiRed, [0.64, 0.245, s * 0.295], [0, s * -0.12, -0.26]);
+          // 4. Double-Plane Carbon-Fiber MotoGP Biplane Downforce Winglets (cambered upper & lower airfoils + endplate)
+          for (const [wy, wc, wzSpan] of [[0.245, 0.19, 0.125], [0.185, 0.155, 0.110]]) {
+            const wingGeo = surfaceGrid(
+              (u, v) => {
+                // u = chord (0 front leading edge -> 1 trailing edge), v = span (0 root -> 1 tip)
+                const sweep = v * 0.045;
+                const x = 0.72 - sweep - u * wc * (1 - v * 0.18);
+                const camber = Math.sin(u * Math.PI) * 0.014 - u * 0.028 - v * 0.018;
+                const y = wy + camber;
+                const z = s * (0.165 + v * wzSpan);
+                return [x, y, z];
+              },
+              { ns: 10, nt: 10, outward: [0, 1, 0] },
+            );
+            addSmoothMesh(g, wingGeo, carbon);
+          }
+          // Sculpted carbon-fiber biplane winglet outer endplate + Ducati Corse red strake
+          rbox(g, 0.175, 0.082, 0.008, 0.003, carbon, [0.61, 0.205, s * 0.285], [0, s * -0.14, -0.22]);
+          rbox(g, 0.135, 0.015, 0.011, 0.003, ducatiRed, [0.61, 0.242, s * 0.288], [0, s * -0.14, -0.22]);
         }
 
-        // 5. Sculpted Front Mudguard (Ducati Red top arch + carbon-fiber fork guard wings)
-        const fenderPts = [[0.66, -0.05], [0.91, -0.01], [0.85, 0.065], [0.68, 0.045]];
-        extrudeProfile(g, fenderPts, 0.145, ducatiRed, [0, 0, 0], [0, 0, 0], 0.018);
+        // 5. Lofted Aerodynamic Aluminum/Carbon Lower Belly Pan (hugs engine sump & Akrapovič silencers)
+        const bellyPanStations = [
+          { x: -0.26, y: -0.23, rTop: 0.035, rBot: 0.045, rz: 0.118, n: 2.3, flatBottom: 0.78 },
+          { x: -0.04, y: -0.24, rTop: 0.045, rBot: 0.055, rz: 0.132, n: 2.35, flatBottom: 0.78 },
+          { x: 0.22,  y: -0.24, rTop: 0.052, rBot: 0.058, rz: 0.138, n: 2.35, flatBottom: 0.78 },
+          { x: 0.44,  y: -0.21, rTop: 0.048, rBot: 0.052, rz: 0.125, n: 2.25, flatBottom: 0.75 },
+          { x: 0.58,  y: -0.14, rTop: 0.025, rBot: 0.030, rz: 0.075, n: 2.1 },
+        ];
+        buildMultiSectionLoft(g, bellyPanStations, { radialSegs: 28, material: alu });
+
+        // 6. Sculpted 3D Front Mudguard hugging the 17" Pirelli front tire + carbon fork tube guards
+        const fenderStations = [
+          { x: 0.65, y: 0.02, rTop: 0.022, rBot: 0.015, rz: 0.074, n: 2.1, flatBottom: 0.8 },
+          { x: 0.74, y: 0.06, rTop: 0.026, rBot: 0.018, rz: 0.078, n: 2.1, flatBottom: 0.8 },
+          { x: 0.84, y: 0.05, rTop: 0.024, rBot: 0.016, rz: 0.076, n: 2.1, flatBottom: 0.8 },
+          { x: 0.92, y: -0.01, rTop: 0.016, rBot: 0.012, rz: 0.064, n: 2.0, flatBottom: 0.8 },
+        ];
+        buildMultiSectionLoft(g, fenderStations, { radialSegs: 24, material: ducatiRed });
         for (const s of [-1, 1]) {
-          rbox(g, 0.11, 0.13, 0.014, 0.004, carbon, [0.74, -0.09, s * 0.082], [0, 0, 0.38]);
+          rbox(g, 0.10, 0.13, 0.012, 0.004, carbon, [0.74, -0.08, s * 0.082], [0, 0, 0.38]);
         }
-        buildHexBoltArray(g, [[0.38, 0.24, 0.185], [0.38, 0.24, -0.185], [0.54, 0.02, 0.185], [0.54, 0.02, -0.185]], { radius: 0.008, height: 0.014 });
+        buildHexBoltArray(g, [[0.38, 0.22, 0.165], [0.38, 0.22, -0.165], [0.52, 0.02, 0.165], [0.52, 0.02, -0.165]], { radius: 0.007, height: 0.012 });
       } },
   ];
   return {
@@ -1590,7 +2253,7 @@ export const HELICOPTERS_CATEGORY = {
 
 export const WATCHES_CATEGORY = {
   id: 'watches', name: 'Mechanical Watch & Clock', fullName: 'Haute Horlogerie Chronographs & Longcase Clocks', emoji: '⌚', icon: '⌚',
-  tagline: 'Swiss Automatic Mechanical Chronograph (Khronos CAD) • Longcase Westminster Pendulum Clock',
+  tagline: 'Swiss Automatic Mechanical Chronograph • Longcase Westminster Pendulum Clock',
   models: WATCH_MODELS,
 };
 

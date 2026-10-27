@@ -567,6 +567,9 @@ async function runTests() {
     await cdp.screenshot('05-quiz-mode-desktop.png');
 
     for (let q = 0; q < 5; q++) {
+      const qText = await cdp.eval(`document.querySelector('#quiz-question-text')?.textContent?.trim() || ''`);
+      assert.ok(qText.length > 8, `Quiz question text should be non-empty, got "${qText}"`);
+      assert.ok(!qText.includes('[object Object]') && !qText.includes('undefined'), `Invalid quiz question text: "${qText}"`);
       await cdp.eval(`(() => {
         const rightOpt = document.querySelector('#quiz-options .opt[data-correct="true"]');
         if (rightOpt) rightOpt.click();
@@ -601,16 +604,66 @@ async function runTests() {
     await sleep(300);
     await cdp.eval(`document.querySelector('#explode-btn').click()`);
     await sleep(450);
+    const mobileOverflow = await cdp.eval(`({
+      scrollW: document.documentElement.scrollWidth,
+      innerW: window.innerWidth,
+      topbarRight: document.querySelector('#mute-btn')?.getBoundingClientRect()?.right || 0,
+    })`);
+    assert.ok(
+      mobileOverflow.scrollW <= mobileOverflow.innerW && mobileOverflow.topbarRight <= mobileOverflow.innerW,
+      `Mobile viewport horizontal overflow detected: ${JSON.stringify(mobileOverflow)}`,
+    );
     await cdp.screenshot('08-house-exploded-mobile.png');
     console.log('   ✓ Mobile layout & exploded 3D House captured.');
 
-    // 7. Assert zero console errors, zero page exceptions, and zero CSP violations
+    // 7. Test 10-Language Internationalization (en, zh-CN, zh-HK, es, fr, de, pt, it, ja, ko)
+    console.log('7. Testing 10-Language Internationalization (EN, ZH-CN, ZH-HK, ES, FR, DE, PT, IT, JA, KO)...');
+    const langCodes = await cdp.eval(
+      `Array.from(document.querySelectorAll('#lang-select option')).map((o) => o.value)`,
+    );
+    assert.deepEqual(
+      langCodes,
+      ['en', 'zh-CN', 'zh-HK', 'es', 'fr', 'de', 'pt', 'it', 'ja', 'ko'],
+      `Expected all 10 language options in #lang-select, got ${JSON.stringify(langCodes)}`,
+    );
+
+    for (const code of ['zh-CN', 'zh-HK', 'es', 'fr', 'de', 'pt', 'it', 'ja', 'ko', 'en']) {
+      const langState = await cdp.eval(`(() => {
+        const sel = document.querySelector('#lang-select');
+        sel.value = ${JSON.stringify(code)};
+        sel.dispatchEvent(new Event('change', { bubbles: true }));
+        return {
+          htmlLang: document.documentElement.lang,
+          brand: document.querySelector('#brand-title')?.textContent?.trim(),
+          stageTitle: document.querySelector('#lab-title')?.textContent?.trim(),
+          firstPartLabel: document.querySelector('.part-label')?.textContent?.trim(),
+          firstChip: document.querySelector('.chip')?.textContent?.trim(),
+        };
+      })()`);
+      assert.equal(langState.htmlLang, code, `Expected <html lang="${code}">, got ${langState.htmlLang}`);
+      assert.ok(langState.brand && langState.brand.length > 0, `Empty brand title for ${code}`);
+      assert.ok(
+        langState.stageTitle && langState.stageTitle.length > 0 && !langState.stageTitle.includes('undefined'),
+        `Invalid stage title for ${code}: ${langState.stageTitle}`,
+      );
+      assert.ok(langState.firstPartLabel && langState.firstPartLabel.length > 0, `Empty 3D part label for ${code}`);
+      assert.ok(langState.firstChip && langState.firstChip.length > 0, `Empty part chip for ${code}`);
+      if (code !== 'en') {
+        assert.ok(
+          !langState.stageTitle.includes('Houses & Architecture'),
+          `Expected localized stage title for ${code}, got ${langState.stageTitle}`,
+        );
+      }
+    }
+    console.log('   ✓ Verified all 10 languages dynamically localize UI chrome, models, and 3D parts.');
+
+    // 8. Assert zero console errors, zero page exceptions, and zero CSP violations
     const cspViolations = await cdp.eval(`window.__cspViolations || []`);
     assert.deepEqual(cdp.consoleErrors, [], `Console errors detected: ${cdp.consoleErrors.join('; ')}`);
     assert.deepEqual(cdp.pageErrors, [], `Page exceptions detected: ${cdp.pageErrors.join('; ')}`);
     assert.deepEqual(cspViolations, [], `CSP violations detected: ${cspViolations.join('; ')}`);
 
-    console.log('\n✅ ALL E2E TESTS PASSED! (18 categories, 63 hyper-detailed 3D models, 0 console errors, 0 page errors, 0 CSP violations)');
+    console.log('\n✅ ALL E2E TESTS PASSED! (18 categories, 67 hyper-detailed 3D models, 10 languages, 0 console errors, 0 page errors, 0 CSP violations)');
   } finally {
     if (cdp) {
       if (cdp.consoleErrors.length) console.error('Console Errors:', cdp.consoleErrors);

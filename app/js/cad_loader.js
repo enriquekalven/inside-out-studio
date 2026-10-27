@@ -1089,22 +1089,74 @@ export function populateSaturnVCad(
 
 /**
  * Splits and attaches the NASA Mars 2020 Perseverance Rover CAD (`perseverance_rover.glb`) by sub-assembly:
- * `'chassis'`, `'wheels-suspension'`, `'mast'`, `'turret-arm'`, `'rtg'`, `'antennas'`, or `'all'`.
+ * `'chassis'`, `'wheels-suspension'`, `'mast'`, `'turret-arm'`, `'caching'`, `'rtg'`, `'antennas'`, or `'all'`.
  */
 export function populatePerseveranceCad(
   targetGroup,
   { zone = 'all', pos = [0, -0.72, 0], scale = 0.88, rot = [0, Math.PI / 2, 0] } = {},
 ) {
   return registerCadUpgrade('perseverance', targetGroup, (root) => {
+    if (!root.userData.mastDeployed) {
+      root.updateMatrixWorld(true);
+      let mastPivot = null;
+      let mastHead = null;
+      root.traverse((n) => {
+        if (n.name === 'Cylinder' && n.children?.some((c) => c.name === 'bottom')) mastPivot = n;
+        if (n.name === 'head') mastHead = n;
+      });
+      if (mastPivot && mastHead) {
+        const qHead = new THREE.Quaternion();
+        mastHead.getWorldQuaternion(qHead);
+        mastPivot.quaternion.premultiply(qHead.invert());
+        mastPivot.updateMatrix();
+        root.updateMatrixWorld(true);
+      }
+      root.userData.mastDeployed = true;
+    }
+
     const wrapper = new THREE.Group();
     wrapper.position.set(pos[0], pos[1], pos[2]);
     wrapper.rotation.set(rot[0], rot[1], rot[2]);
     wrapper.scale.setScalar(scale);
 
-    const whiteDeck = mat(0xf8fafc, { roughness: 0.3, metalness: 0.16 });
-    const darkTi = brushedMetal(0x1e293b, { metalness: 0.88, roughness: 0.24 });
-    const goldFoil = brushedMetal(0xf59e0b, { metalness: 0.92, roughness: 0.16 });
-    const alu = brushedMetal(0xd8dee9, { metalness: 0.86, roughness: 0.22 });
+    const whiteDeck = mat(0xdbe4ee, { roughness: 0.46, metalness: 0.16 });
+    const darkTi = brushedMetal(0x273549, { metalness: 0.84, roughness: 0.28 });
+    const goldFoil = brushedMetal(0xd97706, { metalness: 0.88, roughness: 0.22 });
+    const alu = brushedMetal(0xcbd5e1, { metalness: 0.82, roughness: 0.26 });
+    const lensGlass = glassMat(0x38bdf8, 0.55);
+    const hiddenMat = new THREE.MeshBasicMaterial({ visible: false });
+
+    const mapPerseveranceMat = (origMat) => {
+      const mn = (origMat?.name || '').toLowerCase();
+      if (mn === 'transparent') return null;
+      if (mn.includes('glass')) return lensGlass;
+      if (
+        mn.includes('gold') ||
+        mn.includes('foil_orange') ||
+        mn.includes('brass') ||
+        mn.includes('bronze') ||
+        mn.includes('copper') ||
+        mn === 'mars_2020_02' ||
+        mn === 'mars_2020_02_n' ||
+        mn === 'material'
+      ) {
+        return goldFoil;
+      }
+      if (mn.includes('white') || mn === 'mars_2020_01' || mn === 'mars_2020_03') {
+        return whiteDeck;
+      }
+      if (
+        mn.includes('black') ||
+        mn.includes('gunmetal') ||
+        mn.includes('krinkle') ||
+        mn === 'hub' ||
+        mn === 'mars_2020_05' ||
+        mn === 'mars_2020_07'
+      ) {
+        return darkTi;
+      }
+      return alu;
+    };
 
     const box = new THREE.Box3();
     const ctr = new THREE.Vector3();
@@ -1114,15 +1166,21 @@ export function populatePerseveranceCad(
       if (!child.isMesh || !child.geometry) return;
       box.setFromObject(child);
       box.getCenter(ctr);
-      const nName = `${child.name || ''} ${child.parent?.name || ''}`.toLowerCase();
-      const mName = (child.material?.name || '').toLowerCase();
+
+      const pathParts = [];
+      for (let p = child; p && p !== root; p = p.parent) {
+        if (p.name) pathParts.push(p.name);
+      }
+      const nName = pathParts.join(' ').toLowerCase();
 
       let partZone = 'chassis';
       if (/antenna/i.test(nName)) {
         partZone = 'antennas';
-      } else if (/mast|navcam|supercam|head|microphone|lens|up_look/i.test(nName) || ctr.y > 1.48) {
+      } else if (/\bcylinder\b|mast|navcam|supercam|head|microphone|lens|up_look|armature|\bbase\b/i.test(nName) || ctr.y > 1.48) {
         partZone = 'mast';
-      } else if (/arm|turret|corer|drill|sherloc|pixl/i.test(nName) || ctr.z > 1.02) {
+      } else if (/\blab\b|arm_01|arm_02/i.test(nName)) {
+        partZone = 'caching';
+      } else if (/\barm\b|turret|corer|drill|sherloc|pixl/i.test(nName) || ctr.z > 1.02) {
         partZone = 'turret-arm';
       } else if (/rtg|mmrtg|rimfax/i.test(nName) || ctr.z < -0.95) {
         partZone = 'rtg';
@@ -1132,11 +1190,14 @@ export function populatePerseveranceCad(
 
       if (zone !== 'all' && partZone !== zone) return;
 
-      let chosenMat = child.material || alu;
-      if (!child.material) {
-        if (mName.includes('gold') || mName.includes('foil') || mName.includes('brass')) chosenMat = goldFoil;
-        else if (mName.includes('black') || mName.includes('gunmetal')) chosenMat = darkTi;
-        else if (mName.includes('white')) chosenMat = whiteDeck;
+      let chosenMat = null;
+      if (Array.isArray(child.material)) {
+        const mapped = child.material.map((m) => mapPerseveranceMat(m));
+        if (mapped.every((m) => m === null)) return;
+        chosenMat = mapped.map((m) => m || hiddenMat);
+      } else {
+        chosenMat = mapPerseveranceMat(child.material);
+        if (!chosenMat) return;
       }
 
       const m = new THREE.Mesh(child.geometry, chosenMat);
@@ -1196,6 +1257,7 @@ export function populateIngenuityCad(
       child.matrixWorld.decompose(m.position, m.quaternion, m.scale);
       if (partZone === 'rotors') {
         m.userData.driveAnim = 'fan';
+        m.userData.spinAxis = 'y';
       }
       m.castShadow = true;
       m.receiveShadow = true;

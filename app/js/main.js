@@ -5,7 +5,19 @@ import { OBJECTS, getObjectById, setCategoryModel } from './catalog.js';
 import { getAction } from './actions.js';
 import { StageViewer } from './viewer.js';
 import { onCadReady } from './cad_loader.js';
-import { el, clear, $, $$, shuffle, starsNode, praise, prefersReducedMotion } from './ui.js';
+import { el, clear, $, $$, shuffle, starsNode, prefersReducedMotion } from './ui.js';
+import {
+  getLang,
+  setLang,
+  onLangChange,
+  t,
+  tPraise,
+  tCategory,
+  tAction,
+  tModel,
+  tPart,
+  tQuizQuestion,
+} from './i18n.js';
 import {
   isMuted,
   toggleMuted,
@@ -25,6 +37,10 @@ const STORAGE_KEY = 'inside_out_studio_progress_v1';
 const CORE_MODES = ['explore', 'find', 'build', 'quiz'];
 const MODES = ['explore', 'find', 'build', 'quiz', 'drive'];
 const MAX_STARS = OBJECTS.length * CORE_MODES.length * 3;
+const TOTAL_MODELS = OBJECTS.reduce(
+  (sum, o) => sum + (Array.isArray(o.models) ? o.models.length : 1),
+  0,
+);
 
 const state = {
   screen: 'home', // 'home' | 'lab'
@@ -41,7 +57,7 @@ let viewer = null;
 
 function activeAction() {
   const obj = getObjectById(state.activeObjectId);
-  return getAction(obj.id, obj.activeModelId);
+  return tAction(getAction(obj.id, obj.activeModelId), obj.id);
 }
 
 function defaultProgress() {
@@ -159,12 +175,71 @@ function updateModeTabStars() {
 }
 
 // ============================================================================
+// Static Chrome Localization
+// ============================================================================
+function syncStaticChromeI18n() {
+  document.title = `${t('brandTitle')} — ${t('homeHeroTitle')}`;
+  const setTxt = (sel, val) => {
+    const node = $(sel);
+    if (node) node.textContent = val;
+  };
+  setTxt('#skip-link', t('skipToContent'));
+  setTxt('#home-btn-text', t('homeBtn'));
+  setTxt('#brand-title', t('brandTitle'));
+  setTxt('#stars-earned-sr', t('starsEarned'));
+  setTxt('#sound-sr', t('soundLabel'));
+  setTxt('#home-title', t('homeHeroTitle'));
+  setTxt('#home-lead', t('homeHeroLead', { totalModels: TOTAL_MODELS }));
+  setTxt('#home-footer-text', t('homeFooterNote'));
+  setTxt('#reset-btn', t('resetStarsBtn'));
+
+  setTxt('[data-mode-label="explore"]', t('modeExplore'));
+  setTxt('[data-mode-label="find"]', t('modeFind'));
+  setTxt('[data-mode-label="build"]', t('modeBuild'));
+  setTxt('[data-mode-label="quiz"]', t('modeQuiz'));
+
+  setTxt('#explode-text', t('explodeBtn'));
+  setTxt('#assemble-text', t('assembleBtn'));
+  setTxt('#stage-loading', t('stageLoading'));
+  setTxt('#stage-error-title', t('stageErrorTitle'));
+  setTxt('#stage-error-body', t('stageErrorSub'));
+
+  setTxt('#confirm-title', t('confirmTitle'));
+  setTxt('#confirm-body', t('confirmText'));
+  setTxt('#confirm-yes', t('confirmYes'));
+  setTxt('#confirm-no', t('confirmNo'));
+
+  const langSel = $('#lang-select');
+  if (langSel) {
+    langSel.value = getLang();
+    langSel.setAttribute('aria-label', t('langLabel'));
+  }
+
+  const setAttr = (sel, attr, val) => {
+    const node = $(sel);
+    if (node) node.setAttribute(attr, val);
+  };
+  setAttr('#modes-nav', 'aria-label', t('waysToPlay'));
+  setAttr('#model-selector', 'aria-label', t('selectModelVariant'));
+  setAttr('#explode-slider', 'aria-label', t('howFarApart'));
+  setAttr('#xray-btn', 'title', t('xrayTitle'));
+  setTxt('#xray-sr', t('xrayTitle'));
+  setAttr('#spin-btn', 'title', t('spinTitle'));
+  setTxt('#spin-sr', t('spinTitle'));
+  setAttr('#labels-btn', 'title', t('labelsTitle'));
+  setTxt('#labels-sr', t('labelsTitle'));
+  setAttr('#view-btn', 'title', t('resetViewTitle'));
+  setTxt('#view-sr', t('resetViewTitle'));
+}
+
+// ============================================================================
 // Home Screen
 // ============================================================================
 function renderHomeGrid() {
   const grid = $('#object-grid');
   clear(grid);
   for (const obj of OBJECTS) {
+    const locObj = tCategory(obj);
     const stars = objectStars(obj.id);
     const maxObjStars = CORE_MODES.length * 3;
     const foundCount = getActiveModelFoundCount(obj);
@@ -177,13 +252,18 @@ function renderHomeGrid() {
         'data-object-id': obj.id,
       },
       el('div', { class: 'obj-thumb', 'aria-hidden': 'true' }, el('span', { class: 'obj-emoji' }, obj.emoji)),
-      el('span', { class: 'obj-name' }, obj.name),
-      el('span', { class: 'obj-tag' }, obj.tagline),
-      el('span', { class: 'obj-models-badge' }, `🎛️ ${modelCount} Realistic 3D Models`),
+      el('span', { class: 'obj-name' }, locObj.name),
+      el('span', { class: 'obj-tag' }, locObj.tagline),
+      el('span', { class: 'obj-models-badge' }, t('modelsBadge', { count: modelCount })),
       el(
         'span',
         { class: `obj-stars ${stars === maxObjStars ? 'obj-done' : ''}` },
-        `⭐ ${stars}/${maxObjStars} • 🔍 ${foundCount}/${obj.parts.length} parts`,
+        t('cardStats', {
+          stars,
+          maxStars: maxObjStars,
+          found: foundCount,
+          total: obj.parts.length,
+        }),
       ),
     );
     card.addEventListener('click', () => {
@@ -204,6 +284,7 @@ function showHome() {
   $('#home-screen').hidden = false;
   $('#lab-screen').hidden = true;
   $('#home-btn').hidden = true;
+  syncStaticChromeI18n();
   updateStarHeader();
   renderHomeGrid();
 }
@@ -232,7 +313,7 @@ function syncActionUi() {
 
   const tip = $('#stage-tip');
   if (tip) {
-    tip.textContent = `Drag to spin • Pinch or scroll to zoom • Tap any part • Click ${act.emoji} ${act.verb} ${act.hint}`;
+    tip.textContent = t('stageTip', { emoji: act.emoji, verb: act.verb, hint: act.hint });
   }
 
   // Rebuild dynamic HUD gauges
@@ -357,9 +438,9 @@ function syncActionUi() {
         type: 'button',
         class: 'drive-ctrl-btn',
         id: 'drive-reset-btn',
-        title: 'Reset Simulation (R)',
+        title: t('resetSimTitle'),
       },
-      '🔄 Reset',
+      t('resetSimBtn'),
     );
     resetBtn.addEventListener('click', () => {
       if (!viewer) return;
@@ -436,6 +517,7 @@ function renderDrivePanel() {
   const panel = $('#panel');
   clear(panel);
   const obj = getObjectById(state.activeObjectId);
+  const locCat = tCategory(obj);
   const act = activeAction();
   const checks = viewer?.sim?.checks || {};
 
@@ -468,14 +550,10 @@ function renderDrivePanel() {
   const card = el(
     'div',
     { class: 'card', id: 'drive-panel-card' },
-    el('span', { class: 'part-cat' }, `${obj.name} • Live Simulator`),
+    el('span', { class: 'part-cat' }, t('liveSimSubtitle', { name: locCat.name })),
     el('h2', { class: 'part-name' }, `${act.emoji} ${act.verb}`),
-    el(
-      'p',
-      { class: 'part-desc' },
-      'Use the cockpit buttons in the 3D stage or your keyboard (W/S or ↑/↓, A/D or ←/→, Space, B, H, L, R) to complete all 3 mission goals!',
-    ),
-    el('h3', {}, '3-Star Mission Checklist'),
+    el('p', { class: 'part-desc' }, t('simInstructions')),
+    el('h3', {}, t('missionChecklistTitle')),
     checkListEl,
     el('div', { class: 'card-actions' }, stopBtn),
   );
@@ -487,6 +565,7 @@ function renderExplorePanelAppendParts(panel, obj) {
   const prog = getObjProgress(obj.id);
   const chipsList = el('ul', { class: 'chips', id: 'parts-checklist' });
   for (const p of obj.parts) {
+    const locP = tPart(p);
     const isFound = prog.foundParts.includes(p.id);
     const chipBtn = el(
       'button',
@@ -495,19 +574,26 @@ function renderExplorePanelAppendParts(panel, obj) {
         class: `chip ${isFound ? 'is-found' : ''}`.trim(),
         'data-part-id': p.id,
       },
-      p.name,
+      locP.name,
     );
     chipBtn.addEventListener('click', () => handleStagePartClick(p.id));
     chipsList.appendChild(el('li', {}, chipBtn));
   }
   panel.appendChild(
-    el('div', { class: 'card' }, el('h3', {}, `3D Parts (${obj.parts.length})`), chipsList),
+    el('div', { class: 'card' }, el('h3', {}, t('partsCountHeading', { total: obj.parts.length })), chipsList),
   );
 }
 
 // ============================================================================
 // Lab Screen, Model Variant Selector & Mode Switching
 // ============================================================================
+function syncLabHeader(obj) {
+  const locCat = tCategory(obj);
+  $('#lab-title').textContent = `${obj.emoji} ${locCat.fullName}`;
+  const sub = $('#lab-subtitle');
+  if (sub) sub.textContent = locCat.tagline || '';
+}
+
 function renderModelSelector(obj) {
   const host = $('#model-selector');
   if (!host) return;
@@ -518,6 +604,7 @@ function renderModelSelector(obj) {
   }
   host.hidden = false;
   for (const m of obj.models) {
+    const locM = tModel(m);
     const isActive = m.id === obj.activeModelId;
     const pill = el(
       'button',
@@ -527,8 +614,8 @@ function renderModelSelector(obj) {
         'data-model-id': m.id,
         'aria-pressed': String(isActive),
       },
-      el('span', { class: 'model-pill-name' }, m.name),
-      m.badge ? el('span', { class: 'model-pill-badge' }, m.badge) : null,
+      el('span', { class: 'model-pill-name' }, locM.name),
+      locM.badge ? el('span', { class: 'model-pill-badge' }, locM.badge) : null,
     );
     pill.addEventListener('click', () => {
       if (m.id === obj.activeModelId) return;
@@ -543,9 +630,7 @@ function selectModelVariant(modelId) {
   stopSpeaking();
   const obj = setCategoryModel(state.activeObjectId, modelId);
   state.selectedPartId = obj.parts[0].id;
-  $('#lab-title').textContent = `${obj.emoji} ${obj.fullName}`;
-  const sub = $('#lab-subtitle');
-  if (sub) sub.textContent = obj.tagline || '';
+  syncLabHeader(obj);
   renderModelSelector(obj);
 
   if (viewer) {
@@ -567,9 +652,7 @@ function openObjectLab(objId, initialMode = 'explore') {
   $('#home-screen').hidden = true;
   $('#lab-screen').hidden = false;
   $('#home-btn').hidden = false;
-  $('#lab-title').textContent = `${obj.emoji} ${obj.fullName}`;
-  const sub = $('#lab-subtitle');
-  if (sub) sub.textContent = obj.tagline || '';
+  syncLabHeader(obj);
   renderModelSelector(obj);
 
   if (!viewer) {
@@ -643,7 +726,7 @@ function syncExplodeControls(fraction) {
   const pct = Math.round(Math.max(0, Math.min(1, fraction)) * 100);
   $('#explode-slider').value = String(pct);
   $('#explode-icon').textContent = '💥';
-  $('#explode-text').textContent = 'Explode!';
+  $('#explode-text').textContent = t('explodeBtn');
   $('#explode-btn').disabled = pct >= 99;
   $('#assemble-btn').disabled = pct <= 1;
 }
@@ -687,7 +770,8 @@ function renderExplorePanel() {
   clear(panel);
   const obj = getObjectById(state.activeObjectId);
   const prog = getObjProgress(obj.id);
-  const part = obj.parts.find((p) => p.id === state.selectedPartId) || obj.parts[0];
+  const rawPart = obj.parts.find((p) => p.id === state.selectedPartId) || obj.parts[0];
+  const part = tPart(rawPart);
   const modelFoundCount = getActiveModelFoundCount(obj);
 
   // Part Inspector Card
@@ -695,17 +779,17 @@ function renderExplorePanel() {
     'button',
     { type: 'button', class: 'btn btn-teal btn-small', id: 'read-aloud-btn' },
     el('span', { 'aria-hidden': 'true' }, '🗣️'),
-    ' Read Aloud',
+    ` ${t('readAloud')}`,
   );
   readBtn.addEventListener('click', () => {
-    speakText(`${part.name}. ${part.desc} Fun fact: ${part.funFact}`);
+    speakText(`${part.name}. ${part.desc} ${t('funFactPrefix', { fact: part.funFact })}`);
   });
 
   const explodePartBtn = el(
     'button',
     { type: 'button', class: 'btn btn-sun btn-small' },
     el('span', { 'aria-hidden': 'true' }, '💥'),
-    viewer.explodeTarget < 0.6 ? ' Explode to see inside' : ' Assemble back',
+    ` ${viewer.explodeTarget < 0.6 ? t('explodeSeeInside') : t('assembleBack')}`,
   );
   explodePartBtn.addEventListener('click', () => {
     const next = viewer.explodeTarget < 0.6 ? 0.85 : 0;
@@ -719,15 +803,16 @@ function renderExplorePanel() {
     el('span', { class: 'part-cat' }, part.category),
     el('h2', { class: 'part-name', id: 'inspector-part-name' }, part.name),
     el('p', { class: 'part-desc', id: 'inspector-part-desc' }, part.desc),
-    el('p', { class: 'fun-fact', id: 'inspector-fun-fact' }, `💡 Fun Fact: ${part.funFact}`),
+    el('p', { class: 'fun-fact', id: 'inspector-fun-fact' }, t('funFactPrefix', { fact: part.funFact })),
     el('div', { class: 'card-actions' }, readBtn, explodePartBtn),
   );
 
   // Parts Checklist Card
   const chipsList = el('ul', { class: 'chips', id: 'parts-checklist' });
   for (const p of obj.parts) {
+    const locP = tPart(p);
     const isFound = prog.foundParts.includes(p.id);
-    const isSelected = p.id === part.id;
+    const isSelected = p.id === rawPart.id;
     const chipBtn = el(
       'button',
       {
@@ -735,7 +820,7 @@ function renderExplorePanel() {
         class: `chip ${isFound ? 'is-found' : ''} ${isSelected ? 'is-selected' : ''}`.trim(),
         'data-part-id': p.id,
       },
-      p.name,
+      locP.name,
     );
     chipBtn.addEventListener('click', () => {
       handleStagePartClick(p.id);
@@ -749,14 +834,14 @@ function renderExplorePanel() {
     el(
       'h3',
       {},
-      `Parts Discovered (${modelFoundCount}/${obj.parts.length})`,
+      t('partsDiscovered', { found: modelFoundCount, total: obj.parts.length }),
     ),
     el('progress', {
       class: 'meter',
       value: modelFoundCount,
       max: obj.parts.length,
     }),
-    el('p', { class: 'muted' }, 'Tap any 3D piece or part button below to inspect it and earn Explore stars!'),
+    el('p', { class: 'muted' }, t('exploreHelper')),
     chipsList,
   );
 
@@ -787,9 +872,11 @@ function renderFindPanel() {
   const panel = $('#panel');
   clear(panel);
   const sess = state.findSession;
-  const target = sess.targets[sess.index];
+  if (!sess) return;
+  const rawTarget = sess.targets[sess.index] || sess.targets[0];
+  const target = tPart(rawTarget);
 
-  const dots = el('ul', { class: 'dots', 'aria-label': 'Find It progress' });
+  const dots = el('ul', { class: 'dots', 'aria-label': t('modeFind') });
   sess.results.forEach((status, i) => {
     let cls = 'dot';
     if (i === sess.index) cls += ' is-now';
@@ -801,31 +888,32 @@ function renderFindPanel() {
   const hintBtn = el(
     'button',
     { type: 'button', class: 'btn btn-sun btn-small', id: 'find-hint-btn' },
-    '💡 Show Hint & Highlight',
+    t('showHint'),
   );
   hintBtn.addEventListener('click', () => {
     playPop(600);
-    viewer.selectPart(target.id, true);
-    setStageMessage(`Look for the glowing ${target.name}!`, 'is-good');
+    viewer.selectPart(rawTarget.id, true);
+    setStageMessage(t('lookForGlowing', { name: target.name }), 'is-good');
   });
 
   const speakPromptBtn = el(
     'button',
     { type: 'button', class: 'btn btn-teal btn-small' },
-    '🗣️ Hear Clue',
+    t('hearClue'),
   );
   speakPromptBtn.addEventListener('click', () => {
-    speakText(`Can you tap the ${target.name}? Clue: ${target.desc}`);
+    speakText(`${target.name}. ${t('cluePrefix', { desc: target.desc })}`);
   });
 
   // Also provide accessible part buttons for keyboard/screen-reader or mobile quick-tap
   const obj = getObjectById(state.activeObjectId);
   const quickChips = el('ul', { class: 'chips', id: 'find-part-choices' });
   for (const p of obj.parts) {
+    const locP = tPart(p);
     const b = el(
       'button',
       { type: 'button', class: 'chip', 'data-part-id': p.id },
-      `Tap 3D piece #${obj.parts.indexOf(p) + 1} (${p.category})`,
+      t('tap3dPiece', { num: obj.parts.indexOf(p) + 1, category: locP.category }),
     );
     b.addEventListener('click', () => handleFindAttempt(p.id));
     quickChips.appendChild(el('li', {}, b));
@@ -835,17 +923,17 @@ function renderFindPanel() {
     'div',
     { class: 'card', id: 'find-card' },
     dots,
-    el('p', { class: 'prompt-label' }, `Find It! • Round ${sess.index + 1} of ${sess.targets.length}`),
-    el('h2', { class: 'prompt-big', id: 'find-target-name', 'data-target-id': target.id }, target.name),
-    el('p', { class: 'part-desc' }, `Clue: ${target.desc}`),
+    el('p', { class: 'prompt-label' }, t('findRoundLabel', { round: sess.index + 1, total: sess.targets.length })),
+    el('h2', { class: 'prompt-big', id: 'find-target-name', 'data-target-id': rawTarget.id }, target.name),
+    el('p', { class: 'part-desc' }, t('cluePrefix', { desc: target.desc })),
     el('div', { class: 'card-actions' }, speakPromptBtn, hintBtn),
   );
 
   const helperCard = el(
     'div',
     { class: 'card' },
-    el('h3', {}, 'Spin & tap the 3D piece in the blueprint stage!'),
-    el('p', { class: 'muted' }, 'You can click directly on the 3D model or use the category locator buttons below:'),
+    el('h3', {}, t('findHelperTitle')),
+    el('p', { class: 'muted' }, t('findHelperSub')),
     quickChips,
   );
 
@@ -855,15 +943,18 @@ function renderFindPanel() {
 function handleFindAttempt(partId) {
   const sess = state.findSession;
   if (!sess || sess.index >= sess.targets.length) return;
-  const target = sess.targets[sess.index];
+  const rawTarget = sess.targets[sess.index];
+  const target = tPart(rawTarget);
   const obj = getObjectById(state.activeObjectId);
-  const tappedPart = obj.parts.find((p) => p.id === partId);
+  const locCat = tCategory(obj);
+  const rawTapped = obj.parts.find((p) => p.id === partId);
+  const tappedPart = rawTapped ? tPart(rawTapped) : null;
 
-  if (partId === target.id) {
+  if (partId === rawTarget.id) {
     playCorrect();
     sess.results[sess.index] = sess.currentMistakes === 0 ? 'right' : 'wrong';
-    viewer.selectPart(target.id, true);
-    setStageMessage(`${praise()} That's the ${target.name}!`, 'is-good');
+    viewer.selectPart(rawTarget.id, true);
+    setStageMessage(t('foundRightMsg', { praise: tPraise(), name: target.name }), 'is-good');
     sess.index += 1;
     sess.currentMistakes = 0;
 
@@ -872,11 +963,11 @@ function handleFindAttempt(partId) {
       awardModeStars(obj.id, 'find', stars);
       setTimeout(() => {
         showCelebration({
-          title: `You found every part of the ${obj.name}!`,
+          title: t('findCelebTitle', { name: locCat.name }),
           stars,
-          text: `You spotted all ${sess.targets.length} parts in the 3D exploded model!`,
+          text: t('findCelebText', { count: sess.targets.length }),
           nextMode: 'build',
-          nextLabel: '🧩 Play Build It! next',
+          nextLabel: t('playBuildNext'),
         });
       }, 450);
     } else {
@@ -888,11 +979,14 @@ function handleFindAttempt(partId) {
     sess.currentMistakes += 1;
     viewer.selectPart(partId, false);
     setStageMessage(
-      `Oops, that's the ${tappedPart ? tappedPart.name : 'wrong piece'}! Try finding the ${target.name}.`,
+      t('foundOopsMsg', {
+        wrong: tappedPart ? tappedPart.name : t('wrongPiece'),
+        target: target.name,
+      }),
       'is-oops',
     );
     if (sess.currentMistakes >= 2) {
-      viewer.selectPart(target.id, true);
+      viewer.selectPart(rawTarget.id, true);
     }
   }
 }
@@ -908,20 +1002,21 @@ function startBuildMode() {
     index: 0,
   };
   viewer.setShowLabels(false);
-  const firstTarget = state.buildSession.order[0];
+  const firstTarget = tPart(state.buildSession.order[0]);
   viewer.setBuildStates(state.buildSession.placedIds, firstTarget.id, false);
-  setStageMessage(`Step 1: Tap the glowing ${firstTarget.name} to snap it into place!`, '');
+  setStageMessage(t('buildStep1Msg', { name: firstTarget.name }), '');
   renderBuildPanel();
 }
 
 function renderBuildPanel() {
   const panel = $('#panel');
   clear(panel);
-  const obj = getObjectById(state.activeObjectId);
   const sess = state.buildSession;
+  if (!sess) return;
   const doneCount = sess.placedIds.size;
   const total = sess.order.length;
-  const currentTarget = sess.order[sess.index] || sess.order[total - 1];
+  const rawTarget = sess.order[sess.index] || sess.order[total - 1];
+  const currentTarget = tPart(rawTarget);
 
   const snapNowBtn = el(
     'button',
@@ -931,27 +1026,28 @@ function renderBuildPanel() {
       id: 'snap-piece-btn',
       disabled: doneCount >= total,
     },
-    `🧩 Snap ${currentTarget.name} Into Place!`,
+    t('snapIntoPlaceBtn', { name: currentTarget.name }),
   );
   snapNowBtn.addEventListener('click', () => {
-    snapBuildPart(currentTarget.id);
+    snapBuildPart(rawTarget.id);
   });
 
   const stepCard = el(
     'div',
     { class: 'card', id: 'build-step-card' },
-    el('p', { class: 'prompt-label' }, `Build It! • Step ${Math.min(doneCount + 1, total)} of ${total}`),
+    el('p', { class: 'prompt-label' }, t('buildStepLabel', { step: Math.min(doneCount + 1, total), total })),
     el('h2', { class: 'prompt-big', id: 'build-target-name' }, currentTarget.name),
     el('p', { class: 'part-desc' }, currentTarget.desc),
     el('progress', { class: 'meter', value: doneCount, max: total }),
-    el('p', { class: 'muted' }, `${doneCount} of ${total} parts assembled`),
+    el('p', { class: 'muted' }, t('partsAssembledCount', { done: doneCount, total })),
     el('div', { class: 'card-actions' }, snapNowBtn),
   );
 
   const chips = el('ul', { class: 'chips', id: 'build-parts-list' });
   for (const p of sess.order) {
+    const locP = tPart(p);
     const placed = sess.placedIds.has(p.id);
-    const isNow = !placed && p.id === currentTarget.id;
+    const isNow = !placed && p.id === rawTarget.id;
     const chip = el(
       'button',
       {
@@ -959,7 +1055,7 @@ function renderBuildPanel() {
         class: `chip ${placed ? 'is-placed' : ''} ${isNow ? 'is-selected' : ''}`.trim(),
         'data-part-id': p.id,
       },
-      p.name,
+      locP.name,
     );
     chip.addEventListener('click', () => {
       snapBuildPart(p.id);
@@ -970,8 +1066,8 @@ function renderBuildPanel() {
   const listCard = el(
     'div',
     { class: 'card' },
-    el('h3', {}, 'Assembly Blueprint Checklist'),
-    el('p', { class: 'muted' }, 'Tap the floating 3D piece in the stage or click any part below to snap it home!'),
+    el('h3', {}, t('assemblyChecklistTitle')),
+    el('p', { class: 'muted' }, t('assemblyChecklistSub')),
     chips,
   );
 
@@ -980,12 +1076,13 @@ function renderBuildPanel() {
 
 function snapBuildPart(partId) {
   const obj = getObjectById(state.activeObjectId);
+  const locCat = tCategory(obj);
   const sess = state.buildSession;
   if (!sess) return;
 
   if (sess.placedIds.has(partId)) {
     playPop(480);
-    setStageMessage('That part is already bolted in!', '');
+    setStageMessage(t('alreadyBoltedMsg'), '');
     return;
   }
 
@@ -997,26 +1094,32 @@ function snapBuildPart(partId) {
     sess.index += 1;
   }
 
-  const nextTarget = sess.order[sess.index] || null;
-  viewer.setBuildStates(sess.placedIds, nextTarget ? nextTarget.id : null, false);
+  const nextRawTarget = sess.order[sess.index] || null;
+  const nextTarget = nextRawTarget ? tPart(nextRawTarget) : null;
+  viewer.setBuildStates(sess.placedIds, nextRawTarget ? nextRawTarget.id : null, false);
 
-  const snappedPart = obj.parts.find((p) => p.id === partId);
+  const rawSnapped = obj.parts.find((p) => p.id === partId);
+  const snappedPart = rawSnapped ? tPart(rawSnapped) : null;
   if (sess.placedIds.size >= sess.order.length) {
-    setStageMessage(`🎉 100% Assembled! The ${obj.name} is ready to roll!`, 'is-good');
+    setStageMessage(t('assembled100Msg', { name: locCat.name }), 'is-good');
     awardModeStars(obj.id, 'build', 3);
     renderBuildPanel();
     setTimeout(() => {
       showCelebration({
-        title: `You built the ${obj.name}!`,
+        title: t('buildCelebTitle', { name: locCat.name }),
         stars: 3,
-        text: `Every single piece (${sess.order.length}/${sess.order.length}) is snapped into place!`,
+        text: t('buildCelebText', { total: sess.order.length }),
         nextMode: 'quiz',
-        nextLabel: '❓ Take the 5-Question Quiz!',
+        nextLabel: t('takeQuizNext'),
       });
     }, 450);
   } else {
     setStageMessage(
-      `${praise()} Snapped in the ${snappedPart ? snappedPart.name : 'part'}! Next: ${nextTarget.name}`,
+      t('snappedStepMsg', {
+        praise: tPraise(),
+        snapped: snappedPart ? snappedPart.name : '',
+        next: nextTarget ? nextTarget.name : '',
+      }),
       'is-good',
     );
     renderBuildPanel();
@@ -1061,9 +1164,11 @@ function renderQuizPanel() {
   clear(panel);
   const obj = getObjectById(state.activeObjectId);
   const sess = state.quizSession;
+  if (!sess) return;
   const cur = sess.questions[sess.index];
+  const localizedQuestionText = tQuizQuestion(cur, obj);
 
-  const dots = el('ul', { class: 'dots', 'aria-label': 'Quiz progress' });
+  const dots = el('ul', { class: 'dots', 'aria-label': t('modeQuiz') });
   sess.results.forEach((status, i) => {
     let cls = 'dot';
     if (i === sess.index && status === 'pending') cls += ' is-now';
@@ -1076,21 +1181,22 @@ function renderQuizPanel() {
   const feedbackEl = el('p', { class: 'feedback', id: 'quiz-feedback', role: 'status' });
   const nextRow = el('div', { class: 'row', id: 'quiz-next-row' });
 
-  for (const optPart of cur.options) {
+  for (const rawOptPart of cur.options) {
+    const optPart = tPart(rawOptPart);
     const btn = el(
       'button',
       {
         type: 'button',
         class: 'opt',
-        'data-part-id': optPart.id,
-        'data-correct': optPart.id === cur.correctId ? 'true' : 'false',
+        'data-part-id': rawOptPart.id,
+        'data-correct': rawOptPart.id === cur.correctId ? 'true' : 'false',
       },
       optPart.name,
     );
     btn.addEventListener('click', () => {
       if (sess.answered) return;
       sess.answered = true;
-      const isRight = optPart.id === cur.correctId;
+      const isRight = rawOptPart.id === cur.correctId;
 
       for (const b of $$('.opt', optsWrap)) {
         b.disabled = true;
@@ -1099,7 +1205,8 @@ function renderQuizPanel() {
       }
 
       viewer.selectPart(cur.correctId, true);
-      const correctPart = obj.parts.find((p) => p.id === cur.correctId);
+      const rawCorrectPart = obj.parts.find((p) => p.id === cur.correctId);
+      const correctPart = rawCorrectPart ? tPart(rawCorrectPart) : optPart;
 
       if (isRight) {
         playCorrect();
@@ -1107,15 +1214,18 @@ function renderQuizPanel() {
         sess.streak += 1;
         sess.results[sess.index] = 'right';
         feedbackEl.className = 'feedback is-good';
-        feedbackEl.textContent = `${praise()} ${correctPart.name}: ${correctPart.desc}`;
-        setStageMessage(`⭐ Correct! Streak: ${sess.streak}`, 'is-good');
+        feedbackEl.textContent = `${tPraise()} ${correctPart.name}: ${correctPart.desc}`;
+        setStageMessage(t('quizCorrectToast', { streak: sess.streak }), 'is-good');
       } else {
         playOops();
         sess.streak = 0;
         sess.results[sess.index] = 'wrong';
         feedbackEl.className = 'feedback is-oops';
-        feedbackEl.textContent = `Not quite! The right answer is ${correctPart.name} — ${correctPart.desc}`;
-        setStageMessage(`Look at the highlighted ${correctPart.name}!`, 'is-oops');
+        feedbackEl.textContent = t('quizWrongFeedback', {
+          name: correctPart.name,
+          desc: correctPart.desc,
+        });
+        setStageMessage(t('quizLookHighlighted', { name: correctPart.name }), 'is-oops');
       }
 
       const isLast = sess.index >= sess.questions.length - 1;
@@ -1126,7 +1236,7 @@ function renderQuizPanel() {
           class: 'btn btn-primary btn-block',
           id: 'quiz-next-btn',
         },
-        isLast ? '🏆 See My Quiz Score!' : 'Next Question →',
+        isLast ? t('seeQuizScore') : t('nextQuestion'),
       );
       nextBtn.addEventListener('click', () => {
         if (isLast) {
@@ -1146,10 +1256,10 @@ function renderQuizPanel() {
   const readQuestionBtn = el(
     'button',
     { type: 'button', class: 'btn btn-ghost btn-small' },
-    '🗣️ Read Question',
+    t('readQuestion'),
   );
   readQuestionBtn.addEventListener('click', () => {
-    speakText(cur.q);
+    speakText(localizedQuestionText);
   });
 
   const card = el(
@@ -1159,9 +1269,13 @@ function renderQuizPanel() {
     el(
       'p',
       { class: 'prompt-label' },
-      `Question ${sess.index + 1} of ${sess.questions.length} • Score: ${sess.score}`,
+      t('quizProgressLabel', {
+        num: sess.index + 1,
+        total: sess.questions.length,
+        score: sess.score,
+      }),
     ),
-    el('h2', { class: 'question', id: 'quiz-question-text' }, cur.q),
+    el('h2', { class: 'question', id: 'quiz-question-text' }, localizedQuestionText),
     optsWrap,
     feedbackEl,
     nextRow,
@@ -1173,6 +1287,7 @@ function renderQuizPanel() {
 
 function finishQuiz() {
   const obj = getObjectById(state.activeObjectId);
+  const locCat = tCategory(obj);
   const sess = state.quizSession;
   const total = sess.questions.length;
   let stars = 1;
@@ -1181,14 +1296,14 @@ function finishQuiz() {
 
   awardModeStars(obj.id, 'quiz', stars);
   showCelebration({
-    title: `Quiz Complete: ${sess.score} / ${total}!`,
+    title: t('quizCelebTitle', { score: sess.score, total }),
     stars,
     text:
       sess.score === total
-        ? `Perfect score! You are a certified ${obj.name} Chief Engineer!`
-        : `Great job learning how the ${obj.name} works from the inside out!`,
+        ? t('quizPerfectText', { name: locCat.name })
+        : t('quizGoodText', { name: locCat.name }),
     nextMode: 'explore',
-    nextLabel: '🔍 Back to Explore',
+    nextLabel: t('backToExplore'),
   });
 }
 
@@ -1243,7 +1358,7 @@ function showCelebration({ title, stars, text, nextMode, nextLabel }) {
   const nextBtn = el(
     'button',
     { type: 'button', class: 'btn btn-primary btn-big', id: 'celebrate-next-btn' },
-    nextLabel || 'Keep Playing',
+    nextLabel || t('keepPlaying'),
   );
   nextBtn.addEventListener('click', () => {
     dlg.close();
@@ -1253,7 +1368,7 @@ function showCelebration({ title, stars, text, nextMode, nextLabel }) {
   const homeBtn = el(
     'button',
     { type: 'button', class: 'btn btn-secondary', id: 'celebrate-home-btn' },
-    '🏠 Pick Another Object',
+    t('pickAnotherObject'),
   );
   homeBtn.addEventListener('click', () => {
     dlg.close();
@@ -1420,7 +1535,7 @@ function initEvents() {
     playPop(620);
     const next = viewer.setXrayMode(!viewer.xrayMode);
     $('#xray-btn').setAttribute('aria-pressed', String(next));
-    setStageMessage(next ? '🩻 X-Ray Cutaway On: See right through outer shells!' : '🩻 X-Ray Cutaway Off', '');
+    setStageMessage(next ? t('xrayOnMsg') : t('xrayOffMsg'), '');
   });
 
   $('#spin-btn').addEventListener('click', () => {
@@ -1442,6 +1557,40 @@ function initEvents() {
     if (!viewer) return;
     playPop(500);
     viewer.resetView();
+  });
+
+  // Language selector
+  const langSelect = $('#lang-select');
+  if (langSelect) {
+    langSelect.value = getLang();
+    langSelect.addEventListener('change', (e) => {
+      playPop(560);
+      setLang(e.target.value);
+    });
+  }
+
+  onLangChange(() => {
+    stopSpeaking();
+    syncStaticChromeI18n();
+    if (state.screen === 'home') {
+      renderHomeGrid();
+    } else {
+      const obj = getObjectById(state.activeObjectId);
+      syncLabHeader(obj);
+      renderModelSelector(obj);
+      syncActionUi();
+      if (viewer) {
+        viewer.refreshLabels();
+        if (viewer.driveMode) {
+          updateDriveHud(viewer.driveState);
+        }
+      }
+      if (state.mode === 'explore') renderExplorePanel();
+      else if (state.mode === 'find') renderFindPanel();
+      else if (state.mode === 'build') renderBuildPanel();
+      else if (state.mode === 'quiz') renderQuizPanel();
+      else if (state.mode === 'drive') renderDrivePanel();
+    }
   });
 
   // Reset stars dialog

@@ -91,6 +91,17 @@ main { flex: 1; display: flex; flex-direction: column; outline: none; }
 .brand { margin: 0; font-size: 22px; font-weight: 900; letter-spacing: -0.3px; white-space: nowrap; }
 .brand-icon { display: inline-block; transform: rotate(-20deg); }
 .topbar-right { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+.lang-picker {
+  display: inline-flex; align-items: center; gap: 4px;
+  background: var(--card); border: 2px solid var(--line); border-radius: 999px;
+  padding: 2px 10px 2px 8px; min-height: 40px; cursor: pointer;
+}
+.lang-globe { font-size: 16px; line-height: 1; }
+.lang-select {
+  border: 0; background: transparent; color: var(--ink); font: inherit;
+  font-weight: 800; font-size: 14px; cursor: pointer; padding: 2px 4px 2px 0;
+  max-width: 148px; outline: none;
+}
 .star-total {
   margin: 0; padding: 6px 14px; border-radius: 999px; background: var(--sun);
   font-weight: 900; font-size: 18px; white-space: nowrap;
@@ -449,9 +460,21 @@ main { flex: 1; display: flex; flex-direction: column; outline: none; }
   .stage-tip { display: block; }
   .object-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 }
+@media (max-width: 640px) {
+  .topbar { gap: 6px; padding: 0 8px; }
+  .brand { font-size: 16px; overflow: hidden; text-overflow: ellipsis; min-width: 0; flex: 1 1 auto; }
+  .btn-home { min-height: 36px; padding: 4px 8px; font-size: 14px; gap: 4px; flex-shrink: 0; }
+  .topbar-right { gap: 6px; flex-shrink: 0; }
+  .lang-picker { min-height: 34px; padding: 2px 6px; }
+  .lang-globe { font-size: 13px; }
+  .lang-select { font-size: 12px; max-width: 72px; }
+  .star-total { padding: 4px 8px; font-size: 14px; }
+  .star-max { font-size: 11px; }
+  .topbar .btn-icon { width: 36px; min-height: 36px; font-size: 18px; }
+}
 @media (max-width: 380px) {
-  .brand { font-size: 18px; }
-  .btn-home { padding: 6px 10px; }
+  .brand { font-size: 14px; }
+  .btn-home { padding: 4px 6px; }
   .options.is-short { grid-template-columns: 1fr; }
 }
 @media (prefers-reduced-motion: reduce) {
@@ -460,3 +483,4 @@ main { flex: 1; display: flex; flex-direction: column; outline: none; }
     transition-duration: 0.01ms !important; scroll-behavior: auto !important;
   }
 }
+

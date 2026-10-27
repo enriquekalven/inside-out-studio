@@ -7,6 +7,7 @@ import { el, clear, prefersReducedMotion } from './ui.js';
 import { onCadReady } from './cad_loader.js';
 import { stopEngineSound } from './sound.js';
 import { createActionSim } from './sims/index.js';
+import { tPart } from './i18n.js';
 
 export class StageViewer {
   constructor({ canvasHost, labelsHost, onPartClick, onDriveTelemetry }) {
@@ -527,7 +528,7 @@ export class StageViewer {
           class: 'part-label',
           'data-part-id': partDef.id,
         },
-        partDef.name,
+        tPart(partDef).name,
       );
       labelEl.addEventListener('click', () => {
         if (this.onPartClick) this.onPartClick(partDef.id);
@@ -558,6 +559,14 @@ export class StageViewer {
 
     this._applyXray();
     this._refreshHighlights();
+  }
+
+  refreshLabels() {
+    for (const rec of this.partRecords.values()) {
+      if (rec.labelEl && rec.def) {
+        rec.labelEl.textContent = tPart(rec.def).name;
+      }
+    }
   }
 
   // Grow the key-light shadow frustum and the floor planes so long/large models (multi-car trainsets,

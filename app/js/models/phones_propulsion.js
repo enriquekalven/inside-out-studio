@@ -264,7 +264,7 @@ function buildIPhone16ProMax() {
     brand: 'Apple',
     badge: 'A18 Pro 3nm • Grade 5 Titanium',
     desc: 'Apple’s flagship titanium smartphone featuring a 6.9" Super Retina XDR display, 5x Tetraprism zoom camera, A18 Pro chip, and MagSafe.',
-    cameraPos: [3.2, 1.8, 3.8],
+    cameraPos: [3.5, 1.95, 4.15],
     parts,
     quiz: makePhoneQuiz(
       parts,
@@ -427,7 +427,7 @@ function buildIPhone16Ultramarine() {
     brand: 'Apple',
     badge: 'A18 Chip • Vertical Spatial Cameras',
     desc: 'Color-infused Ultramarine iPhone 16 with a vertical spatial-video dual camera pill, electrically-released battery, and Camera Control.',
-    cameraPos: [3.2, 1.8, 3.8],
+    cameraPos: [3.5, 1.95, 4.15],
     parts,
     quiz: makePhoneQuiz(
       parts,
@@ -594,7 +594,7 @@ function buildGooglePixel9ProXL() {
     brand: 'Google',
     badge: 'Tensor G4 AI • Camera Visor Bar',
     desc: 'Google’s flagship AI phone featuring the iconic horizontal Camera Visor bar with infrared thermometer, Tensor G4 chip, and copper vapor chamber.',
-    cameraPos: [3.2, 1.8, 3.8],
+    cameraPos: [3.5, 1.95, 4.15],
     parts,
     quiz: makePhoneQuiz(
       parts,
@@ -758,7 +758,7 @@ function buildSamsungS24Ultra() {
     brand: 'Samsung',
     badge: '200MP Space Zoom • Built-In S-Pen',
     desc: 'Squared titanium ultra-flagship with a built-in Bluetooth S-Pen stylus, 200MP quad-camera Space Zoom array, and anti-reflective Gorilla Armor.',
-    cameraPos: [3.2, 1.8, 3.8],
+    cameraPos: [3.5, 1.95, 4.15],
     parts,
     quiz: makePhoneQuiz(
       parts,
@@ -1021,7 +1021,7 @@ function buildGE9XTurbofan() {
       category: 'Outer Cowl & Reverser',
       isOuter: true,
       explodeOffset: [0, -1.65, 0],
-      desc: 'Translating lower composite cowling exposing thrust-reverser cascade grates and the under-cowl Khronos CAD Accessory Drive Gearbox (AGB).',
+      desc: 'Translating lower composite cowling exposing thrust-reverser cascade grates and the under-cowl radial-drive Accessory Drive Gearbox (AGB).',
       funFact: 'That roar you hear right after an airplane touches down is the translating cowling sliding aft to redirect bypass air forward!',
       build(g) {
         const outerGeo = new THREE.CylinderGeometry(1.04, 0.9, 2.75, 40, 1, true, Math.PI, Math.PI);
@@ -1332,7 +1332,7 @@ function buildF135AfterburnerJet() {
       category: 'Engine Case',
       isOuter: true,
       explodeOffset: [0, -1.55, 0],
-      desc: 'Lower titanium half-shell housing the starter/generator, hydraulic pumps, and real Khronos 118-node CAD accessory drive gearbox.',
+      desc: 'Lower titanium half-shell housing the starter/generator, hydraulic pumps, and precision multi-shaft accessory drive gearbox.',
       funFact: 'The F135 is the most powerful fighter jet engine ever built, cranking out 43,000 pounds of thrust!',
       build(g) {
         const geo = new THREE.CylinderGeometry(0.62, 0.62, 2.76, 36, 1, true, Math.PI, Math.PI);
@@ -1658,8 +1658,10 @@ function buildSpaceXRaptorRocket() {
       funFact: 'The methane turbopump turbine alone generates over 70,000 horsepower—more than a nuclear submarine!',
       build(g) {
         const pumpSpin = new THREE.Group();
+        pumpSpin.position.set(1.28, 0.28, 0.26);
         pumpSpin.userData.driveAnim = 'fan';
-        cyl(pumpSpin, 0.26, 0.26, 0.54, 28, inconel, [1.28, 0.28, 0.26], [0, 0, Math.PI / 2]);
+        pumpSpin.userData.spinAxis = 'x';
+        cyl(pumpSpin, 0.26, 0.26, 0.54, 28, inconel, [0, 0, 0], [0, 0, Math.PI / 2]);
         g.add(pumpSpin);
         torus(g, 0.27, 0.055, cryoSteel, [1.14, 0.28, 0.26], [0, Math.PI / 2, 0]);
       },
@@ -1674,8 +1676,10 @@ function buildSpaceXRaptorRocket() {
       funFact: 'In pure hot oxygen at 800 bar, ordinary steel burns like a sparkler—SpaceX had to invent a brand-new metal alloy in their foundry!',
       build(g) {
         const loxSpin = new THREE.Group();
+        loxSpin.position.set(1.3, -0.22, -0.22);
         loxSpin.userData.driveAnim = 'fan';
-        cyl(loxSpin, 0.28, 0.28, 0.58, 28, brushedMetal(0x38bdf8), [1.3, -0.22, -0.22], [0, 0, Math.PI / 2]);
+        loxSpin.userData.spinAxis = 'x';
+        cyl(loxSpin, 0.28, 0.28, 0.58, 28, brushedMetal(0x38bdf8), [0, 0, 0], [0, 0, Math.PI / 2]);
         g.add(loxSpin);
         torus(g, 0.29, 0.06, inconel, [1.16, -0.22, -0.22], [0, Math.PI / 2, 0]);
       },
@@ -1783,12 +1787,17 @@ function buildSpaceXRaptorRocket() {
         const plumeMat = new THREE.MeshBasicMaterial({
           color: 0x8b5cf6,
           transparent: true,
-          opacity: 0.55,
+          opacity: 0.48,
           side: THREE.DoubleSide,
+          depthWrite: false,
         });
-        cone(g, 0.88, 1.25, 28, plumeMat, [-2.18, 0, 0], [0, 0, -Math.PI / 2]);
-        for (const dx of [-1.76, -2.08, -2.4]) {
-          sphere(g, 0.19, 16, emissiveMat(0xe0f2fe, 1.5), [dx, 0, 0], [0, 0, 0], [1.45, 0.58, 0.58]);
+        const plumeGeo = new THREE.ConeGeometry(0.76, 1.32, 32, 1, true);
+        const plumeMesh = new THREE.Mesh(plumeGeo, plumeMat);
+        plumeMesh.position.set(-2.14, 0, 0);
+        plumeMesh.rotation.set(0, 0, Math.PI / 2);
+        g.add(plumeMesh);
+        for (const dx of [-1.72, -2.04, -2.36]) {
+          sphere(g, 0.17, 16, emissiveMat(0xe0f2fe, 1.5), [dx, 0, 0], [0, 0, 0], [1.45, 0.54, 0.54]);
         }
       },
     },
