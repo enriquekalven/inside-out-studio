@@ -616,31 +616,50 @@ async function runTests() {
     await cdp.screenshot('08-house-exploded-mobile.png');
     console.log('   ✓ Mobile layout & exploded 3D House captured.');
 
-    // 7. Test 10-Language Internationalization (en, zh-CN, zh-HK, es, fr, de, pt, it, ja, ko)
-    console.log('7. Testing 10-Language Internationalization (EN, ZH-CN, ZH-HK, ES, FR, DE, PT, IT, JA, KO)...');
+    // 7. Test 12-Language Internationalization (en, zh-CN, zh-HK, es, fr, de, nl, pt, it, ja, ko, ar) + Chirp 3 HD Read Aloud + GA4
+    console.log('7. Testing 12-Language Internationalization, Google Cloud Chirp 3 HD Read Aloud & GA4 (EN, ZH-CN, ZH-HK, ES, FR, DE, NL, PT, IT, JA, KO, AR)...');
     const langCodes = await cdp.eval(
       `Array.from(document.querySelectorAll('#lang-select option')).map((o) => o.value)`,
     );
     assert.deepEqual(
       langCodes,
-      ['en', 'zh-CN', 'zh-HK', 'es', 'fr', 'de', 'pt', 'it', 'ja', 'ko'],
-      `Expected all 10 language options in #lang-select, got ${JSON.stringify(langCodes)}`,
+      ['en', 'zh-CN', 'zh-HK', 'es', 'fr', 'de', 'nl', 'pt', 'it', 'ja', 'ko', 'ar'],
+      `Expected all 12 language options in #lang-select, got ${JSON.stringify(langCodes)}`,
     );
 
-    for (const code of ['zh-CN', 'zh-HK', 'es', 'fr', 'de', 'pt', 'it', 'ja', 'ko', 'en']) {
+    const noveltyVoiceRe =
+      /\b(Albert|Bad News|Bahh|Bells|Boing|Bubbles|Cellos|Deranged|Good News|Hysterical|Jester|Organ|Pipe Organ|Superstar|Trinoids|Whisper|Wobble|Zarvox|Fred|Junior|Kathy|Ralph|Eddy|Flo|Grandma|Grandpa|Reed|Rocko|Sandy|Shelley|espeak)\b/i;
+
+    // Reset House model selector to flagship modern-eco-home (Step 4 left it on geodesic-dome-cabin)
+    await cdp.eval(`document.querySelector('.model-pill[data-model-id="modern-eco-home"]')?.click()`);
+    await sleep(180);
+
+    for (const code of ['zh-CN', 'zh-HK', 'es', 'fr', 'de', 'nl', 'pt', 'it', 'ja', 'ko', 'ar', 'en']) {
       const langState = await cdp.eval(`(() => {
         const sel = document.querySelector('#lang-select');
         sel.value = ${JSON.stringify(code)};
         sel.dispatchEvent(new Event('change', { bubbles: true }));
+        const readBtn = document.querySelector('#read-aloud-btn');
+        if (readBtn) readBtn.click();
+        const diag = typeof window.__getAudioDiagnostics === 'function' ? window.__getAudioDiagnostics() : null;
         return {
           htmlLang: document.documentElement.lang,
+          htmlDir: document.documentElement.dir,
           brand: document.querySelector('#brand-title')?.textContent?.trim(),
           stageTitle: document.querySelector('#lab-title')?.textContent?.trim(),
           firstPartLabel: document.querySelector('.part-label')?.textContent?.trim(),
           firstChip: document.querySelector('.chip')?.textContent?.trim(),
+          partDesc: document.querySelector('#inspector-part-desc')?.textContent?.trim(),
+          funFact: document.querySelector('#inspector-fun-fact')?.textContent?.trim(),
+          diag,
         };
       })()`);
       assert.equal(langState.htmlLang, code, `Expected <html lang="${code}">, got ${langState.htmlLang}`);
+      assert.equal(
+        langState.htmlDir,
+        code === 'ar' ? 'rtl' : 'ltr',
+        `Expected <html dir="${code === 'ar' ? 'rtl' : 'ltr'}"> for ${code}, got ${langState.htmlDir}`,
+      );
       assert.ok(langState.brand && langState.brand.length > 0, `Empty brand title for ${code}`);
       assert.ok(
         langState.stageTitle && langState.stageTitle.length > 0 && !langState.stageTitle.includes('undefined'),
@@ -648,6 +667,48 @@ async function runTests() {
       );
       assert.ok(langState.firstPartLabel && langState.firstPartLabel.length > 0, `Empty 3D part label for ${code}`);
       assert.ok(langState.firstChip && langState.firstChip.length > 0, `Empty part chip for ${code}`);
+      assert.ok(langState.diag && langState.diag.lastSpeech, `Missing audio diagnostics for ${code}`);
+      assert.equal(
+        langState.diag.lastSpeech.engine,
+        'studio-chirp3-hd',
+        `Expected Studio Chirp 3 HD engine for default flagship part in ${code}, got ${langState.diag.lastSpeech.engine}`,
+      );
+      assert.ok(
+        String(langState.diag.lastSpeech.chirpVoice || '').includes('-Chirp3-HD-Aoede'),
+        `Expected Chirp3-HD-Aoede voice for ${code}, got ${langState.diag.lastSpeech.chirpVoice}`,
+      );
+      assert.ok(
+        String(langState.diag.lastSpeech.audioUrl || '').endsWith('.mp3'),
+        `Expected pre-synthesized .mp3 URL for ${code}, got ${langState.diag.lastSpeech.audioUrl}`,
+      );
+      assert.equal(
+        langState.diag.lastSpeech.pitch,
+        1.0,
+        `Expected unity pitch (1.0) for ${code}, got ${langState.diag.lastSpeech.pitch}`,
+      );
+      assert.equal(
+        langState.diag.lastSpeech.langCode,
+        code,
+        `Expected speech langCode=${code}, got ${langState.diag.lastSpeech.langCode}`,
+      );
+      assert.ok(
+        !/💡|🗣️|🏎️|⭐/.test(langState.diag.lastSpeech.cleanedText),
+        `Emojis must be stripped from Read Aloud text for ${code}: ${langState.diag.lastSpeech.cleanedText}`,
+      );
+      assert.ok(
+        !/(发动机|引擎|モーター|エンジン|엔진)\s*(Engine|engine)\b/.test(langState.diag.lastSpeech.cleanedText),
+        `Duplicate engine token in Read Aloud text for ${code}: ${langState.diag.lastSpeech.cleanedText}`,
+      );
+      assert.ok(
+        !/([\u4e00-\u9fff\u3040-\u30ff\uac00-\ud7af\u0600-\u06ff])s\b/i.test(langState.diag.lastSpeech.cleanedText),
+        `Broken CJK/Arabic plural 's' in Read Aloud text for ${code}: ${langState.diag.lastSpeech.cleanedText}`,
+      );
+      if (langState.diag.lastSpeech.voiceName) {
+        assert.ok(
+          !noveltyVoiceRe.test(langState.diag.lastSpeech.voiceName),
+          `Novelty/formant voice selected for ${code}: ${langState.diag.lastSpeech.voiceName}`,
+        );
+      }
       if (code !== 'en') {
         assert.ok(
           !langState.stageTitle.includes('Houses & Architecture'),
@@ -655,7 +716,61 @@ async function runTests() {
         );
       }
     }
-    console.log('   ✓ Verified all 10 languages dynamically localize UI chrome, models, and 3D parts.');
+    await cdp.eval(`window.speechSynthesis && window.speechSynthesis.cancel()`);
+
+    // 7b. Verify live /api/tts Chirp 3 HD synthesis for Dutch (nl), German (de), and Arabic (ar)
+    const liveChirpChecks = await cdp.eval(`(async () => {
+      const statusRes = await fetch('/api/tts/status');
+      const statusJson = await statusRes.json();
+      if (!statusJson.available) return { available: false };
+      const samples = [
+        { lang: 'nl', text: 'Dit 3D-model toont hoe de motor en aandrijflijn van binnen werken.', expectedVoice: 'nl-NL-Chirp3-HD-Aoede' },
+        { lang: 'de', text: 'Dieses 3D-Modell zeigt detailliert, wie das Triebwerk im Inneren arbeitet.', expectedVoice: 'de-DE-Chirp3-HD-Aoede' },
+        { lang: 'ar', text: 'يوضح هذا النموذج ثلاثي الأبعاد كيف يعمل المحرك من الداخل بدقة عالية.', expectedVoice: 'ar-XA-Chirp3-HD-Aoede' },
+      ];
+      const results = [];
+      for (const s of samples) {
+        const r = await fetch('/api/tts', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'InsideOutStudio' },
+          body: JSON.stringify({ lang: s.lang, text: s.text }),
+        });
+        const buf = await r.arrayBuffer();
+        results.push({
+          lang: s.lang,
+          status: r.status,
+          contentType: r.headers.get('content-type'),
+          voice: r.headers.get('x-chirp-voice'),
+          expectedVoice: s.expectedVoice,
+          bytes: buf.byteLength,
+        });
+      }
+      return { available: true, results };
+    })()`);
+    assert.equal(liveChirpChecks.available, true, 'Expected live /api/tts Chirp 3 HD endpoint to be available');
+    for (const item of liveChirpChecks.results) {
+      assert.equal(item.status, 200, `Expected HTTP 200 from /api/tts for ${item.lang}, got ${item.status}`);
+      assert.equal(item.contentType, 'audio/mpeg', `Expected audio/mpeg for ${item.lang}, got ${item.contentType}`);
+      assert.equal(item.voice, item.expectedVoice, `Expected Chirp voice ${item.expectedVoice}, got ${item.voice}`);
+      assert.ok(item.bytes > 4000, `Expected non-trivial Chirp MP3 bytes for ${item.lang}, got ${item.bytes}`);
+    }
+    console.log('   ✓ Verified all 12 languages + Studio & Live Chirp 3 HD Read Aloud (including Dutch nl, German de, and Arabic ar).');
+
+    // 7c. Verify Google Analytics 4 (GA4 G-B1SZ4464HN) configuration & event pipeline
+    const gaCheck = await cdp.eval(`({
+      hasGtagScript: Boolean(document.querySelector('script[src*="googletagmanager.com/gtag/js?id=G-B1SZ4464HN"]')),
+      hasGtagFn: typeof window.gtag === 'function',
+      analytics: window.__insideOutAnalytics || null,
+    })`);
+    assert.equal(gaCheck.hasGtagScript, true, 'Missing gtag.js script tag for G-B1SZ4464HN');
+    assert.equal(gaCheck.hasGtagFn, true, 'window.gtag function not defined');
+    assert.ok(gaCheck.analytics && gaCheck.analytics.initialized, 'GA4 analytics state not initialized');
+    assert.equal(gaCheck.analytics.measurementId, 'G-B1SZ4464HN', `Unexpected GA4 Measurement ID: ${gaCheck.analytics.measurementId}`);
+    assert.ok(
+      Array.isArray(gaCheck.analytics.eventsSent) && gaCheck.analytics.eventsSent.length >= 5,
+      `Expected GA4 events recorded in eventsSent, got ${gaCheck.analytics?.eventsSent?.length}`,
+    );
+    console.log(`   ✓ Verified Google Analytics 4 (${gaCheck.analytics.measurementId}) initialized with ${gaCheck.analytics.eventsSent.length} tracked events.`);
 
     // 8. Assert zero console errors, zero page exceptions, and zero CSP violations
     const cspViolations = await cdp.eval(`window.__cspViolations || []`);
@@ -663,7 +778,7 @@ async function runTests() {
     assert.deepEqual(cdp.pageErrors, [], `Page exceptions detected: ${cdp.pageErrors.join('; ')}`);
     assert.deepEqual(cspViolations, [], `CSP violations detected: ${cspViolations.join('; ')}`);
 
-    console.log('\n✅ ALL E2E TESTS PASSED! (18 categories, 67 hyper-detailed 3D models, 10 languages, 0 console errors, 0 page errors, 0 CSP violations)');
+    console.log('\n✅ ALL E2E TESTS PASSED! (18 categories, 67 hyper-detailed 3D models, 12 languages + Chirp 3 HD Read Aloud + GA4, 0 console errors, 0 page errors, 0 CSP violations)');
   } finally {
     if (cdp) {
       if (cdp.consoleErrors.length) console.error('Console Errors:', cdp.consoleErrors);

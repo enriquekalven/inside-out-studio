@@ -3,14 +3,15 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' blob: data:; media-src 'none'; object-src 'none'; worker-src 'self' blob:; manifest-src 'self'; base-uri 'none'; form-action 'none'">
-  <meta name="referrer" content="no-referrer">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval' https://www.googletagmanager.com; style-src 'self'; img-src 'self' data: blob: https://www.google-analytics.com https://*.google-analytics.com https://www.googletagmanager.com; font-src 'self'; connect-src 'self' blob: data: https://www.google-analytics.com https://*.google-analytics.com https://analytics.google.com https://*.analytics.google.com https://www.googletagmanager.com https://firebaseinstallations.googleapis.com; media-src 'self' data: blob:; object-src 'none'; worker-src 'self' blob:; manifest-src 'self'; base-uri 'none'; form-action 'none'">
+  <meta name="referrer" content="strict-origin-when-cross-origin">
   <meta name="color-scheme" content="light">
   <meta name="theme-color" content="#fff7e8">
   <meta name="description" content="Inside Out Studio — Explode &amp; explore how the world works from the inside out!">
   <title>Inside Out Studio — Explode &amp; explore how the world works from the inside out</title>
   <link rel="icon" href="icon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="styles.css">
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-B1SZ4464HN"></script>
   <script type="module" src="js/main.js"></script>
 </head>
 <body>
@@ -27,19 +28,21 @@
         <select id="lang-select" class="lang-select" aria-label="Select Language">
           <option value="en">🇺🇸 English</option>
           <option value="zh-CN">🇨🇳 中文 (普通话)</option>
-          <option value="zh-HK">🇭🇰 廣東話 (粵語)</option>
+          <option value="zh-HK">🇭🇰 粵語 (廣東話)</option>
           <option value="es">🇪🇸 Español</option>
           <option value="fr">🇫🇷 Français</option>
           <option value="de">🇩🇪 Deutsch</option>
+          <option value="nl">🇳🇱 Nederlands</option>
           <option value="pt">🇧🇷 Português</option>
           <option value="it">🇮🇹 Italiano</option>
           <option value="ja">🇯🇵 日本語</option>
           <option value="ko">🇰🇷 한국어</option>
+          <option value="ar">🇸🇦 العربية</option>
         </select>
       </label>
       <p class="star-total" id="star-total" aria-live="polite">
         <span aria-hidden="true">⭐</span>
-        <span id="star-count">0</span><span class="star-max" id="star-max">/96</span>
+        <span id="star-count">0</span><span class="star-max" id="star-max">/216</span>
         <span class="visually-hidden" id="stars-earned-sr">stars earned</span>
       </p>
       <button id="sound-btn" class="btn btn-icon" type="button" aria-pressed="true">
@@ -56,7 +59,7 @@
       </div>
       <ul id="object-grid" class="object-grid"></ul>
       <div class="home-footer">
-        <p class="small-print" id="home-footer-text">Inside Out Studio • Works offline. No ads, no tracking, nothing leaves this device.</p>
+        <p class="small-print" id="home-footer-text">Inside Out Studio • Interactive 3D engineering lab with 12-language Chirp 3 HD voice narration.</p>
         <button id="reset-btn" class="btn btn-small btn-ghost" type="button">Reset my stars</button>
       </div>
     </section>

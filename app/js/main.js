@@ -8,6 +8,7 @@ import { onCadReady } from './cad_loader.js';
 import { el, clear, $, $$, shuffle, starsNode, prefersReducedMotion } from './ui.js';
 import {
   getLang,
+  getLangDir,
   setLang,
   onLangChange,
   t,
@@ -31,7 +32,22 @@ import {
   stopEngineSound,
   speakText,
   stopSpeaking,
+  getAudioDiagnostics,
 } from './sound.js';
+import {
+  initAnalytics,
+  trackCategorySelect,
+  trackModelSelect,
+  trackModeSwitch,
+  trackPartInspect,
+  trackReadAloud,
+  trackQuizComplete,
+  trackLanguageSwitch,
+} from './analytics.js';
+
+if (typeof window !== 'undefined') {
+  window.__getAudioDiagnostics = getAudioDiagnostics;
+}
 
 const STORAGE_KEY = 'inside_out_studio_progress_v1';
 const CORE_MODES = ['explore', 'find', 'build', 'quiz'];
@@ -178,6 +194,10 @@ function updateModeTabStars() {
 // Static Chrome Localization
 // ============================================================================
 function syncStaticChromeI18n() {
+  if (document.documentElement) {
+    document.documentElement.lang = getLang();
+    document.documentElement.dir = getLangDir();
+  }
   document.title = `${t('brandTitle')} — ${t('homeHeroTitle')}`;
   const setTxt = (sel, val) => {
     const node = $(sel);
@@ -629,6 +649,7 @@ function renderModelSelector(obj) {
 function selectModelVariant(modelId) {
   stopSpeaking();
   const obj = setCategoryModel(state.activeObjectId, modelId);
+  trackModelSelect(obj.id, obj.activeModelId || modelId);
   state.selectedPartId = obj.parts[0].id;
   syncLabHeader(obj);
   renderModelSelector(obj);
@@ -645,6 +666,7 @@ function selectModelVariant(modelId) {
 
 function openObjectLab(objId, initialMode = 'explore') {
   const obj = getObjectById(objId);
+  trackCategorySelect(obj.id);
   state.screen = 'lab';
   state.activeObjectId = obj.id;
   state.selectedPartId = obj.parts[0].id;
@@ -703,6 +725,7 @@ function setMode(mode) {
   setStageMessage('', '');
 
   const obj = getObjectById(state.activeObjectId);
+  trackModeSwitch(mode, obj.id, obj.activeModelId || obj.id);
   if (mode === 'explore') {
     viewer.setShowLabels($('#labels-btn').getAttribute('aria-pressed') === 'true');
     syncExplodeControls(viewer.explodeTarget);
@@ -773,6 +796,8 @@ function renderExplorePanel() {
   const rawPart = obj.parts.find((p) => p.id === state.selectedPartId) || obj.parts[0];
   const part = tPart(rawPart);
   const modelFoundCount = getActiveModelFoundCount(obj);
+  const activeModelKey = obj.activeModelId || obj.models?.[0]?.id || obj.id;
+  const studioKey = `${activeModelKey}__${rawPart.id}`.replace(/[^a-zA-Z0-9_-]/g, '_');
 
   // Part Inspector Card
   const readBtn = el(
@@ -782,7 +807,11 @@ function renderExplorePanel() {
     ` ${t('readAloud')}`,
   );
   readBtn.addEventListener('click', () => {
-    speakText(`${part.name}. ${part.desc} ${t('funFactPrefix', { fact: part.funFact })}`);
+    speakText(`${part.name}. ${part.desc} ${t('funFactPrefix', { fact: part.funFact })}`, {
+      studioKey,
+    });
+    const diag = getAudioDiagnostics();
+    trackReadAloud(getLang(), diag.lastSpeech?.engine || 'chirp3-hd', studioKey);
   });
 
   const explodePartBtn = el(
@@ -898,7 +927,7 @@ function renderFindPanel() {
 
   const speakPromptBtn = el(
     'button',
-    { type: 'button', class: 'btn btn-teal btn-small' },
+    { type: 'button', class: 'btn btn-teal btn-small', id: 'hear-clue-btn' },
     t('hearClue'),
   );
   speakPromptBtn.addEventListener('click', () => {
@@ -1255,7 +1284,7 @@ function renderQuizPanel() {
 
   const readQuestionBtn = el(
     'button',
-    { type: 'button', class: 'btn btn-ghost btn-small' },
+    { type: 'button', class: 'btn btn-ghost btn-small', id: 'read-question-btn' },
     t('readQuestion'),
   );
   readQuestionBtn.addEventListener('click', () => {
@@ -1295,6 +1324,7 @@ function finishQuiz() {
   else if (sess.score >= 3) stars = 2;
 
   awardModeStars(obj.id, 'quiz', stars);
+  trackQuizComplete(obj.id, obj.activeModelId || obj.id, sess.score, total, stars);
   showCelebration({
     title: t('quizCelebTitle', { score: sess.score, total }),
     stars,
@@ -1314,6 +1344,8 @@ function handleStagePartClick(partId) {
   if (state.mode === 'explore') {
     playPop(540);
     state.selectedPartId = partId;
+    const obj = getObjectById(state.activeObjectId);
+    trackPartInspect(obj.id, obj.activeModelId || obj.id, partId);
     markPartExplored(partId);
     viewer.selectPart(partId, true);
     renderExplorePanel();
@@ -1565,7 +1597,8 @@ function initEvents() {
     langSelect.value = getLang();
     langSelect.addEventListener('change', (e) => {
       playPop(560);
-      setLang(e.target.value);
+      const nextCode = setLang(e.target.value);
+      trackLanguageSwitch(nextCode);
     });
   }
 
@@ -1607,7 +1640,8 @@ function initEvents() {
   });
 }
 
-// Initialize on DOMContentLoaded
+// Initialize GA4 telemetry & UI on module evaluation
+initAnalytics();
 initEvents();
 showHome();
 
