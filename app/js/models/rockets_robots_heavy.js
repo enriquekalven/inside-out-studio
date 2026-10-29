@@ -1464,8 +1464,8 @@ export const ROCKETS_CATEGORY = {
   models: ROCKET_MODELS,
 };
 export const ROBOTS_CATEGORY = {
-  id: 'robots', name: 'Robots & Mars Rovers', fullName: 'Iron Man Mark 85, Mars Rovers, Industrial Arms & Quadrupeds', emoji: '🤖', icon: '🤖',
-  tagline: 'Iron Man Mark LXXXV (85) Nano-Tech Armor • NASA Perseverance Mars Rover (Real CAD) • 6-Axis Industrial Robot Arm • Agile Quadruped Robot Dog',
+  id: 'robots', name: 'Robots & Mars Rovers', fullName: 'Marvel Comics Iron Man, Mars Rovers, Industrial Arms & Quadrupeds', emoji: '🤖', icon: '🤖',
+  tagline: 'Marvel Comics Iron Man Powered Armor • NASA Perseverance Mars Rover (Real CAD) • 6-Axis Industrial Robot Arm • Agile Quadruped Robot Dog',
   models: ROBOT_MODELS,
 };
 export const CONSTRUCTION_CATEGORY = {

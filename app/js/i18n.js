@@ -3530,17 +3530,17 @@ const MODEL_NAME_I18N = {
     "ar": "محرك الصواريخ سبيس إكس رابتر بوقود الميثان والأكسجين"
   },
   "iron-man-mark-85": {
-    "zh-CN": "钢铁侠 Mark LXXXV (85) 纳米战甲",
-    "zh-HK": "鐵甲奇俠 Mark LXXXV (85) 納米戰甲",
-    "es": "Armadura Nanotecnológica Iron Man Mark LXXXV (85)",
-    "fr": "Armure Nanotech Iron Man Mark LXXXV (85)",
-    "de": "Iron Man Mark LXXXV (85) Nanotech-Rüstung",
-    "nl": "Iron Man Mark LXXXV Nanotech-harnas",
-    "pt": "Armadura Nanotech Homem de Ferro Mark LXXXV (85)",
-    "it": "Armatura Nanotech Iron Man Mark LXXXV (85)",
-    "ja": "アイアンマン マーク85 (LXXXV) ナノテク・アーマー",
-    "ko": "아이언맨 마크 85 (LXXXV) 나노테크 아머",
-    "ar": "درع آيرون مان مارك 85 بتقنية النانو"
+    "zh-CN": "漫威漫画钢铁侠经典动力战甲",
+    "zh-HK": "Marvel 漫畫鐵甲奇俠經典動力戰甲",
+    "es": "Armadura Motorizada Iron Man (Marvel Comics)",
+    "fr": "Armure Motorisée Iron Man (Marvel Comics)",
+    "de": "Marvel Comics Iron Man Kampfanzug",
+    "nl": "Marvel Comics Iron Man Krachtpantser",
+    "pt": "Armadura Motorizada Homem de Ferro (Marvel Comics)",
+    "it": "Armatura Potenziata Iron Man (Marvel Comics)",
+    "ja": "マーベル・コミック アイアンマン パワードアーマー",
+    "ko": "마블 코믹스 아이언맨 파워드 아머",
+    "ar": "درع آيرون مان الآلي الكلاسيكي (مارفل كوميكس)"
   },
   "mars-perseverance-rover": {
     "zh-CN": "NASA“毅力号”核动力火星探测车",

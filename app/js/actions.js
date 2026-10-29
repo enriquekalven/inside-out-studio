@@ -643,7 +643,43 @@ export function getAction(categoryId, modelId) {
   }
   if (key === 'robots' || key === 'robot') {
     if (mid.includes('iron-man')) {
-      return { ...ACTIONS.airplane, id: 'robots', verb: 'Repulsor Flight!', stopVerb: 'Land Armor', emoji: '🦾', tab: 'Repulsor Flight!' };
+      return {
+        ...ACTIONS.airplane,
+        id: 'robots',
+        verb: 'Repulsor Flight!',
+        stopVerb: 'Land Armor',
+        emoji: '🦾',
+        tab: 'Repulsor Flight!',
+        hint: 'to ignite boot-jet turbines, fly supersonic & fire the Chest Unibeam',
+        keys: { ...KEYS_PITCH, shift: 'boost', b: 'boost' },
+        taps: { u: 'unibeam', f: 'unibeam', g: 'unibeam', ' ': 'unibeam', l: 'lights' },
+        hud: [
+          { id: 'mph', label: 'MPH', big: true },
+          { id: 'mach', label: 'MACH', pill: true },
+          { id: 'altitude', label: 'ALT FT' },
+          { id: 'unibeamBadge', label: 'UNIBEAM', pill: true },
+          { id: 'throttleBar', label: 'RT CORE OUTPUT %', bar: true, max: 100 },
+        ],
+        controls: [
+          hold('left', '↶ Bank L', 'Bank Left (A / ←)', 'left'),
+          hold('right', '↷ Bank R', 'Bank Right (D / →)', 'right'),
+          hold('up', '🔥 Boot Jets', 'Ignite Boot Turbines (W)', 'up', true),
+          hold('down', '🛑 Airbrakes', 'Deploy Dorsal Airbrakes (S)', 'down'),
+          hold('pitchUp', '⬆️ Climb', 'Climb Higher (↑)', 'pitchUp'),
+          hold('pitchDown', '⬇️ Dive', 'Dive Lower (↓)', 'pitchDown'),
+          hold('boost', '⚡ Overdrive', 'Repulsor Overdrive Mach 2+ (Shift / B)', 'boost'),
+          tap('unibeam', '💥 Unibeam', 'Fire Chest Unibeam Blast (U / Space)', 'unibeam'),
+        ],
+        checklist: [
+          { id: 'takeoff', label: 'Ignite boot-jet turbines & lift into repulsor hover' },
+          { id: 'supersonic', label: 'Engage Overdrive & break Mach 1 supersonic flight' },
+          { id: 'unibeam', label: 'Fire the Multi-Spectrum Chest Unibeam' },
+        ],
+        celebrate: {
+          title: 'Golden Avenger Airborne!',
+          text: 'Boot-jet hover, supersonic repulsor flight, and full-power Unibeam blast mastered!',
+        },
+      };
     }
     if (mid.includes('kuka')) {
       return {
