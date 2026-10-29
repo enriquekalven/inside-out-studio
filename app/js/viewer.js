@@ -600,10 +600,12 @@ export class StageViewer {
       if (rec.localBox && !rec.localBox.isEmpty()) fullBox.union(rec.localBox);
     }
     if (!fullBox.isEmpty()) {
-      this.stageFloorGroup.position.y = Math.min(-0.48, fullBox.min.y - 0.008);
+      this.baseStageFloorY = Math.min(-0.48, fullBox.min.y - 0.008);
     } else {
-      this.stageFloorGroup.position.y = -0.57;
+      this.baseStageFloorY = -0.57;
     }
+    this.explodedStageFloorY = this.baseStageFloorY;
+    this.stageFloorGroup.position.y = this.baseStageFloorY;
     this._fitStageToBox(fullBox);
     this._computeExplodeFraming(fullBox);
 
@@ -622,10 +624,14 @@ export class StageViewer {
 
     const expBounds = new THREE.Box3();
     const pPt = new THREE.Vector3();
+    let minExplodedY = this.baseStageFloorY;
     for (const rec of this.partRecords.values()) {
       const [ox, oy, oz] = rec.def.explodeOffset || [0, 0, 0];
       pPt.set(rec.center.x + ox, rec.center.y + oy, rec.center.z + oz);
       expBounds.expandByPoint(pPt);
+      if (rec.localBox && !rec.localBox.isEmpty()) {
+        minExplodedY = Math.min(minExplodedY, rec.localBox.min.y + oy - 0.04);
+      }
       if (!isMultiCarTrain && rec.localBox && !rec.localBox.isEmpty()) {
         const bMin = rec.localBox.min;
         const bMax = rec.localBox.max;
@@ -633,6 +639,7 @@ export class StageViewer {
         expBounds.expandByPoint(pPt.set(bMax.x + ox, bMax.y + oy, bMax.z + oz));
       }
     }
+    this.explodedStageFloorY = Math.min(this.baseStageFloorY, minExplodedY);
     if (expBounds.isEmpty()) return;
 
     const expCenter = new THREE.Vector3();
@@ -758,7 +765,10 @@ export class StageViewer {
     for (const stw of this.steeringWheels) stw.rotation.x = 0;
 
     if (this.driveMode && this.currentObject) {
-      if (this.explodeTarget > 0) this.setExplode(0, true);
+      if (this.explodeTarget > 0 || this.explodeCurrent > 0.0001 || this.perPartMode) {
+        this.setExplode(0, true);
+      }
+      this.rootGroup.updateMatrixWorld(true);
       this.sim = createActionSim(
         this.currentObject.id || 'car',
         this.currentObject.activeModelId || '',
@@ -993,10 +1003,17 @@ export class StageViewer {
   }
 
   _updatePartPositions() {
+    let maxExplode = 0;
     for (const rec of this.partRecords.values()) {
       const [ox, oy, oz] = rec.explodeOffset || rec.def.explodeOffset;
       const t = rec.currentExplode;
+      if (t > maxExplode) maxExplode = t;
       rec.group.position.set(ox * t, oy * t, oz * t);
+    }
+    if (!this.driveMode && typeof this.baseStageFloorY === 'number') {
+      const targetFloorY = this.explodedStageFloorY ?? this.baseStageFloorY;
+      this.stageFloorGroup.position.y =
+        this.baseStageFloorY + (targetFloorY - this.baseStageFloorY) * maxExplode;
     }
   }
 

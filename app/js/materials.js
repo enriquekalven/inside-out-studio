@@ -1495,16 +1495,16 @@ export function buildSculptedCarBody(
  * Note: Three.js LatheGeometry maps U around the circumference (0..1) and V along the profile (nose to tail).
  */
 export function airlinerFuselageTexture(primaryHex = '#0284c7', accentHex = '#38bdf8', bodyHex = '#f8fafc') {
-  return getCachedTexture(`airliner_fuselage_v2_${primaryHex}_${accentHex}`, 512, 512, (ctx, w, h) => {
+  return getCachedTexture(`airliner_fuselage_v3_${primaryHex}_${accentHex}`, 512, 512, (ctx, w, h) => {
     // Base gloss airliner white/composite skin
     ctx.fillStyle = bodyHex;
     ctx.fillRect(0, 0, w, h);
 
     // Note on Three.js LatheGeometry with rot = [0, 0, -Math.PI / 2]:
     // Y_world = -r * sin(2π * u), Z_world = r * cos(2π * u)
-    //   u = 0.00 / 1.00 -> Port side (+Z)
+    //   u = 0.00 / 1.00 -> Starboard side (+Z)
     //   u = 0.25        -> Belly (-Y)
-    //   u = 0.50        -> Starboard side (-Z)
+    //   u = 0.50        -> Port side (-Z)
     //   u = 0.75        -> Crown / Rooftop (+Y)
 
     // Lower belly metallic gray aerodynamic fairing centered at u = 0.25 (-Y bottom)
@@ -1534,11 +1534,25 @@ export function airlinerFuselageTexture(primaryHex = '#0284c7', accentHex = '#38
       const wx = w * winU;
       const cx = w * cheatU;
 
-      // Dual Livery Cheatline Stripes running along port & starboard flanks
+      // Dual Swept Livery Cheatline Stripes with aerodynamic tapered speed-points at nose & tail
       ctx.fillStyle = primaryHex;
-      ctx.fillRect(cx - 5, h * 0.14, 10, h * 0.72);
+      ctx.beginPath();
+      ctx.moveTo(cx - 5 * dirSign, h * 0.08);
+      ctx.lineTo(cx + 5 * dirSign, h * 0.15);
+      ctx.lineTo(cx + 5 * dirSign, h * 0.85);
+      ctx.lineTo(cx - 5 * dirSign, h * 0.91);
+      ctx.closePath();
+      ctx.fill();
+
+      const ax = cx + dirSign * 7.5;
       ctx.fillStyle = accentHex;
-      ctx.fillRect(cx + dirSign * 7 - 2, h * 0.16, 4, h * 0.68);
+      ctx.beginPath();
+      ctx.moveTo(ax - 2 * dirSign, h * 0.12);
+      ctx.lineTo(ax + 2 * dirSign, h * 0.17);
+      ctx.lineTo(ax + 2 * dirSign, h * 0.83);
+      ctx.lineTo(ax - 2 * dirSign, h * 0.88);
+      ctx.closePath();
+      ctx.fill();
 
       // Forward & Aft Passenger Entry Doors + Overwing Emergency Exit Doors on the SIDE flank
       for (const doorV of [0.24, 0.48, 0.54, 0.78]) {

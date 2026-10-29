@@ -141,24 +141,23 @@ function buildDetailedTurbofanPair(
     );
     cone(g, radius * 0.28, 0.34, 20, darkTi, [xBack - 0.22, y, z], [0, 0, Math.PI / 2]);
 
-    // 5. Swept Aerodynamic Wing Pylon Strut + 6 Titanium Shear Bolts + FADEC Loom (tucked cleanly under wing leading edge)
-    box(
-      g,
-      length * 0.68,
-      0.11,
-      0.058,
-      alu,
-      [x - 0.08, y + radius + 0.015, z],
-      [0, 0, -0.1],
-    );
+    // 5. Swept Aerodynamic Wing Pylon Fairing + 6 Titanium Shear Bolts (blends nacelle crown smoothly into swept wing)
+    const pylonProfile = [
+      [xFront - length * 0.14, y + radius * 0.86],
+      [x + length * 0.08, y + radius * 1.18],
+      [x - length * 0.56, y + radius * 1.16],
+      [x - length * 0.72, y + radius * 0.72],
+      [xBack + length * 0.06, y + radius * 0.76],
+    ];
+    extrudeProfile(g, pylonProfile, 0.056, alu, [0, 0, z - 0.028], [0, 0, 0], 0.008);
     buildHexBoltArray(
       g,
       [
-        [x + 0.12, y + radius + 0.045, z + side * 0.036],
-        [x - 0.06, y + radius + 0.045, z + side * 0.036],
-        [x - 0.24, y + radius + 0.045, z + side * 0.036],
+        [x + 0.06, y + radius * 1.04, z + side * 0.034],
+        [x - 0.08, y + radius * 1.04, z + side * 0.034],
+        [x - 0.22, y + radius * 1.02, z + side * 0.034],
       ],
-      { radius: 0.009, height: 0.012, finish: 'gold', rot: [Math.PI / 2, 0, 0] },
+      { radius: 0.008, height: 0.011, finish: 'gold', rot: [Math.PI / 2, 0, 0] },
     );
   }
 }
@@ -744,8 +743,8 @@ function buildSweptAirlinerWings(
       );
     }
 
-    // 5. Port (Red, Z > 0) and Starboard (Green, Z < 0) LED Wingtip Navigation Lights
-    const navColor = side > 0 ? 0xef4444 : 0x22c55e;
+    // 5. Port (Red, Z < 0) and Starboard (Green, Z > 0) LED Wingtip Navigation Lights
+    const navColor = side < 0 ? 0xef4444 : 0x22c55e;
     sphere(
       g,
       0.018,
@@ -1065,7 +1064,7 @@ function buildBoeing737Max() {
       id: 'swept-wings-spars',
       name: 'Supercritical Swept Wings, Wing-Box Spars & Flap Fairings',
       category: 'Aerodynamics',
-      isOuter: false,
+      isOuter: true,
       explodeOffset: [0, -0.55, 1.95],
       desc: 'Tapered 25-degree swept supercritical airfoil wings (35.9 m wingspan scale) with aluminum I-beam spars, wing-to-body belly fairing, and 8 aerodynamic flap-track canoes.',
       funFact: 'Boeing wings are so strong and flexible they can bend upward almost 12 feet in severe turbulence without cracking!',
@@ -1494,7 +1493,7 @@ function buildAirbusA350() {
       id: 'morphing-carbon-wings',
       name: 'Aero-Elastic Carbon Wings, Spars & Curved Sharklets',
       category: 'Aerodynamics',
-      isOuter: false,
+      isOuter: true,
       explodeOffset: [0, -0.5, 2.05],
       desc: '105-foot carbon-fiber wings with internal carbon spars, flap-track fairings, and graceful upward-curving Sharklet wingtips.',
       funFact: 'Each single carbon wing skin is 105 feet long—the largest single-piece carbon-fiber structures ever manufactured in aviation!',
@@ -1924,9 +1923,16 @@ function buildF22RaptorStealth() {
       funFact: 'The pneumatic bay doors snap open, extend the trapeze cradle into the airstream, and slam shut in less than one second!',
       build(g) {
         rbox(g, 1.32, 0.09, 0.68, 0.015, tiBulkhead, [0.15, -0.11, 0]);
+        const bodyWhite = carPaint(0xf8fafc);
+        const inertBlue = carPaint(0x2563eb);
+        const warnYellow = carPaint(0xfacc15);
         for (const z of [-0.22, -0.07, 0.07, 0.22]) {
-          cyl(g, 0.028, 0.028, 1.08, 14, carPaint(0xf8fafc), [0.15, -0.10, z], [0, 0, Math.PI / 2]);
-          cone(g, 0.028, 0.12, 14, stealthDark, [0.74, -0.10, z], [0, 0, -Math.PI / 2]);
+          cyl(g, 0.028, 0.028, 1.08, 14, bodyWhite, [0.15, -0.10, z], [0, 0, Math.PI / 2]);
+          cyl(g, 0.029, 0.029, 0.045, 14, inertBlue, [0.46, -0.10, z], [0, 0, Math.PI / 2]);
+          cyl(g, 0.029, 0.029, 0.035, 14, warnYellow, [0.32, -0.10, z], [0, 0, Math.PI / 2]);
+          cone(g, 0.028, 0.13, 14, stealthDark, [0.75, -0.10, z], [0, 0, -Math.PI / 2]);
+          box(g, 0.11, 0.085, 0.008, stealthDark, [-0.32, -0.10, z]);
+          box(g, 0.11, 0.008, 0.085, stealthDark, [-0.32, -0.10, z]);
         }
         for (const side of [-1, 1]) {
           box(g, 1.30, 0.018, 0.30, stealthGrey, [0.15, -0.18, side * 0.34], [side * 0.38, 0, 0]);
@@ -1938,7 +1944,7 @@ function buildF22RaptorStealth() {
       id: 'diamond-delta-wings',
       name: 'Clipped Diamond-Delta Titanium-Carbon Wings, Leading-Edge Flaps & Flaperons',
       category: 'Aerodynamics',
-      isOuter: false,
+      isOuter: true,
       explodeOffset: [0, -0.35, 2.05],
       desc: 'Planform-aligned 42-degree swept clipped-delta wings where every leading and trailing edge shares the exact same radar deflection angle.',
       funFact: 'This rule is called "planform alignment"—even the tiny sawtooth edges on the inspection panels follow the exact same angle!',
@@ -1975,8 +1981,8 @@ function buildF22RaptorStealth() {
           for (const fz of [0.88, 1.38]) {
             rbox(g, 0.26, 0.026, 0.034, 0.008, stealthDark, [-1.05, 0.02, side * fz]);
           }
-          // Wingtip stealth formation LED strip
-          box(g, 0.36, 0.014, 0.022, emissiveMat(side > 0 ? 0xef4444 : 0x22c55e, 1.5), [-1.06, 0.032, side * 1.985]);
+          // Port (-Z = Red) & Starboard (+Z = Green) wingtip stealth navigation LED strip
+          box(g, 0.36, 0.014, 0.022, emissiveMat(side < 0 ? 0xef4444 : 0x22c55e, 1.5), [-1.06, 0.032, side * 1.985]);
         }
       },
     },
@@ -2262,18 +2268,18 @@ function buildLockheedSR71Blackbird() {
       id: 'blended-delta-wing-nacelles',
       name: 'Corrugated Titanium Delta Wings & Wing-Mounted J58 Nacelle Shells',
       category: 'Aerodynamics & Thermal',
-      isOuter: false,
+      isOuter: true,
       explodeOffset: [0, 0.85, 1.85],
       desc: 'Inboard and outboard delta wings with chordwise thermal-expansion corrugations cradling two 5.5-foot-diameter cylindrical engine nacelles.',
       funFact: 'The wing skins are corrugated like a washboard so the titanium can expand several inches at 600°F without buckling or warping in flight!',
       build(g) {
         for (const side of [-1, 1]) {
-          // Inboard biconvex supersonic delta wing connecting central fuselage to J58 nacelle
+          // Inboard biconvex supersonic delta wing blending central cobra chine seamlessly into J58 nacelle
           buildLoftedAirfoilWing(
             g,
             [
-              { le: [0.42, 0.04, side * 0.34], te: [-1.88, 0.04, side * 0.32], thickness: 0.052, camber: 0.004 },
-              { le: [-0.38, 0.04, side * 0.92], te: [-1.86, 0.04, side * 0.92], thickness: 0.046, camber: 0.003 },
+              { le: [0.58, 0.045, side * 0.28], te: [-1.88, 0.045, side * 0.28], thickness: 0.058, camber: 0.004 },
+              { le: [-0.36, 0.04, side * 0.92], te: [-1.86, 0.04, side * 0.92], thickness: 0.048, camber: 0.003 },
             ],
             srBlack,
             10,
@@ -2314,6 +2320,8 @@ function buildLockheedSR71Blackbird() {
             [0, 0.04, nz],
           );
           torus(g, 0.21, 0.018, srCharcoal, [0.48, 0.04, nz], [0, Math.PI / 2, 0]);
+          // Flush high-temp quartz wingtip navigation light (Port -Z = Red, Starboard +Z = Green)
+          box(g, 0.22, 0.012, 0.018, emissiveMat(side < 0 ? 0xef4444 : 0x22c55e, 1.6), [-1.56, 0.032, side * 1.762]);
         }
       },
     },
@@ -2599,7 +2607,7 @@ function buildCessna172Skyhawk() {
         // 2. Sculpted Drooped Hoerner Wingtips, Strobe/Nav Lights, Fuel Filler Caps & Airfoil Lift Struts
         for (const side of [-1, 1]) {
           rbox(g, 0.50, 0.042, 0.12, 0.018, crimson, [0.11, 0.52, side * 1.98], [side * 0.22, 0, 0]);
-          sphere(g, 0.022, 14, emissiveMat(side > 0 ? 0xef4444 : 0x22c55e, 1.6), [0.34, 0.525, side * 2.02]);
+          sphere(g, 0.022, 14, emissiveMat(side < 0 ? 0xef4444 : 0x22c55e, 1.6), [0.34, 0.525, side * 2.02]);
           // Chrome wing-top fuel tank filler caps
           cyl(g, 0.026, 0.026, 0.012, 14, chromeMat(), [0.22, 0.562, side * 0.74]);
           // Streamlined Airfoil-Section Diagonal Lift Strut + Upper/Lower Fairing Cuffs
@@ -2796,15 +2804,15 @@ function buildCessna172Skyhawk() {
           material: tintGlass,
         });
 
-        // 2. Contoured Pilot/Co-Pilot Side Door Windows & Rear Passenger Windows (conformal on cabin flanks)
+        // 2. Contoured Pilot/Co-Pilot Side Door Windows & Rear Passenger Windows (conformal on vertical cabin doors)
         for (const side of [-1, 1]) {
           buildConformalLoftPatch(g, cessnaFuselageStations, {
             xFront: 0.36,
             xBack: -0.04,
-            angBottomFront: side * 0.92,
-            angTopFront: side * 0.42,
-            angBottomBack: side * 0.92,
-            angTopBack: side * 0.42,
+            angBottomFront: side * 1.44,
+            angTopFront: side * 0.86,
+            angBottomBack: side * 1.44,
+            angTopBack: side * 0.86,
             offset: 0.0045,
             uSteps: 10,
             vSteps: 8,
@@ -2813,10 +2821,10 @@ function buildCessna172Skyhawk() {
           buildConformalLoftPatch(g, cessnaFuselageStations, {
             xFront: -0.09,
             xBack: -0.42,
-            angBottomFront: side * 0.88,
-            angTopFront: side * 0.44,
-            angBottomBack: side * 0.84,
-            angTopBack: side * 0.46,
+            angBottomFront: side * 1.40,
+            angTopFront: side * 0.88,
+            angBottomBack: side * 1.36,
+            angTopBack: side * 0.90,
             offset: 0.0045,
             uSteps: 10,
             vSteps: 8,

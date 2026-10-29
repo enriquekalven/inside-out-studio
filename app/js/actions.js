@@ -40,17 +40,17 @@ export const ACTIONS = {
   },
   airplane: {
     id: 'flight', verb: 'Take It for a Flight!', stopVerb: 'Land & Stop', emoji: '✈️', tab: 'Take It for a Flight!',
-    hint: 'to take off', keys: KEYS_PITCH, taps: { l: 'lights', g: 'gear' },
+    hint: 'to spool up the turbofans, rotate, retract gear & cruise at Mach 0.8', keys: KEYS_PITCH, taps: { l: 'lights', g: 'gear' },
     hud: [
-      { id: 'airspeed', label: 'KT', big: true }, { id: 'altitude', label: 'Alt ft' },
-      { id: 'vs', label: 'V/S fpm' }, { id: 'heading', label: 'HDG' },
-      { id: 'throttle', label: 'Throttle', bar: true, max: 100 },
+      { id: 'airspeed', label: 'KT', big: true }, { id: 'mach', label: 'Mach' },
+      { id: 'altitude', label: 'Alt ft' }, { id: 'vs', label: 'V/S fpm' },
+      { id: 'throttle', label: 'N1 Thrust %', bar: true, max: 100 },
     ],
     controls: [
       hold('left', '↶ Bank L', 'Bank & Yaw Left (A / ←)', 'left'),
       hold('right', '↷ Bank R', 'Bank & Yaw Right (D / →)', 'right'),
       hold('up', '🟢 Throttle', 'Throttle Up (W)', 'up', true),
-      hold('down', '🔴 Brake', 'Idle / Brakes (S)', 'down'),
+      hold('down', '🔴 Brake', 'Idle / Wheel Brakes (S)', 'down'),
       hold('pitchUp', '⬆️ Climb', 'Pitch Up (↑)', 'pitchUp'),
       hold('pitchDown', '⬇️ Descend', 'Pitch Down (↓)', 'pitchDown'),
       tap('gear', '🛞 Gear', 'Landing Gear Up/Down (G)', 'gear'),
@@ -461,6 +461,102 @@ export function getAction(categoryId, modelId) {
       return { ...ACTIONS.watches, verb: 'Swing & Chime!', emoji: '🕰️', tab: 'Swing & Chime!' };
     }
     return ACTIONS.watches;
+  }
+  if (key === 'airplane' || key === 'airplanes') {
+    if (mid.includes('cessna')) {
+      return {
+        ...ACTIONS.airplane,
+        emoji: '🛩️',
+        hint: 'to spin up the 180-HP Lycoming prop, cycle Para-Lift flaps & take off',
+        taps: { l: 'lights', f: 'flaps', g: 'flaps' },
+        hud: [
+          { id: 'airspeed', label: 'KT', big: true },
+          { id: 'flapsBadge', label: 'Flaps' },
+          { id: 'altitude', label: 'Alt ft' },
+          { id: 'vs', label: 'V/S fpm' },
+          { id: 'rpm', label: 'Prop RPM', bar: true, max: 2700 },
+        ],
+        controls: [
+          hold('left', '↶ Bank L', 'Rudder & Aileron Left (A / ←)', 'left'),
+          hold('right', '↷ Bank R', 'Rudder & Aileron Right (D / →)', 'right'),
+          hold('up', '🟢 Throttle', 'Vernier Throttle In (W)', 'up', true),
+          hold('down', '🔴 Idle / Brake', 'Throttle Idle & Toe Brakes (S)', 'down'),
+          hold('pitchUp', '⬆️ Pull Yoke', 'Elevator Nose Up / Climb (↑)', 'pitchUp'),
+          hold('pitchDown', '⬇️ Push Yoke', 'Elevator Nose Down / Glide (↓)', 'pitchDown'),
+          tap('flaps', '🪶 Flaps', 'Cycle Para-Lift Flaps 0°/10°/20°/30° (F / G)', 'flaps'),
+          tap('lights', '💡 Lights', 'Nav Strobes & Wing Landing LED (L)', 'lights'),
+        ],
+        checklist: [
+          { id: 'takeoff', label: 'Rotate at 55 KT and lift off from the runway' },
+          { id: 'flaps', label: 'Lower Para-Lift slotted flaps (10°–30°)' },
+          { id: 'land', label: 'Touch down smoothly on the spring-steel gear' },
+        ],
+        celebrate: { title: 'Solo Checkride Passed!', text: '55-knot rotation, Para-Lift flap approach, and a butter-soft Skyhawk landing!' },
+      };
+    }
+    if (mid.includes('sr71') || mid.includes('blackbird')) {
+      return {
+        ...ACTIONS.airplane,
+        emoji: '🦅',
+        hint: 'to light TEB afterburners, retract J58 inlet spikes & streak to Mach 3.3',
+        hud: [
+          { id: 'airspeed', label: 'KT', big: true },
+          { id: 'mach', label: 'Mach' },
+          { id: 'altitude', label: 'Alt ft' },
+          { id: 'spike', label: 'J58 Spike' },
+          { id: 'throttle', label: 'J58 Thrust %', bar: true, max: 100 },
+        ],
+        controls: [
+          hold('left', '↶ Bank L', 'Elevon Roll Left (A / ←)', 'left'),
+          hold('right', '↷ Bank R', 'Elevon Roll Right (D / →)', 'right'),
+          hold('up', '🟢 J58 Throttle', 'Advance JP-7 Throttle (W)', 'up', true),
+          hold('down', '🪂 Brake / Chute', 'Idle & Deploy Drag Chute on Rollout (S)', 'down'),
+          hold('pitchUp', '⬆️ Climb', 'Climb Toward 85,000 ft (↑)', 'pitchUp'),
+          hold('pitchDown', '⬇️ Descend', 'Let Down from Stratosphere (↓)', 'pitchDown'),
+          hold('boost', '🔥 TEB Burner', 'Triethylborane Afterburner to Mach 3.3 (Shift / B)', 'boost'),
+          tap('gear', '🛞 Gear', 'Titanium Nitrogen Gear Up/Down (G)', 'gear'),
+          tap('lights', '💡 Lights', 'Nav & Beacon Strobes (L)', 'lights'),
+        ],
+        checklist: [
+          { id: 'takeoff', label: 'Rotate at 180 KT & retract nitrogen landing gear' },
+          { id: 'mach3', label: 'Break Mach 3.0 with TEB afterburner & translating spikes' },
+          { id: 'land', label: 'Touch down and deploy braking drag chute' },
+        ],
+        celebrate: { title: 'Habu Mission Complete!', text: 'Mach 3.3+ in the deep-indigo stratosphere with translating J58 inlet spikes!' },
+      };
+    }
+    if (mid.includes('f22') || mid.includes('raptor')) {
+      return {
+        ...ACTIONS.airplane,
+        emoji: '🦅',
+        hint: 'to supercruise past Mach 1.8, vector 2D nozzles & light twin F119 afterburners',
+        hud: [
+          { id: 'airspeed', label: 'KT', big: true },
+          { id: 'mach', label: 'Mach' },
+          { id: 'altitude', label: 'Alt ft' },
+          { id: 'vs', label: 'V/S fpm' },
+          { id: 'throttle', label: 'F119 Power %', bar: true, max: 100 },
+        ],
+        controls: [
+          hold('left', '↶ Roll L', 'Flaperon Roll Left (A / ←)', 'left'),
+          hold('right', '↷ Roll R', 'Flaperon Roll Right (D / →)', 'right'),
+          hold('up', '🟢 Supercruise', 'Advance Twin F119 Dry Thrust (W)', 'up', true),
+          hold('down', '🔴 Idle / Brake', 'Speedbrake Rudder Flare & Wheel Brakes (S)', 'down'),
+          hold('pitchUp', '⬆️ Vector Up', '2D Thrust-Vector Pitch Up (↑)', 'pitchUp'),
+          hold('pitchDown', '⬇️ Vector Down', '2D Thrust-Vector Pitch Down (↓)', 'pitchDown'),
+          hold('boost', '🔥 Afterburner', 'Full F119 Afterburner to Mach 2.25 (Shift / B)', 'boost'),
+          tap('gear', '🛞 Gear', 'Stealth Sawtooth Gear Up/Down (G)', 'gear'),
+          tap('lights', '💡 Lights', 'Stealth Formation & Nav Lights (L)', 'lights'),
+        ],
+        checklist: [
+          { id: 'takeoff', label: 'Take off & retract sawtooth stealth landing gear' },
+          { id: 'supercruise', label: 'Supercruise past Mach 1.5 (or Mach 2.2 in burner!)' },
+          { id: 'land', label: 'Land back on the runway' },
+        ],
+        celebrate: { title: 'Raptor Air Dominance!', text: 'Supersonic supercruise, 2D thrust-vectoring agility, and a crisp landing!' },
+      };
+    }
+    return ACTIONS.airplane;
   }
   if (key === 'car' || key === 'cars') {
     if (/tesla|cybertruck|rivian/i.test(mid)) {

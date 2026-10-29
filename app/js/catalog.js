@@ -57,7 +57,7 @@ export const OBJECTS = [
     name: 'Airplanes & Jets',
     fullName: 'Airliners, Stealth Jets & Bush Planes',
     emoji: '✈️',
-    tagline: 'Boeing 737 MAX 9 • Airbus A350-1000 • Lockheed F-22 Raptor • Cessna 172 Skyhawk',
+    tagline: 'Boeing 737 MAX 9 • Airbus A350-1000 • Lockheed F-22 Raptor • SR-71 Blackbird • Cessna 172 Skyhawk',
     models: AIRPLANE_MODELS,
   }),
   createCategory({
