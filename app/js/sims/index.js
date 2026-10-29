@@ -18,6 +18,7 @@ import {
   HorologySim,
   SurfaceShipSim,
   ExcavatorCraneSim,
+  RoboticsSim,
 } from './tech_sims.js';
 
 const SIM_BY_CATEGORY = {
@@ -49,8 +50,8 @@ const SIM_BY_CATEGORY = {
   helicopters: HeliSim,
   ship: SurfaceShipSim,
   ships: SurfaceShipSim,
-  robot: DriveSim,
-  robots: DriveSim,
+  robot: RoboticsSim,
+  robots: RoboticsSim,
   construction: ExcavatorCraneSim,
   watch: HorologySim,
   watches: HorologySim,
@@ -96,5 +97,6 @@ export {
   HorologySim,
   SurfaceShipSim,
   ExcavatorCraneSim,
+  RoboticsSim,
 };
 

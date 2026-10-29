@@ -346,10 +346,12 @@ function buildIPhone16Ultramarine() {
       name: 'MagSafe Wireless Charging Coil & Alignment Magnet',
       category: 'Wireless Charging',
       isOuter: false,
-      explodeOffset: [0, -0.1, -1.1],
-      desc: '25W Qi2 wireless power receiver coil and NFC tap-to-pay antenna.',
+      explodeOffset: [-0.55, -0.1, -1.1],
+      desc: '25W Qi2 wireless power receiver coil, nanocrystalline ferrite shielding disc, and NFC tap-to-pay antenna.',
       funFact: 'The NFC ring at the top of the phone powers itself from the checkout terminal’s radio waves so transit cards work even when the battery is low!',
       build(g) {
+        cyl(g, 0.49, 0.49, 0.016, 32, mat(0x18181b, { roughness: 0.42, metalness: 0.35 }), [0, -0.12, -0.062], [Math.PI / 2, 0, 0]);
+        cyl(g, 0.15, 0.15, 0.022, 24, copper, [0, -0.12, -0.05], [Math.PI / 2, 0, 0]);
         torus(g, 0.46, 0.04, copper, [0, -0.12, -0.05]);
         torus(g, 0.32, 0.03, copper, [0, -0.12, -0.05]);
       },
@@ -437,9 +439,9 @@ function buildIPhone16Ultramarine() {
         distractors: ['super-retina-oled', 'magsafe-array', 'usbc-acoustic-chamber'],
       },
       {
-        q: 'How can a repair technician unglue the iPhone 16 battery in 60 seconds without pulling sticky tape?',
-        correctId: 'ionic-release-battery',
-        distractors: ['ultramarine-aluminum-chassis', 'truedepth-module', 'camera-control-sensor'],
+        q: 'Which sapphire side button combines a mechanical click switch, force sensor, and capacitive zoom slider?',
+        correctId: 'camera-control-sensor',
+        distractors: ['ultramarine-aluminum-chassis', 'truedepth-module', 'a18-bionic-board'],
       },
     ),
   };
@@ -509,10 +511,12 @@ function buildGooglePixel9ProXL() {
       name: 'Two-Way Qi Wireless Charging & Reverse Share Coil',
       category: 'Wireless Charging',
       isOuter: false,
-      explodeOffset: [0, -0.15, -1.15],
-      desc: 'Bidirectional copper induction coil that both receives wireless power and transmits power outward to accessories.',
+      explodeOffset: [-0.55, -0.15, -1.15],
+      desc: 'Bidirectional copper induction coil and nanocrystalline ferrite shielding disc that both receives wireless power and transmits power outward to accessories.',
       funFact: 'A thin black sheet of nanocrystalline ferrite behind the coil shields the battery from magnetic eddy currents!',
       build(g) {
+        cyl(g, 0.49, 0.49, 0.016, 32, mat(0x18181b, { roughness: 0.42, metalness: 0.35 }), [0, -0.22, -0.062], [Math.PI / 2, 0, 0]);
+        cyl(g, 0.15, 0.15, 0.022, 24, copper, [0, -0.22, -0.05], [Math.PI / 2, 0, 0]);
         torus(g, 0.46, 0.042, copper, [0, -0.22, -0.05]);
         torus(g, 0.3, 0.032, copper, [0, -0.22, -0.05]);
       },
@@ -674,11 +678,14 @@ function buildSamsungS24Ultra() {
       name: 'Fast Wireless Charging 2.0 & MST/NFC Coil',
       category: 'Wireless Charging',
       isOuter: false,
-      explodeOffset: [0, -0.1, -1.15],
-      desc: 'Multi-layer copper induction coil for 15W wireless charging and Wireless PowerShare.',
+      explodeOffset: [-0.55, -0.1, -1.15],
+      desc: 'Multi-layer copper induction coil and nanocrystalline ferrite magnetic shield for 15W wireless charging and Wireless PowerShare.',
       funFact: 'You can charge a Galaxy Watch or Galaxy Buds right on the back of the phone while traveling!',
       build(g) {
+        cyl(g, 0.49, 0.49, 0.016, 32, mat(0x18181b, { roughness: 0.42, metalness: 0.35 }), [0, -0.15, -0.062], [Math.PI / 2, 0, 0]);
+        cyl(g, 0.15, 0.15, 0.022, 24, copper, [0, -0.15, -0.05], [Math.PI / 2, 0, 0]);
         torus(g, 0.46, 0.04, copper, [0, -0.15, -0.05]);
+        torus(g, 0.31, 0.03, copper, [0, -0.15, -0.05]);
       },
     },
     {
@@ -706,7 +713,7 @@ function buildSamsungS24Ultra() {
       category: 'Stylus & Air Actions',
       isOuter: false,
       explodeOffset: [-1.15, -1.95, 0.45],
-      desc: 'Clicks out of the bottom-left corner with a 0.7mm tip (4,096 pressure levels), gyroscope wand sensors, and a supercapacitor that charges in segundos!',
+      desc: 'Clicks out of the bottom-left corner with a 0.7mm tip (4,096 pressure levels), gyroscope wand sensors, and a supercapacitor that charges in seconds!',
       funFact: 'You can wave the S-Pen in the air like a magic wand to snap group photos or flip presentation slides from across the room!',
       build(g) {
         cyl(g, 0.048, 0.042, 1.52, 16, spenYellow, [-0.66, -0.82, 0.01]);
@@ -936,8 +943,8 @@ function buildSamsungZFold6() {
         distractors: ['split-dual-batteries', 'triple-rear-camera-island', 'zfold-haptic-speakers'],
       },
       {
-        q: 'Why does the Galaxy Z Fold 6 use TWO separate batteries instead of one big battery across the middle?',
-        correctId: 'split-dual-batteries',
+        q: 'Which geared mechanical spine folds the tablet flat in half while sweeping out dust?',
+        correctId: 'dual-rail-flex-hinge',
         distractors: ['cover-screen-63', 'under-display-camera', 'wing-vapor-chamber'],
       },
     ),
@@ -1784,8 +1791,12 @@ function buildSpaceXRaptorRocket() {
       desc: 'Violet-blue column of 3,300 m/s exhaust gas featuring standing shockwave intersections called "Mach Diamonds"!',
       funFact: 'Mach diamonds form when supersonic rocket exhaust exits at a slightly different pressure than the surrounding air, bouncing shockwaves back and forth!',
       build(g) {
-        const plumeMat = new THREE.MeshBasicMaterial({
+        const plumeMat = new THREE.MeshStandardMaterial({
           color: 0x8b5cf6,
+          emissive: new THREE.Color(0x8b5cf6),
+          emissiveIntensity: 0.85,
+          roughness: 0.35,
+          metalness: 0.0,
           transparent: true,
           opacity: 0.48,
           side: THREE.DoubleSide,

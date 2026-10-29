@@ -367,8 +367,53 @@ export const ACTIONS = {
 ACTIONS.phone = ACTIONS.iphone;
 ACTIONS.trains = ACTIONS.train;
 ACTIONS.spacecraft = ACTIONS.space;
-ACTIONS.rockets = ACTIONS.rocket = { ...ACTIONS.jet, id: 'rockets', verb: 'Launch It!', stopVerb: 'Abort Launch', emoji: '🚀', tab: 'Launch It!' };
-ACTIONS.robots = ACTIONS.robot = { ...ACTIONS.car, id: 'robots', verb: 'Power Up & Move!', stopVerb: 'Stand Down', emoji: '🤖', tab: 'Power Up & Move!' };
+ACTIONS.rockets = ACTIONS.rocket = {
+  id: 'rockets', verb: 'Launch It!', stopVerb: 'Abort Launch', emoji: '🚀', tab: 'Launch It!',
+  hint: 'to ignite the booster & launch to orbit', keys: KEYS_WASD, taps: {},
+  hud: [
+    { id: 'throttle', label: '% THROTTLE', big: true },
+    { id: 'altitude', label: 'Alt km' },
+    { id: 'velocity', label: 'Vel km/s' },
+    { id: 'thrust', label: 'Thrust kN' },
+    { id: 'fuel', label: 'Propellant kg/s', bar: true, max: 100 },
+  ],
+  controls: [
+    hold('up', '🟢 Main Throttle', 'Increase Booster Throttle (W / ↑)', 'up', true),
+    hold('down', '🔴 Deep Throttle', 'Throttle Back Engines (S / ↓)', 'down'),
+    hold('space', '🔥 Max Orbital Thrust', 'Full Liftoff Thrust & Mach Diamonds (Space)', 'space'),
+  ],
+  checklist: [
+    { id: 'ignite', label: 'Ignite booster engines on the orbital launch mount' },
+    { id: 'liftoff', label: 'Lift off & clear the launch umbilical tower' },
+    { id: 'maxq', label: 'Push through Max-Q at full orbital thrust' },
+  ],
+  celebrate: { title: 'Nominal Orbital Liftoff!', text: 'Launch tower cleared, Mach shock diamonds blazing, and ascending toward orbit!' },
+};
+ACTIONS.robots = ACTIONS.robot = {
+  id: 'robots', verb: 'Power Up & Move!', stopVerb: 'Stand Down', emoji: '🤖', tab: 'Power Up & Move!',
+  hint: 'to actuate servo joints, sensors & end-effectors', keys: KEYS_WASD, taps: { ' ': 'tool', l: 'lights' },
+  hud: [
+    { id: 'power', label: '% ACTUATOR', big: true },
+    { id: 'pose', label: 'Kinematics' },
+    { id: 'torque', label: 'Torque Nm' },
+    { id: 'battery', label: 'Core Power %', bar: true, max: 100 },
+  ],
+  controls: [
+    hold('up', '🟢 Actuate / Drive', 'Drive Servos & Locomotion Forward (W / ↑)', 'up', true),
+    hold('down', '🔴 Reverse / Crouch', 'Reverse / Lower Stance (S / ↓)', 'down'),
+    hold('left', '↶ Slew / Yaw L', 'Rotate Base or Steer Left (A / ←)', 'left'),
+    hold('right', '↷ Slew / Yaw R', 'Rotate Base or Steer Right (D / →)', 'right'),
+    hold('boost', '⚡ Overdrive Cycle', 'High-Speed Servo Cycle (Shift / B)', 'boost'),
+    tap('tool', '🔬 Fire Tool / Scan', 'Trigger Laser Welder / SuperCam LIBS / LiDAR Scan (Space)', 'tool'),
+    tap('lights', '💡 Work Lights', 'Toggle Sensor & Work Floodlights (L)', 'lights'),
+  ],
+  checklist: [
+    { id: 'move', label: 'Power up and drive the primary servo actuators' },
+    { id: 'slew', label: 'Slew or steer across the operating envelope' },
+    { id: 'tool', label: 'Fire the end-effector tool or scientific laser scan' },
+  ],
+  celebrate: { title: 'Autonomous Mission Complete!', text: 'Precision servo kinematics, active sensor lock, and end-effector task verified!' },
+};
 ACTIONS.helicopters = ACTIONS.heli = {
   id: 'helicopters', verb: 'Take It for a Hover!', stopVerb: 'Land & Stop', emoji: '🚁', tab: 'Take It for a Hover!',
   hint: 'to take off', keys: KEYS_PITCH, taps: { l: 'lights' },
@@ -417,10 +462,144 @@ export function getAction(categoryId, modelId) {
     }
     return ACTIONS.watches;
   }
+  if (key === 'car' || key === 'cars') {
+    if (/tesla|cybertruck|rivian/i.test(mid)) {
+      return {
+        ...ACTIONS.car,
+        emoji: '⚡',
+        hud: [
+          { id: 'speed', label: 'MPH', big: true },
+          { id: 'gear', label: 'Drive' },
+          { id: 'rpm', label: 'Motor RPM', bar: true, max: 18500 },
+        ],
+        controls: [
+          hold('left', '⬅️ Steer L', 'Steer Left (A / ←)', 'left'),
+          hold('right', '➡️ Steer R', 'Steer Right (D / →)', 'right'),
+          hold('up', '🟢 Accelerator', 'Instant EV Torque (W / ↑)', 'up', true),
+          hold('down', '🔴 Regen Brake', 'Regenerative Brake / Reverse (S / ↓)', 'down'),
+          hold('boost', '⚡ Plaid Boost', 'Launch Mode Overboost (Shift / B)', 'boost'),
+          tap('lights', '💡 Matrix LEDs', 'Toggle Headlights (L)', 'lights'),
+          tap('horn', '📯 Horn', 'Sound Horn (H)', 'horn'),
+        ],
+        checklist: [
+          { id: 'fast', label: 'Launch past 100 MPH with instant electric torque' },
+          { id: 'boost', label: 'Engage Plaid / Launch Overboost' },
+          { id: 'stop', label: 'Regen-brake smoothly to a full stop' },
+        ],
+        celebrate: { title: 'EV Launch Complete!', text: 'Instant electric torque, silent 18,500 RPM motors, and regenerative braking!' },
+      };
+    }
+    return ACTIONS.car;
+  }
+  if (key === 'bikes' || key === 'bike') {
+    if (/ducati|panigale|moto/i.test(mid)) {
+      return {
+        ...ACTIONS.bikes,
+        emoji: '🏍️',
+        hud: [
+          { id: 'speed', label: 'MPH', big: true },
+          { id: 'gear', label: 'Gear' },
+          { id: 'rpm', label: 'Desmo RPM', bar: true, max: 14500 },
+        ],
+        controls: [
+          hold('left', '⬅️ Lean L', 'Counter-Steer & Lean Left (A / ←)', 'left'),
+          hold('right', '➡️ Lean R', 'Counter-Steer & Lean Right (D / →)', 'right'),
+          hold('up', '🟢 Throttle', 'Roll On V4 Throttle (W / ↑)', 'up', true),
+          hold('down', '🔴 Brembo Brake', 'Brembo Stylema Disc Brakes (S / ↓)', 'down'),
+          hold('boost', '🔥 Full Tuck', '14,500 RPM Redline Sprint (Shift / B)', 'boost'),
+          tap('lights', '💡 DRL / Beam', 'Toggle LED Headlight (L)', 'lights'),
+          tap('horn', '📯 Horn', 'Sound Horn (H)', 'horn'),
+        ],
+        checklist: [
+          { id: 'fast', label: 'Hit 120 MPH on the superbike straight' },
+          { id: 'boost', label: 'Tuck in for a 14,500 RPM Desmosedici sprint' },
+          { id: 'stop', label: 'Threshold-brake to a clean stop' },
+        ],
+      };
+    }
+    const isEbike = /tern|ebike|cargo/i.test(mid);
+    const bikeControls = [
+      hold('left', '⬅️ Lean L', 'Lean & Steer Left (A / ←)', 'left'),
+      hold('right', '➡️ Lean R', 'Lean & Steer Right (D / →)', 'right'),
+      hold('up', '🚴 Pedal', 'Spin Crankset & Chainring (W / ↑)', 'up', true),
+      hold('down', '🔴 Disc Brakes', 'Squeeze Hydraulic Disc Brakes (S / ↓)', 'down'),
+      hold('boost', isEbike ? '⚡ Bosch Turbo' : '⚡ Aero Sprint', isEbike ? '400% Mid-Drive Assist (Shift / B)' : 'Out-of-Saddle Sprint (Shift / B)', 'boost'),
+    ];
+    if (isEbike) bikeControls.push(tap('lights', '💡 Cargo Beam', 'Toggle Integrated Headlight (L)', 'lights'));
+    bikeControls.push(tap('horn', '🔔 Ring Bell', 'Ring Handlebar Bell (H)', 'horn'));
+    return {
+      ...ACTIONS.bikes,
+      emoji: isEbike ? '🚲' : '🚴',
+      hint: 'to spin the cranks, shift the cassette & carve turns',
+      hud: [
+        { id: 'speed', label: 'MPH', big: true },
+        { id: 'gear', label: 'Cassette' },
+        { id: 'rpm', label: 'Cadence RPM', bar: true, max: 120 },
+      ],
+      controls: bikeControls,
+      checklist: [
+        { id: 'fast', label: 'Spin up above 22 MPH cruise speed' },
+        { id: 'boost', label: isEbike ? 'Engage Bosch Cargo Line Turbo assist' : 'Drop into an aero sprint past 30 MPH' },
+        { id: 'stop', label: 'Modulate hydraulic disc brakes to a full stop' },
+      ],
+      celebrate: { title: 'Stage Victory!', text: 'Smooth cadence, crisp cassette shifts, and hydraulic disc-brake control!' },
+    };
+  }
   if (key === 'robots' || key === 'robot') {
     if (mid.includes('iron-man')) {
       return { ...ACTIONS.airplane, id: 'robots', verb: 'Repulsor Flight!', stopVerb: 'Land Armor', emoji: '🦾', tab: 'Repulsor Flight!' };
     }
+    if (mid.includes('kuka')) {
+      return {
+        ...ACTIONS.robots,
+        hint: 'to slew all 6 servo axes & fire the laser welding head',
+        checklist: [
+          { id: 'move', label: 'Articulate the 6-axis shoulder, forearm & wrist servos' },
+          { id: 'slew', label: 'Slew the Axis-1 rotary base carousel across the cell' },
+          { id: 'tool', label: 'Fire the precision laser/spot-welding end-effector' },
+        ],
+      };
+    }
+    if (mid.includes('mars') || mid.includes('perseverance')) {
+      return {
+        ...ACTIONS.robots,
+        hint: 'to roll across Mars on 6 wheels & fire the SuperCam rock laser',
+        checklist: [
+          { id: 'move', label: 'Drive all 6 cleated aluminum wheels across Martian regolith' },
+          { id: 'slew', label: 'Sweep the Remote Sensing Mast & sample turret arm' },
+          { id: 'tool', label: 'Zap a Martian rock target with the SuperCam LIBS laser' },
+        ],
+      };
+    }
+    return ACTIONS.robots;
+  }
+  if (key === 'construction' && /combine|harvester/i.test(mid)) {
+    return {
+      ...ACTIONS.construction,
+      emoji: '🌾',
+      hint: 'to spin the 45-ft draper header reel, thresh grain & swing the auger',
+      hud: [
+        { id: 'pressure', label: 'ROTOR RPM', big: true },
+        { id: 'slew', label: 'Auger Swing' },
+        { id: 'load', label: 'Grain Tank' },
+        { id: 'cycle', label: 'Harvest Rate %', bar: true, max: 100 },
+      ],
+      controls: [
+        hold('up', '🌾 Harvest Forward', 'Spin Draper Reel & Threshing Rotor (W / ↑)', 'up', true),
+        hold('down', '⬇️ Lower Header', 'Float Cutterbar Close to Crop Stubble (S / ↓)', 'down'),
+        hold('left', '↶ Swing Auger Out', 'Extend Unloading Auger Over Grain Cart (A / ←)', 'left'),
+        hold('right', '↷ Fold Auger In', 'Stow Unloading Auger Along Side (D / →)', 'right'),
+        hold('boost', '⚡ Max Threshing', 'High-Throughput Dual-Rotor Boost (Shift / B)', 'boost'),
+        tap('bucket', '🌽 Unload Grain Boost', 'Discharge 4.5 bu/sec Through Auger (Space)', 'bucket'),
+        tap('lights', '💡 Field Floodlights', 'Toggle Cab Stadium LEDs (L)', 'lights'),
+      ],
+      checklist: [
+        { id: 'boom', label: 'Spin up the draper header reel & threshing rotor' },
+        { id: 'slew', label: 'Swing the unloading auger out to discharge grain' },
+        { id: 'dig', label: 'Complete a full high-capacity grain harvest pass' },
+      ],
+      celebrate: { title: 'Bumper Harvest Complete!', text: 'Draper reel spinning, clean threshing separation, and grain tank unloaded!' },
+    };
   }
   const base = ACTIONS[key] || ACTIONS.car;
   if (key === 'jet' && /raptor|rocket/i.test(mid)) return { ...base, verb: 'Spin It Up!', emoji: '🔥' };

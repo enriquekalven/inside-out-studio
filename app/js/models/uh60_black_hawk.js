@@ -1869,6 +1869,8 @@ export function buildBlackHawkModel() {
       { q: 'Why is the Black Hawk tail rotor tilted 20 degrees?', correctId: 'uh60-aft-pylon-antitorque', distractors: ['uh60-main-rotor-head', 'uh60-fixed-wheels-struts', 'uh60-airframe-hull'] },
       { q: 'Which system has the swashplate, elastomeric bearings and the 4-armed bifilar vibration absorber?', correctId: 'uh60-main-rotor-head', distractors: ['uh60-t700-engines-transmission', 'uh60-esss-stub-wings', 'uh60-sensors-antennas'] },
       { q: 'Which system’s boxy HIRSS ducts cool the exhaust so heat-seeking missiles have a harder time finding the helicopter?', correctId: 'uh60-t700-engines-transmission', distractors: ['uh60-flight-deck', 'uh60-cockpit-glazing', 'uh60-aft-pylon-antitorque'] },
+      { q: 'Which removable stub wings carry two 230-gallon external fuel tanks for long-range missions?', correctId: 'uh60-esss-stub-wings', distractors: ['uh60-fixed-wheels-struts', 'uh60-starboard-doors-hoist', 'uh60-airframe-hull'] },
+      { q: 'Which heavy-duty oleo-strut landing gear absorbs high-sink-rate rough-field touchdowns without retracting?', correctId: 'uh60-fixed-wheels-struts', distractors: ['uh60-port-doors-troop-seats', 'uh60-cockpit-glazing', 'uh60-sensors-antennas'] },
     ],
   };
 }

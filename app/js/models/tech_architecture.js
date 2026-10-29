@@ -2222,10 +2222,14 @@ function buildTransparentOledTv() {
         rbox(g, 3.26, 0.028, 0.036, 0.006, champagneAlu, [0, 1.145, 0.12]);
         // Transparent ITO micro-pixel grid & spatial HUD overlay plane
         if (toledHudTex) {
-          const hudMat = new THREE.MeshBasicMaterial({
+          const hudMat = new THREE.MeshStandardMaterial({
             map: toledHudTex,
+            emissive: 0x38bdf8,
+            emissiveMap: toledHudTex,
+            emissiveIntensity: 0.45,
             transparent: true,
             opacity: 0.92,
+            roughness: 0.2,
             depthWrite: false,
             side: THREE.DoubleSide,
           });

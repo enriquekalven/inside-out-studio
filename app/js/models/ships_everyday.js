@@ -401,6 +401,8 @@ export const SHIP_MODELS = [
       { q: 'Which signature attraction on Quantum of the Seas lifts a jewel-shaped glass capsule 300 feet above the ocean on a hydraulic crane arm?', correctId: 'north-star-observation-capsule', distractors: ['two70-aft-glass-lounge', 'ripcord-ifly-skydiving-solarium', 'balcony-stateroom-superstructure'] },
       { q: 'How does Quantum of the Seas steer and propel herself without a traditional rudder or long propeller shafts?', correctId: 'diesel-electric-azipod-plant', distractors: ['hydrodynamic-cruise-hull', 'tender-lifeboats-muster-deck', 'royal-esplanade-atrium'] },
       { q: 'Which vertical glass tube at the stern lets passengers skydive in mid-air over the ocean?', correctId: 'ripcord-ifly-skydiving-solarium', distractors: ['north-star-observation-capsule', 'two70-aft-glass-lounge', 'balcony-stateroom-superstructure'] },
+      { q: 'Which 348-meter lower hull pumps a carpet of microbubbles under the keel and extends fin stabilizers to cut drag and roll?', correctId: 'hydrodynamic-cruise-hull', distractors: ['two70-aft-glass-lounge', 'balcony-stateroom-superstructure', 'royal-esplanade-atrium'] },
+      { q: 'Which 18 unsinkable yellow catamaran tenders hang on Deck 5 gravity davits for emergency evacuation?', correctId: 'tender-lifeboats-muster-deck', distractors: ['north-star-observation-capsule', 'ripcord-ifly-skydiving-solarium', 'two70-aft-glass-lounge'] },
     ],
   }),
   buildSpecModel({
@@ -534,6 +536,8 @@ export const SHIP_MODELS = [
       { q: 'What aviation facility is built directly into the prolonged bow deck of the 118m superyacht Launchpad?', correctId: 'foredeck-helipad-helicopter', distractors: ['aft-infinity-pool-sky-lounge', 'beach-club-tender-garage', 'quad-mtu-diesel-stabilizers'] },
       { q: 'How does Launchpad create a sea-level "Beach Club" when anchored in a calm bay?', correctId: 'beach-club-tender-garage', distractors: ['flag-blue-steel-displacement-hull', 'sculpted-silver-superstructure', 'twin-bronze-screws-rudders'] },
       { q: 'Which underwater fins extend from both sides of the yacht’s hull to stop ocean waves from rolling the ship?', correctId: 'quad-mtu-diesel-stabilizers', distractors: ['twin-bronze-screws-rudders', 'owners-suite-glass-atrium', 'aft-infinity-pool-sky-lounge'] },
+      { q: 'Which central 5-deck cylindrical glass elevator and spiral staircase connect the private cinema to the Owner’s Suite?', correctId: 'owners-suite-glass-atrium', distractors: ['twin-bronze-screws-rudders', 'foredeck-helipad-helicopter', 'flag-blue-steel-displacement-hull'] },
+      { q: 'Which twin 5-blade skewed Nickel-Aluminum-Bronze propellers push the 118-meter yacht quietly across oceans?', correctId: 'twin-bronze-screws-rudders', distractors: ['aft-infinity-pool-sky-lounge', 'sculpted-silver-superstructure', 'foredeck-helipad-helicopter'] },
     ],
   }),
   buildSpecModel({
@@ -639,6 +643,8 @@ export const SHIP_MODELS = [
       { q: 'Why does a container ship have a rounded "bulbous bow" underwater at the front of the hull?', correctId: 'bulbous-bow-double-hull', distractors: ['spade-rudder-bow-thrusters', 'twin-island-bridge-tower', 'lashing-bridges-hatch-covers'] },
       { q: 'Which 4-story-tall internal engine powers a 24,000-TEU container ship across the Pacific?', correctId: 'two-stroke-crosshead-diesel', distractors: ['propeller-shaft-stern-tube', 'watertight-holds-cell-guides', 'intermodal-container-stacks'] },
       { q: 'Which vertical steel tracks inside the cargo holds guide containers 11 stories deep without shifting?', correctId: 'watertight-holds-cell-guides', distractors: ['lashing-bridges-hatch-covers', 'bulbous-bow-double-hull', 'twin-island-bridge-tower'] },
+      { q: 'Why is the navigation bridge tower placed near the front ("Twin-Island" design) on a 400-meter container ship?', correctId: 'twin-island-bridge-tower', distractors: ['propeller-shaft-stern-tube', 'two-stroke-crosshead-diesel', 'bulbous-bow-double-hull'] },
+      { q: 'Which elevated steel walkways between container bays supply 440-volt power to refrigerated ("Reefer") boxes?', correctId: 'lashing-bridges-hatch-covers', distractors: ['propeller-shaft-stern-tube', 'spade-rudder-bow-thrusters', 'bulbous-bow-double-hull'] },
     ],
   }),
   buildSpecModel({
@@ -780,6 +786,8 @@ export const SHIP_MODELS = [
       { q: 'Which electromagnetic launch system on the flight deck accelerates fighter jets to 165 mph in 2 seconds?', correctId: 'emals-catapults-arresting-gear', distractors: ['twin-a1b-nuclear-reactors', 'island-tower-spy-radar', 'quad-shafts-bronze-screws'] },
       { q: 'Which twin power sources inside the hull allow a supercarrier to sail for 25 years without refueling?', correctId: 'twin-a1b-nuclear-reactors', distractors: ['geared-steam-turbines', 'hangar-bay-deck-elevators', 'armored-hull-torpedo-defense'] },
       { q: 'Why is the landing runway on a modern aircraft carrier angled 11 degrees off centerline?', correctId: 'angled-flight-deck-nonskid', distractors: ['island-tower-spy-radar', 'hangar-bay-deck-elevators', 'armored-hull-torpedo-defense'] },
+      { q: 'Which four giant deck-edge platforms lift two fighter jets at a time from the maintenance hangar up to the flight deck?', correctId: 'hangar-bay-deck-elevators', distractors: ['quad-shafts-bronze-screws', 'geared-steam-turbines', 'armored-hull-torpedo-defense'] },
+      { q: 'Which stealth-faceted starboard tower houses Primary Flight Control ("Pri-Fly") and flat-panel 3D SPY-6 radars?', correctId: 'island-tower-spy-radar', distractors: ['twin-a1b-nuclear-reactors', 'quad-shafts-bronze-screws', 'geared-steam-turbines'] },
     ],
   }),
   buildSpecModel({
@@ -1091,6 +1099,8 @@ export const SHIP_MODELS = [
       { q: 'Which of RMS Titanic’s 4 iconic funnels did NOT vent boiler smoke and instead ventilated the galleys and engine room?', correctId: 'four-buff-black-funnels', distractors: ['scotch-marine-coal-boilers', 'promenade-superstructure-bridge', 'triple-expansion-steam-engines'] },
       { q: 'How did Titanic reuse the low-pressure exhaust steam leaving her two giant reciprocating piston engines?', correctId: 'triple-expansion-steam-engines', distractors: ['scotch-marine-coal-boilers', 'sixteen-watertight-bulkheads', 'triple-screws-rudder-casting'] },
       { q: 'Which 15 transverse steel walls divided Titanic’s lower hull into 16 compartments?', correctId: 'sixteen-watertight-bulkheads', distractors: ['riveted-hull-double-bottom', 'grand-staircase-saloon-cutaway', 'four-buff-black-funnels'] },
+      { q: 'Which 29 cylindrical coal-fired furnaces burned 600 tons of coal a day to generate high-pressure steam?', correctId: 'scotch-marine-coal-boilers', distractors: ['grand-staircase-saloon-cutaway', 'promenade-superstructure-bridge', 'triple-screws-rudder-casting'] },
+      { q: 'Which three massive bronze propellers (two 3-blade wing screws and one 4-blade center turbine screw) drove Titanic?', correctId: 'triple-screws-rudder-casting', distractors: ['grand-staircase-saloon-cutaway', 'four-buff-black-funnels', 'promenade-superstructure-bridge'] },
     ],
   }),
 ];
@@ -1166,6 +1176,8 @@ export const EVERYDAY_MODELS = [
       { q: 'Which curved internal passage creates a vacuum suction when water spills over its crest?', correctId: 's-trap-siphon-weir', distractors: ['float-fill-valve-ballcock', 'soft-close-hinged-seat', 'wax-ring-closet-flange'] },
       { q: 'Why does a toilet bowl always keep a pool of standing water at the bottom even after flushing?', correctId: 'water-seal-p-trap', distractors: ['porcelain-gravity-cistern', 'flapper-valve-handle-chain', 'soft-close-hinged-seat'] },
       { q: 'Which buoyant part inside the tank floats up with the water level to shut off the fill valve automatically?', correctId: 'float-fill-valve-ballcock', distractors: ['wax-ring-closet-flange', 's-trap-siphon-weir', 'vitreous-bowl-rim-jets'] },
+      { q: 'Which rubber seal at the bottom of the tank lifts via a chain when you press the chrome flush handle?', correctId: 'flapper-valve-handle-chain', distractors: ['wax-ring-closet-flange', 'soft-close-hinged-seat', 'water-seal-p-trap'] },
+      { q: 'Which sticky golden ring underneath the toilet base forms an airtight, watertight seal with the floor drain pipe?', correctId: 'wax-ring-closet-flange', distractors: ['soft-close-hinged-seat', 'porcelain-gravity-cistern', 'flapper-valve-handle-chain'] },
     ],
   }),
   buildSpecModel({
@@ -1248,6 +1260,8 @@ export const EVERYDAY_MODELS = [
       { q: 'Why does a traction elevator use a heavy cast-iron counterweight on the other side of the cables?', correctId: 'counterweight-ballast-frame', distractors: ['automatic-sliding-doors', 'pit-hydraulic-oil-buffers', 'structural-car-sling-cabin'] },
       { q: 'Which mechanical safety invention clamps onto the steel guide rails if an elevator ever drops too fast?', correctId: 'overspeed-governor-safeties', distractors: ['gearless-traction-hoist-motor', 'automatic-sliding-doors', 'steel-hoist-ropes-hitch'] },
       { q: 'What stands at the bottom of the elevator shaft pit to cushion the car and counterweight?', correctId: 'pit-hydraulic-oil-buffers', distractors: ['machined-t-guide-rails', 'counterweight-ballast-frame', 'structural-car-sling-cabin'] },
+      { q: 'Which grooved permanent-magnet motor at the top of the hoistway pulls the steel hoist ropes through friction?', correctId: 'gearless-traction-hoist-motor', distractors: ['automatic-sliding-doors', 'pit-hydraulic-oil-buffers', 'structural-car-sling-cabin'] },
+      { q: 'Which precision-machined T-shaped vertical steel tracks guide the cabin smoothly at 20 meters per second?', correctId: 'machined-t-guide-rails', distractors: ['automatic-sliding-doors', 'gearless-traction-hoist-motor', 'steel-hoist-ropes-hitch'] },
     ],
   }),
   buildSpecModel({
@@ -1315,6 +1329,8 @@ export const EVERYDAY_MODELS = [
       { q: 'What must line up precisely with the outer edge of the rotating brass plug ("the shear line") before the key can turn?', correctId: 'five-bitted-key-pins', distractors: ['hardened-anti-drill-armor', 'rotating-tailpiece-cam-bolt', 'phosphor-bronze-coil-springs'] },
       { q: 'Which upper pins are pushed down across the gap by springs to block the lock from turning when no key is inside?', correctId: 'spool-serrated-driver-pins', distractors: ['notched-bitted-brass-key', 'rotating-tailpiece-cam-bolt', 'hardened-anti-drill-armor'] },
       { q: 'Which crescent-shaped lever on the back of the cylinder actually throws the door deadbolt when the plug rotates?', correctId: 'rotating-tailpiece-cam-bolt', distractors: ['brass-bible-cylinder-housing', 'five-bitted-key-pins', 'phosphor-bronze-coil-springs'] },
+      { q: 'Which precisely cut V-notched brass blade lifts all 5 key pins to their exact unlock heights simultaneously?', correctId: 'notched-bitted-brass-key', distractors: ['hardened-anti-drill-armor', 'phosphor-bronze-coil-springs', 'brass-bible-cylinder-housing'] },
+      { q: 'Which tungsten-carbide pins at the front of the housing stop burglars from drilling through the brass lock?', correctId: 'hardened-anti-drill-armor', distractors: ['rotating-tailpiece-cam-bolt', 'phosphor-bronze-coil-springs', 'notched-bitted-brass-key'] },
     ],
   }),
   buildSpecModel({
@@ -1558,6 +1574,8 @@ export const EVERYDAY_MODELS = [
       { q: 'Which component pressurizes water to 9 atmospheres (130 PSI) to emulsify coffee oils into golden crema?', correctId: 'rotary-vane-9bar-pump', distractors: ['stainless-chassis-cup-warmer', 'drip-tray-reservoir-tank', 'articulated-steam-wand-gauges'] },
       { q: 'Why does a pro espresso machine use two separate copper boilers instead of just one?', correctId: 'dual-copper-pid-boilers', distractors: ['portafilter-58mm-basket', 'drip-tray-reservoir-tank', 'stainless-chassis-cup-warmer'] },
       { q: 'Which heavy chrome-plated brass assembly on the front holds the 3-way valve that vents pressure after a shot?', correctId: 'e61-thermosyphon-grouphead', distractors: ['rotary-vane-9bar-pump', 'copper-manifold-opv-plumbing', 'drip-tray-reservoir-tank'] },
+      { q: 'Which locking 58mm stainless handle holds the finely tamped coffee puck under 9 bars of hot water?', correctId: 'portafilter-58mm-basket', distractors: ['drip-tray-reservoir-tank', 'stainless-chassis-cup-warmer', 'dual-copper-pid-boilers'] },
+      { q: 'Which ball-jointed nozzle injects pressurized dry steam to whip cold milk into silky microfoam?', correctId: 'articulated-steam-wand-gauges', distractors: ['rotary-vane-9bar-pump', 'drip-tray-reservoir-tank', 'portafilter-58mm-basket'] },
     ],
   }),
 ];

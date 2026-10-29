@@ -21,10 +21,10 @@ function buildIssModel() {
       desc: 'NASA CAD girder backbone supporting solar alpha rotary joints, utility cable trays, and Mobile Transporter rails.',
       funFact: 'The ISS truss backbone is 109 meters (357 feet) long—literally as wide as an entire American football field including the end zones!',
       build(g) { populateIssCad(g, { zone: 'truss' }); box(g, 0.22, 0.22, 3.8, alu, [0, 0.28, 0]); for (let z = -1.7; z <= 1.7; z += 0.34) torus(g, 0.16, 0.015, kapton, [0, 0.28, z], [0, 0, 0]); } },
-    { id: 'solar-array-wings', name: '8 Photovoltaic Solar Array Wings (SAW) & iROSA Blankets', category: 'Electrical Power', isOuter: true, explodeOffset: [0, 0.45, 2.25],
-      desc: 'NASA CAD sun-tracking double-wing solar blankets generating up to 240 kW of orbital DC power.',
+    { id: 'solar-array-wings', name: '8 Photovoltaic Solar Array Wings (SAW) & iROSA Blankets', category: 'Electrical Power', isOuter: true, explodeOffset: [0, 0.45, 2.25], labelAnchor: [0.95, 0.28, 1.25],
+      desc: 'NASA CAD sun-tracking double-wing solar blankets, Beta Gimbal mast canisters, and Solar Alpha Rotary Joints generating up to 240 kW of orbital DC power.',
       funFact: 'Over a quarter-million silicon solar cells track the Sun through a 360-degree Alpha Rotary Joint on every 90-minute orbit!',
-      build(g) { populateIssCad(g, { zone: 'solar-wings' }); for (const z of [-1.65, -1.25, 1.25, 1.65]) for (const x of [-0.95, 0.95]) box(g, 1.35, 0.02, 0.32, solarMat, [x, 0.28, z]); } },
+      build(g) { populateIssCad(g, { zone: 'solar-wings' }); for (const z of [-1.45, 1.45]) cyl(g, 0.12, 0.12, 0.46, 20, kapton, [0, 0.28, z], [Math.PI / 2, 0, 0]); for (const z of [-1.65, -1.25, 1.25, 1.65]) { cyl(g, 0.032, 0.032, 3.2, 12, alu, [0, 0.28, z], [0, 0, Math.PI / 2]); for (const x of [-0.95, 0.95]) box(g, 1.35, 0.02, 0.32, solarMat, [x, 0.28, z]); } } },
     { id: 'eatcs-thermal-radiators', name: 'Ammonia Thermal Control Radiators (EATCS)', category: 'Thermal Control', isOuter: true, explodeOffset: [-1.35, -0.85, 0],
       desc: 'NASA CAD accordion-folding white radiator panels that reject waste cabin and electronics heat into deep space.',
       funFact: 'Without air in space to carry heat away, the ISS circulates liquid ammonia through giant white wings to radiate heat as infrared light!',
@@ -66,6 +66,8 @@ function buildIssModel() {
       { q: 'Which 7-window observation dome gives astronauts a 360-degree view of Earth and visiting spacecraft?', correctId: 'cupola-observatory-dome', distractors: ['solar-array-wings', 'eatcs-thermal-radiators', 'integrated-truss-backbone'] },
       { q: 'Which white accordion panels reject waste heat from the ISS into the vacuum of space using liquid ammonia?', correctId: 'eatcs-thermal-radiators', distractors: ['solar-array-wings', 'canadarm2-dextre-robotics', 'us-destiny-harmony-modules'] },
       { q: 'Which 17-meter robotic arm can "inchworm" end-over-end across grapple fixtures on the station?', correctId: 'canadarm2-dextre-robotics', distractors: ['pma-ida-soyuz-docking', 'zvezda-zarya-russian-segment', 'microgravity-science-racks'] },
+      { q: 'Which 8 giant golden wings rotate on alpha rotary joints to generate up to 240 kW of solar electricity?', correctId: 'solar-array-wings', distractors: ['eatcs-thermal-radiators', 'integrated-truss-backbone', 'columbus-kibo-labs'] },
+      { q: 'Which internal system uses four spinning 220-lb steel CMG flywheels to steer the 420-ton station without propellant?', correctId: 'microgravity-science-racks', distractors: ['pma-ida-soyuz-docking', 'us-destiny-harmony-modules', 'zvezda-zarya-russian-segment'] },
     ],
   };
 }
@@ -373,6 +375,8 @@ function buildSpaceShuttleModel() {
       { q: 'Why is the Space Shuttle External Tank bright orange?', correctId: 'slwt-external-tank', distractors: ['twin-solid-rocket-boosters', 'orbiter-fuselage-tiles', 'lox-lh2-internal-cryotanks'] },
       { q: 'Which two boosters provide 83% of the Space Shuttle’s liftoff thrust for the first 2 minutes of flight?', correctId: 'twin-solid-rocket-boosters', distractors: ['rs25-ssme-engine-trio', 'oms-rcs-tail-pods', 'double-delta-wings-rcc'] },
       { q: 'Which forward mechanism allows the Space Shuttle Orbiter to dock with the International Space Station?', correctId: 'orbiter-docking-system-ods', distractors: ['crew-flight-deck-middeck', 'payload-bay-spacelab', 'rs25-ssme-engine-trio'] },
+      { q: 'Which trio of staged-combustion engines pumps -253°C liquid hydrogen through its nozzle walls right beside a 3,300°C flame?', correctId: 'rs25-ssme-engine-trio', distractors: ['twin-solid-rocket-boosters', 'oms-rcs-tail-pods', 'slwt-external-tank'] },
+      { q: 'Which hypersonic glider wings use Reinforced Carbon-Carbon (RCC) leading edges to survive 1,650°C Mach 25 re-entry plasma?', correctId: 'double-delta-wings-rcc', distractors: ['payload-bay-spacelab', 'crew-flight-deck-middeck', 'lox-lh2-internal-cryotanks'] },
     ],
   };
 }

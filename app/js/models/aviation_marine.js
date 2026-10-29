@@ -194,11 +194,14 @@ function evalStationPoint(st, theta) {
   return [st.x, (st.y ?? 0) + yLocal, (st.zCenter ?? 0) + zLocal];
 }
 
-function buildMultiSectionLoft(
-  group,
-  stations,
-  {
-    radialSegs = 48,
+function buildMultiSectionLoft(group, stations, matOrOpts = {}, maybeOpts = {}) {
+  const opts =
+    matOrOpts && matOrOpts.isMaterial
+      ? { ...maybeOpts, material: matOrOpts }
+      : matOrOpts || {};
+  const {
+    radialSegs: rawSegs,
+    radialSegments,
     material,
     pos = [0, 0, 0],
     rot = [0, 0, 0],
@@ -207,8 +210,8 @@ function buildMultiSectionLoft(
     uOffset = 0,
     vMin = 0,
     vMax = 1,
-  } = {},
-) {
+  } = opts;
+  const radialSegs = rawSegs ?? radialSegments ?? 48;
   const numStations = stations.length;
   const ringVerts = radialSegs + 1;
   const positions = [];

@@ -396,8 +396,19 @@ export class StageViewer {
       }
     }
     const hits = this.raycaster.intersectObjects(pickables, false);
-    if (hits.length === 0) return null;
-    return hits[0].object.userData.partId || null;
+    for (const h of hits) {
+      const obj = h.object;
+      if (!obj.visible) continue;
+      if (Array.isArray(obj.material)) {
+        const mIdx = h.face?.materialIndex ?? 0;
+        const subMat = obj.material[mIdx];
+        if (subMat && subMat.visible === false) continue;
+      } else if (obj.material && obj.material.visible === false) {
+        continue;
+      }
+      if (obj.userData.partId) return obj.userData.partId;
+    }
+    return null;
   }
 
   resize() {
@@ -507,19 +518,52 @@ export class StageViewer {
           child.userData.partId = partDef.id;
           child.castShadow = true;
           child.receiveShadow = true;
+          if (Array.isArray(child.material)) {
+            child.material = child.material.map((mt) => (mt && mt.visible !== false ? mt.clone() : mt));
+          } else if (child.material && child.material.visible !== false) {
+            child.material = child.material.clone();
+          }
+          const matList = Array.isArray(child.material) ? child.material : [child.material];
           meshes.push(child);
-          baseMats.push({
-            opacity: child.material.opacity,
-            transparent: child.material.transparent,
-            emissiveHex: child.material.emissive ? child.material.emissive.getHex() : 0x000000,
-            emissiveIntensity: child.material.emissiveIntensity || 0,
-          });
+          baseMats.push(
+            matList.map((mt) => ({
+              opacity: mt?.opacity ?? 1,
+              transparent: Boolean(mt?.transparent),
+              visible: mt?.visible !== false,
+              emissiveHex: mt?.emissive ? mt.emissive.getHex() : 0x000000,
+              emissiveIntensity: mt?.emissiveIntensity || 0,
+              colorHex: mt?.color ? mt.color.getHex() : null,
+            })),
+          );
         }
       });
 
       box3.setFromObject(partGroup);
       const center = new THREE.Vector3();
-      if (!box3.isEmpty()) box3.getCenter(center);
+      const partSize = new THREE.Vector3();
+      if (!box3.isEmpty()) {
+        box3.getCenter(center);
+        box3.getSize(partSize);
+      }
+      if (Array.isArray(partDef.labelAnchor) && partDef.labelAnchor.length === 3) {
+        center.set(partDef.labelAnchor[0], partDef.labelAnchor[1], partDef.labelAnchor[2]);
+      } else if (partSize.x > 5.5 && meshes.length > 1 && Math.abs(center.x - this.defaultTarget.x) > 1.8) {
+        // Multi-car trainsets span ~14m along -X while the camera frames the lead car around defaultTarget;
+        // anchor callout pins onto the sub-mesh closest to the hero camera target so pins never drift off-screen.
+        let bestDistSq = Infinity;
+        const mBox = new THREE.Box3();
+        const mCenter = new THREE.Vector3();
+        for (const m of meshes) {
+          mBox.setFromObject(m);
+          if (mBox.isEmpty()) continue;
+          mBox.getCenter(mCenter);
+          const dSq = mCenter.distanceToSquared(this.defaultTarget);
+          if (dSq < bestDistSq) {
+            bestDistSq = dSq;
+            center.copy(mCenter);
+          }
+        }
+      }
 
       const labelEl = el(
         'button',
@@ -542,23 +586,114 @@ export class StageViewer {
         meshes,
         baseMats,
         center,
+        localBox: box3.clone(),
         labelEl,
         targetExplode: 0,
         currentExplode: 0,
       });
     }
 
-    // Align the showroom / dyno track floor directly underneath the assembled object's lowest point (e.g., tire treads)
-    const fullBox = new THREE.Box3().setFromObject(this.rootGroup);
+    // Align the showroom / dyno track floor directly underneath the assembled object's lowest point
+    // Compute bounds strictly from actual model parts (excluding hidden Drive-mode headlight cones!)
+    const fullBox = new THREE.Box3();
+    for (const rec of this.partRecords.values()) {
+      if (rec.localBox && !rec.localBox.isEmpty()) fullBox.union(rec.localBox);
+    }
     if (!fullBox.isEmpty()) {
-      this.stageFloorGroup.position.y = Math.max(-1.62, Math.min(-0.48, fullBox.min.y - 0.005));
+      this.stageFloorGroup.position.y = Math.min(-0.48, fullBox.min.y - 0.008);
     } else {
       this.stageFloorGroup.position.y = -0.57;
     }
     this._fitStageToBox(fullBox);
+    this._computeExplodeFraming(fullBox);
 
     this._applyXray();
     this._refreshHighlights();
+  }
+
+  _computeExplodeFraming(fullBox) {
+    this.explodeExtraRadius = 1.35;
+    this.explodeTargetShift = new THREE.Vector3(0, 0, 0);
+    if (this.partRecords.size === 0) return;
+
+    const fullSize = new THREE.Vector3();
+    if (!fullBox.isEmpty()) fullBox.getSize(fullSize);
+    const isMultiCarTrain = fullSize.x > 8.5;
+
+    const expBounds = new THREE.Box3();
+    const pPt = new THREE.Vector3();
+    for (const rec of this.partRecords.values()) {
+      const [ox, oy, oz] = rec.def.explodeOffset || [0, 0, 0];
+      pPt.set(rec.center.x + ox, rec.center.y + oy, rec.center.z + oz);
+      expBounds.expandByPoint(pPt);
+      if (!isMultiCarTrain && rec.localBox && !rec.localBox.isEmpty()) {
+        const bMin = rec.localBox.min;
+        const bMax = rec.localBox.max;
+        expBounds.expandByPoint(pPt.set(bMin.x + ox, bMin.y + oy, bMin.z + oz));
+        expBounds.expandByPoint(pPt.set(bMax.x + ox, bMax.y + oy, bMax.z + oz));
+      }
+    }
+    if (expBounds.isEmpty()) return;
+
+    const expCenter = new THREE.Vector3();
+    expBounds.getCenter(expCenter);
+    // Gently shift camera orbit target toward the exploded centroid (especially vertical/Z offsets)
+    this.explodeTargetShift.set(
+      isMultiCarTrain ? 0 : (expCenter.x - this.defaultTarget.x) * 0.45,
+      (expCenter.y - this.defaultTarget.y) * 0.55,
+      (expCenter.z - this.defaultTarget.z) * 0.45,
+    );
+
+    const focusTarget = this.defaultTarget.clone().add(this.explodeTargetShift);
+    const camDir = new THREE.Vector3().setFromSpherical(this.defaultSpherical).normalize();
+    const worldUp = new THREE.Vector3(0, 1, 0);
+    const camRight = new THREE.Vector3().crossVectors(worldUp, camDir);
+    if (camRight.lengthSq() < 1e-5) camRight.set(1, 0, 0);
+    else camRight.normalize();
+    const camUp = new THREE.Vector3().crossVectors(camDir, camRight).normalize();
+
+    const vTan = Math.tan(THREE.MathUtils.degToRad((this.camera?.fov || 38) * 0.5));
+    const aspect = Math.max(0.88, Math.min(1.45, this.camera?.aspect || 1.25));
+    const hTan = vTan * aspect;
+
+    let reqRadius = this.defaultSpherical.radius + 1.15;
+    const samplePts = [];
+    for (const rec of this.partRecords.values()) {
+      const [ox, oy, oz] = rec.def.explodeOffset || [0, 0, 0];
+      samplePts.push(new THREE.Vector3(rec.center.x + ox, rec.center.y + oy, rec.center.z + oz));
+      if (!isMultiCarTrain && rec.localBox && !rec.localBox.isEmpty()) {
+        const bMin = rec.localBox.min;
+        const bMax = rec.localBox.max;
+        for (const px of [bMin.x, bMax.x]) {
+          for (const py of [bMin.y, bMax.y]) {
+            for (const pz of [bMin.z, bMax.z]) {
+              samplePts.push(new THREE.Vector3(px + ox, py + oy, pz + oz));
+            }
+          }
+        }
+      }
+    }
+    const rel = new THREE.Vector3();
+    for (const pt of samplePts) {
+      rel.copy(pt).sub(focusTarget);
+      const along = rel.dot(camDir);
+      const upProj = Math.abs(rel.dot(camUp));
+      const rightProj = Math.abs(rel.dot(camRight));
+      const needV = upProj / (vTan * 0.78) + along;
+      const needH = rightProj / (hTan * 0.78) + along;
+      reqRadius = Math.max(reqRadius, needV, needH);
+    }
+
+    this.explodeExtraRadius = Math.max(
+      1.15,
+      Math.min(isMultiCarTrain ? 3.2 : 6.8, reqRadius - this.defaultSpherical.radius),
+    );
+    this.maxRadius = Math.max(this.maxRadius, this.defaultSpherical.radius + this.explodeExtraRadius + 2.5);
+  }
+
+  _getExplodedBaseTarget(explodeFrac = this.explodeTarget) {
+    const f = this.perPartMode ? 0.85 : Math.max(0, Math.min(1, Number(explodeFrac) || 0));
+    return this.defaultTarget.clone().addScaledVector(this.explodeTargetShift || new THREE.Vector3(), f);
   }
 
   refreshLabels() {
@@ -693,12 +828,17 @@ export class StageViewer {
         rec.currentExplode = clamped;
       }
     }
+    const extraZoom = clamped * (this.explodeExtraRadius || 1.35);
+    this.desiredSpherical.radius = this.defaultSpherical.radius + extraZoom;
+    if (!this.selectedPartId) {
+      this.desiredTarget.copy(this._getExplodedBaseTarget(clamped));
+    }
     if (immediate || prefersReducedMotion()) {
       this.explodeCurrent = clamped;
+      this.spherical.radius = this.desiredSpherical.radius;
+      this.target.copy(this.desiredTarget);
       this._updatePartPositions();
     }
-    const extraZoom = clamped * 1.15;
-    this.desiredSpherical.radius = this.defaultSpherical.radius + extraZoom;
     this._refreshHighlights();
   }
 
@@ -713,7 +853,8 @@ export class StageViewer {
       }
     }
     this.selectedPartId = activeTargetId;
-    this.desiredSpherical.radius = this.defaultSpherical.radius + 1.05;
+    this.desiredSpherical.radius = this.defaultSpherical.radius + (this.explodeExtraRadius || 1.35) * 0.9;
+    this.desiredTarget.copy(this._getExplodedBaseTarget(0.85));
     if (immediate || prefersReducedMotion()) {
       this._updatePartPositions();
     }
@@ -728,6 +869,7 @@ export class StageViewer {
       rec.labelEl.classList.toggle('is-selected', id === partId);
     }
 
+    const baseTarget = this._getExplodedBaseTarget();
     if (focusCamera && partId && this.partRecords.has(partId)) {
       const rec = this.partRecords.get(partId);
       const [ox, oy, oz] = rec.def.explodeOffset;
@@ -736,9 +878,9 @@ export class StageViewer {
         rec.center.y + oy * rec.targetExplode,
         rec.center.z + oz * rec.targetExplode,
       );
-      this.desiredTarget.copy(this.defaultTarget).lerp(worldCenter, 0.35);
+      this.desiredTarget.copy(baseTarget).lerp(worldCenter, 0.35);
     } else if (!partId) {
-      this.desiredTarget.copy(this.defaultTarget);
+      this.desiredTarget.copy(baseTarget);
     }
   }
 
@@ -766,8 +908,10 @@ export class StageViewer {
   }
 
   setCameraPreset(preset) {
-    const baseRadius = this.defaultSpherical.radius + (this.perPartMode ? 1.05 : this.explodeTarget * 1.15);
-    this.desiredTarget.copy(this.defaultTarget);
+    const extra = this.explodeExtraRadius || 1.35;
+    const baseRadius =
+      this.defaultSpherical.radius + (this.perPartMode ? extra * 0.9 : this.explodeTarget * extra);
+    this.desiredTarget.copy(this._getExplodedBaseTarget());
     if (preset === 'photo') {
       this.desiredSpherical.set(baseRadius * 0.9, 1.24, 0.92);
     } else if (preset === 'front') {
@@ -783,27 +927,35 @@ export class StageViewer {
 
   resetView() {
     this.desiredSpherical.copy(this.defaultSpherical);
+    const extra = this.explodeExtraRadius || 1.35;
     if (!this.perPartMode) {
-      this.desiredSpherical.radius = this.defaultSpherical.radius + this.explodeTarget * 1.15;
+      this.desiredSpherical.radius = this.defaultSpherical.radius + this.explodeTarget * extra;
+    } else {
+      this.desiredSpherical.radius = this.defaultSpherical.radius + extra * 0.9;
     }
-    this.desiredTarget.copy(this.defaultTarget);
+    this.desiredTarget.copy(this._getExplodedBaseTarget());
   }
 
   _applyXray() {
     for (const rec of this.partRecords.values()) {
       const isOuter = Boolean(rec.def.isOuter);
       rec.meshes.forEach((m, idx) => {
-        const base = rec.baseMats[idx];
-        if (this.xrayMode && isOuter) {
-          m.material.transparent = true;
-          m.material.opacity = Math.min(base.opacity, 0.18);
-          m.material.depthWrite = false;
-        } else {
-          m.material.transparent = base.transparent;
-          m.material.opacity = base.opacity;
-          m.material.depthWrite = !base.transparent;
-        }
-        m.material.needsUpdate = true;
+        const matList = Array.isArray(m.material) ? m.material : [m.material];
+        const baseList = rec.baseMats[idx] || [];
+        matList.forEach((mt, subIdx) => {
+          const base = baseList[subIdx];
+          if (!mt || !base || !base.visible) return;
+          if (this.xrayMode && isOuter) {
+            mt.transparent = true;
+            mt.opacity = Math.min(base.opacity, 0.18);
+            mt.depthWrite = false;
+          } else {
+            mt.transparent = base.transparent;
+            mt.opacity = base.opacity;
+            mt.depthWrite = !base.transparent;
+          }
+          mt.needsUpdate = true;
+        });
       });
     }
   }
@@ -814,18 +966,28 @@ export class StageViewer {
       const isSelected = allowSelectedGlow && id === this.selectedPartId;
       const isHovered = id === this.hoveredPartId;
       rec.meshes.forEach((m, idx) => {
-        const base = rec.baseMats[idx];
-        if (!m.material.emissive) return;
-        if (isSelected) {
-          m.material.emissive.setHex(0xffb703);
-          m.material.emissiveIntensity = 0.52;
-        } else if (isHovered) {
-          m.material.emissive.setHex(0x38bdf8);
-          m.material.emissiveIntensity = 0.32;
-        } else {
-          m.material.emissive.setHex(base.emissiveHex);
-          m.material.emissiveIntensity = base.emissiveIntensity;
-        }
+        const matList = Array.isArray(m.material) ? m.material : [m.material];
+        const baseList = rec.baseMats[idx] || [];
+        matList.forEach((mt, subIdx) => {
+          const base = baseList[subIdx];
+          if (!mt || !base || !base.visible) return;
+          if (mt.emissive) {
+            if (isSelected) {
+              mt.emissive.setHex(0xffb703);
+              mt.emissiveIntensity = 0.52;
+            } else if (isHovered) {
+              mt.emissive.setHex(0x38bdf8);
+              mt.emissiveIntensity = 0.32;
+            } else {
+              mt.emissive.setHex(base.emissiveHex);
+              mt.emissiveIntensity = base.emissiveIntensity;
+            }
+          } else if (mt.color && base.colorHex !== null) {
+            if (isSelected) mt.color.setHex(0xffb703);
+            else if (isHovered) mt.color.setHex(0x38bdf8);
+            else mt.color.setHex(base.colorHex);
+          }
+        });
       });
     }
   }
@@ -849,6 +1011,11 @@ export class StageViewer {
     const showAll = this.showLabels && !this.perPartMode && !this.driveMode && this.explodeCurrent >= 0.15;
     const proj = new THREE.Vector3();
 
+    const padX = Math.min(68, Math.max(28, w * 0.08));
+    const minY = 28;
+    const maxY = Math.max(minY + 20, h - 62);
+    const activeItems = [];
+
     for (const [id, rec] of this.partRecords.entries()) {
       const visible =
         !this.driveMode &&
@@ -865,13 +1032,48 @@ export class StageViewer {
         continue;
       }
 
-      const x = (proj.x * 0.5 + 0.5) * w;
-      const y = (-proj.y * 0.5 + 0.5) * h;
-      const inBounds = x >= 24 && x <= w - 24 && y >= 24 && y <= h - 60;
-      rec.labelEl.hidden = !inBounds;
-      if (inBounds) {
-        rec.labelEl.style.transform = `translate3d(${Math.round(x)}px, ${Math.round(y)}px, 0) translate(-50%, -50%)`;
+      const rawX = (proj.x * 0.5 + 0.5) * w;
+      const rawY = (-proj.y * 0.5 + 0.5) * h;
+      // Hide only if genuinely panned/zoomed far outside the screen; soft-clamp near-edge pills inside bounds
+      const nearScreen = rawX >= -w * 0.18 && rawX <= w * 1.18 && rawY >= -h * 0.18 && rawY <= h * 1.18;
+      if (!nearScreen) {
+        rec.labelEl.hidden = true;
+        continue;
       }
+      activeItems.push({
+        id,
+        rec,
+        x: Math.max(padX, Math.min(w - padX, rawX)),
+        y: Math.max(minY, Math.min(maxY, rawY)),
+      });
+    }
+
+    // Fast 2D pill collision relaxation so callout labels never stack on top of each other
+    const minDx = Math.min(132, Math.max(88, w * 0.16));
+    const minDy = 30;
+    for (let iter = 0; iter < 5; iter++) {
+      for (let i = 0; i < activeItems.length; i++) {
+        for (let j = i + 1; j < activeItems.length; j++) {
+          const a = activeItems[i];
+          const b = activeItems[j];
+          const dx = b.x - a.x;
+          const dy = b.y - a.y;
+          if (Math.abs(dx) < minDx && Math.abs(dy) < minDy) {
+            const pushY = (minDy - Math.abs(dy)) * 0.55 + 0.5;
+            const signY = dy >= 0 ? 1 : -1;
+            a.y = Math.max(minY, Math.min(maxY, a.y - signY * pushY));
+            b.y = Math.max(minY, Math.min(maxY, b.y + signY * pushY));
+            const signX = dx >= 0 ? 1 : -1;
+            a.x = Math.max(padX, Math.min(w - padX, a.x - signX * 3));
+            b.x = Math.max(padX, Math.min(w - padX, b.x + signX * 3));
+          }
+        }
+      }
+    }
+
+    for (const item of activeItems) {
+      item.rec.labelEl.hidden = false;
+      item.rec.labelEl.style.transform = `translate3d(${Math.round(item.x)}px, ${Math.round(item.y)}px, 0) translate(-50%, -50%)`;
     }
   }
 
@@ -905,7 +1107,10 @@ export class StageViewer {
       const rec = this.partRecords.get(this.selectedPartId);
       const pulse = 0.42 + 0.25 * Math.sin(this.clock.elapsedTime * 5.5);
       for (const m of rec.meshes) {
-        if (m.material.emissive) m.material.emissiveIntensity = pulse;
+        const mats = Array.isArray(m.material) ? m.material : [m.material];
+        for (const mt of mats) {
+          if (mt?.emissive && mt.visible !== false) mt.emissiveIntensity = pulse;
+        }
       }
     }
 

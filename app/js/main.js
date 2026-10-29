@@ -1321,7 +1321,7 @@ function finishQuiz() {
   const total = sess.questions.length;
   let stars = 1;
   if (sess.score >= total) stars = 3;
-  else if (sess.score >= 3) stars = 2;
+  else if (sess.score >= Math.max(2, Math.ceil(total * 0.6))) stars = 2;
 
   awardModeStars(obj.id, 'quiz', stars);
   trackQuizComplete(obj.id, obj.activeModelId || obj.id, sess.score, total, stars);

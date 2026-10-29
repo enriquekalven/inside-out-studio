@@ -378,9 +378,18 @@ export class RocketLaunchSim extends BaseSim {
     const thrust = this.maxThrust * (st.n1 / 100) ** 1.85 * (1 + st.burner * 0.25);
     const fuel = thrust * 0.28 * (1 + st.burner * 0.35);
 
-    if (st.n1 >= 15) this.check('idle');
-    if (st.n1 >= 98) this.check('full');
-    if (st.burner > 0.85 && st.n1 > 92) this.check('burner');
+    if (st.n1 >= 20) {
+      this.check('idle');
+      this.check('ignite');
+    }
+    if (st.altitude >= 1.1) {
+      this.check('liftoff');
+    }
+    if (st.n1 >= 96 || (st.burner > 0.8 && st.n1 > 88)) {
+      this.check('full');
+      this.check('burner');
+      this.check('maxq');
+    }
 
     // Vertical upward liftoff physics (+Y ascent!)
     const twr = (st.n1 / 100) * (1 + st.burner * 0.25);
@@ -440,7 +449,12 @@ export class RocketLaunchSim extends BaseSim {
       m.material.emissiveIntensity = (m.userData.simEmissive?.i || 0) + glow * 1.8 + st.burner * 1.1;
     }
 
+    const altKm = (st.altitude * 3.4).toFixed(1);
+    const velKms = (st.velocity * 0.56).toFixed(2);
     Object.assign(this.telemetry, {
+      throttle: Math.round(st.n1),
+      altitude: `${altKm} km`,
+      velocity: `${velKms}`,
       n1: Math.round(st.n1),
       n2: Math.round(st.n2),
       egt: Math.round(st.egt),

@@ -1435,8 +1435,8 @@ const N700S = {
   trackStyle: N700S_TRACK,
   camera: { pos: [4.75, 1.55, 5.35], target: [-0.6, -0.15, 0], maxR: 26 },
   explode: {
-    nose: [1.7, 0.16, 0], body: [0, 1.05, 0], cab: [0.75, 1.6, 0], panto: [0, 2.0, 0], bogies: [0, -0.04, 1.15],
-    motors: [0, -0.04, 1.75], power: [0, -0.04, -1.45], seats: [0, 0.32, 0], brakes: [0, -0.04, 0.62], gangway: [0, 0.5, -0.8], track: [0, 0, -0.55],
+    nose: [1.7, 0.16, 0], body: [0, 1.05, 0], cab: [0.75, 1.6, 0], panto: [0, 2.0, 0], bogies: [0, -0.04, 1.18],
+    motors: [0, -0.04, 1.82], power: [0, -0.52, 1.48], seats: [0, 0.32, 0], brakes: [0, -0.34, 0.72], gangway: [0, 0.5, -0.8], track: [0, 0, -0.55],
   },
   trackPartId: 'slab-track-rails',
   buildTrack: buildSlabTrack(N700S_TRACK),
@@ -1555,6 +1555,8 @@ const N700S = {
     { q: 'Which part of the N700S has sharp “wing” edges to stop a loud boom when the train enters a tunnel?', correctId: 'aero-nose-cone', distractors: ['passenger-saloon-seats', 'diaphragm-gangway-coupler', 'bogies-wheelsets'] },
     { q: 'Which roof part reaches up to the overhead wire to collect 25,000-volt electricity?', correctId: 'pantograph-catenary', distractors: ['driver-cab-cockpit', 'regenerative-eddy-brakes', 'slab-track-rails'] },
     { q: 'Which underfloor part uses tiny silicon-carbide chips to control the motors?', correctId: 'sic-traction-transformer', distractors: ['passenger-saloon-seats', 'aero-nose-cone', 'diaphragm-gangway-coupler'] },
+    { q: 'Which airtight welded-aluminum shells keep passengers’ ears from popping inside tunnels at 285 km/h?', correctId: 'aluminum-carbody-shell', distractors: ['slab-track-rails', 'bogies-wheelsets', 'traction-motors-gearbox'] },
+    { q: 'Which braking system uses the traction motors as generators to feed electricity back into the overhead wire?', correctId: 'regenerative-eddy-brakes', distractors: ['driver-cab-cockpit', 'passenger-saloon-seats', 'diaphragm-gangway-coupler'] },
   ],
 };
 
@@ -1617,8 +1619,8 @@ const CR400AF = {
   trackStyle: CR_TRACK,
   camera: { pos: [3.55, 1.32, 5.45], target: [-0.45, -0.1, 0], maxR: 26 },
   explode: {
-    nose: [1.6, 0.16, 0], body: [0, 1.1, 0], cab: [0.7, 1.65, 0], panto: [0, 2.0, 0], bogies: [0, -0.04, 1.15],
-    motors: [0, -0.04, 1.75], power: [0, -0.04, -1.45], seats: [0, 0.34, 0], brakes: [0, -0.04, 0.62], gangway: [0, 0.52, -0.8], track: [0, 0, -0.55],
+    nose: [1.6, 0.16, 0], body: [0, 1.1, 0], cab: [0.7, 1.65, 0], panto: [0, 2.0, 0], bogies: [0, -0.04, 1.18],
+    motors: [0, -0.04, 1.82], power: [0, -0.52, 1.48], seats: [0, 0.34, 0], brakes: [0, -0.34, 0.72], gangway: [0, 0.52, -0.8], track: [0, 0, -0.55],
   },
   trackPartId: 'slab-track-rails',
   buildTrack: buildSlabTrack(CR_TRACK),
@@ -1755,6 +1757,8 @@ const CR400AF = {
     { q: 'Which part of the Fuxing train has the red “dragon” swoosh and pushes the air aside?', correctId: 'aero-nose-cone', distractors: ['sic-traction-transformer', 'passenger-saloon-seats', 'slab-track-rails'] },
     { q: 'Fuxing trains glide on precast concrete slabs instead of gravel. Which part is that?', correctId: 'slab-track-rails', distractors: ['bogies-wheelsets', 'diaphragm-gangway-coupler', 'aluminum-carbody-shell'] },
     { q: 'Which part spins the axles to move the train?', correctId: 'traction-motors-gearbox', distractors: ['pantograph-catenary', 'driver-cab-cockpit', 'regenerative-eddy-brakes'] },
+    { q: 'Which roof arm collects 27,500-volt AC power and shares it along a high-voltage roof cable?', correctId: 'pantograph-catenary', distractors: ['passenger-saloon-seats', 'slab-track-rails', 'diaphragm-gangway-coupler'] },
+    { q: 'Which sensor-packed underframes carry the air springs, wheelsets, and yaw dampers at 350 km/h?', correctId: 'bogies-wheelsets', distractors: ['driver-cab-cockpit', 'aluminum-carbody-shell', 'aero-nose-cone'] },
   ],
 };
 
@@ -1809,8 +1813,8 @@ const L0 = {
   guideway: L0_GUIDEWAY,
   camera: { pos: [3.7, 1.42, 5.55], target: [-0.35, -0.12, 0], maxR: 26 },
   explode: {
-    nose: [1.9, 0.18, 0], body: [0, 1.05, 0], cab: [0.6, 1.55, 0], panto: [0, 0.55, 1.25], bogies: [0, -0.04, 1.35],
-    motors: [0, 0.1, 2.0], power: [0, 0.2, -1.45], seats: [0, 0.32, 0], brakes: [0, -0.04, 0.75], gangway: [0, 0.5, -0.8], track: [0, 0, -0.7],
+    nose: [1.9, 0.18, 0], body: [0, 1.05, 0], cab: [0.6, 1.55, 0], panto: [0, 0.78, 1.55], bogies: [0, -0.04, 1.35],
+    motors: [0, 0.15, 2.05], power: [0, -0.52, 1.48], seats: [0, 0.32, 0], brakes: [0, -0.34, 0.85], gangway: [0, 0.5, -0.8], track: [0, 0, -0.7],
   },
   trackPartId: 'maglev-guideway-coils',
   buildTrack: buildGuideway(L0_GUIDEWAY),
@@ -1917,6 +1921,8 @@ const L0 = {
     { q: 'Which part of the L0 holds super-cold magnets that the guideway pushes on to lift the train?', correctId: 'traction-motors-gearbox', distractors: ['passenger-saloon-seats', 'diaphragm-gangway-coupler', 'aero-nose-cone'] },
     { q: 'Which concrete part has figure-8 coils in its walls that lift, steer and propel the maglev?', correctId: 'maglev-guideway-coils', distractors: ['aluminum-carbody-shell', 'regenerative-eddy-brakes', 'driver-cab-cockpit'] },
     { q: 'The L0 has no pantograph. Which part collects electricity wirelessly?', correctId: 'pantograph-catenary', distractors: ['bogies-wheelsets', 'sic-traction-transformer', 'aero-nose-cone'] },
+    { q: 'Which 15-meter ultra-long front section lets the SCMaglev enter tunnels at 500 km/h without a pressure boom?', correctId: 'aero-nose-cone', distractors: ['passenger-saloon-seats', 'sic-traction-transformer', 'diaphragm-gangway-coupler'] },
+    { q: 'Which retractable rubber-tyred landing gear supports the SCMaglev below 150 km/h before magnetic liftoff?', correctId: 'bogies-wheelsets', distractors: ['driver-cab-cockpit', 'aluminum-carbody-shell', 'pantograph-catenary'] },
   ],
 };
 

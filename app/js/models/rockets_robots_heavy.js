@@ -495,6 +495,8 @@ function buildPerseveranceRover() {
       { q: 'Which instrument on Perseverance’s mast shoots a pulsed laser to vaporize rock and read its chemistry?', correctId: 'remote-sensing-supercam-mast', distractors: ['mmrtg-plutonium-battery', 'rocker-bogie-titanium-wheels', 'moxie-oxygen-generator'] },
       { q: 'Which golden internal reactor splits Martian CO₂ atmosphere into breathable oxygen?', correctId: 'moxie-oxygen-generator', distractors: ['sample-caching-carousel', 'uhf-xband-high-gain-antennas', 'ingenuity-mars-helicopter'] },
       { q: 'Which finned tail unit uses Plutonium-238 heat to power the rover day and night for 14 years?', correctId: 'mmrtg-plutonium-battery', distractors: ['rover-warm-electronics-chassis', 'robotic-arm-corer-turret', 'rocker-bogie-titanium-wheels'] },
+      { q: 'Which 6-wheel linkage keeps all wheels pressed evenly onto jagged Martian boulders without metal springs?', correctId: 'rocker-bogie-titanium-wheels', distractors: ['uhf-xband-high-gain-antennas', 'sample-caching-carousel', 'rover-warm-electronics-chassis'] },
+      { q: 'Which 1.8-kg coaxial carbon-fiber scout stowed under the rover belly flew 72 times in Mars’s 1% thin air?', correctId: 'ingenuity-mars-helicopter', distractors: ['robotic-arm-corer-turret', 'mmrtg-plutonium-battery', 'remote-sensing-supercam-mast'] },
     ],
   };
 }
@@ -582,6 +584,8 @@ export const ROBOT_MODELS = [
       { q: 'Which precision gear reducers inside a 6-axis robot arm eliminate gear slop ("backlash")?', correctId: 'cycloidal-harmonic-gearboxes', distractors: ['pedestal-slew-base-j1', 'corrugated-umbilical-dresspack', 'lower-link-boom-j2'] },
       { q: 'Which 3-joint spherical assembly at the tip of the forearm rotates the tool through 360 degrees?', correctId: 'hollow-wrist-triad-j456', distractors: ['ac-brushless-servo-motors', 'upper-cantilever-arm-j3', 'pedestal-slew-base-j1'] },
       { q: 'Which end-of-arm attachment grips parts and scans weld seams with a structured laser?', correctId: 'end-effector-gripper-laser', distractors: ['lower-link-boom-j2', 'corrugated-umbilical-dresspack', 'cycloidal-harmonic-gearboxes'] },
+      { q: 'Which heavy bolted Axis-1 rotary turntable spins the entire robot arm left and right?', correctId: 'pedestal-slew-base-j1', distractors: ['hollow-wrist-triad-j456', 'end-effector-gripper-laser', 'upper-cantilever-arm-j3'] },
+      { q: 'Which flexible armored conduit routes power, air, and data cables along the arm without tangling?', correctId: 'corrugated-umbilical-dresspack', distractors: ['pedestal-slew-base-j1', 'ac-brushless-servo-motors', 'lower-link-boom-j2'] },
     ],
   }),
   buildRobotOrHeavyModel({
@@ -807,6 +811,8 @@ export const ROBOT_MODELS = [
       { q: 'Which 5 sensor modules around the quadruped’s body build a 3D heightmap so it can climb stairs?', correctId: 'stereo-depth-camera-array', distractors: ['hot-swap-lithium-battery', 'exoskeleton-torso-shell', 'dorsal-manipulator-arm'] },
       { q: 'Which top-mounted attachment lets the robot dog turn valves and pull open doors?', correctId: 'dorsal-manipulator-arm', distractors: ['planetary-actuator-hips', 'articulated-legs-paws', 'hot-swap-lithium-battery'] },
       { q: 'Which spinning laser sensor on the robot’s back maps tunnels and factories with 300,000 pulses per second?', correctId: 'spinning-3d-lidar-payload', distractors: ['locomotion-imu-motherboard', 'articulated-legs-paws', 'exoskeleton-torso-shell'] },
+      { q: 'Which low-ratio brushless hip motors act like electronic springs to absorb impacts when trotting?', correctId: 'planetary-actuator-hips', distractors: ['stereo-depth-camera-array', 'hot-swap-lithium-battery', 'spinning-3d-lidar-payload'] },
+      { q: 'Which internal 6-axis gyroscope and reflex computer fires balance corrections in 2 milliseconds if the robot slips?', correctId: 'locomotion-imu-motherboard', distractors: ['exoskeleton-torso-shell', 'dorsal-manipulator-arm', 'hot-swap-lithium-battery'] },
     ],
   }),
 ];
@@ -936,7 +942,7 @@ export const CONSTRUCTION_MODELS = [
           tube(g, [[0.06, 0.06 + hy, 0.08], [0.68, 0.68 + hy, 0.08], [1.42, 0.62 + hy, 0.08]], 0.011, m.darkSteel);
         }
       }],
-      ['dipper-stick-crowd-cylinder', 'Dipper Arm Stick, Crowd/Curl Cylinders & H-Link Power Linkage', 'Front Linkage', true, [1.85, 0.85, 0], 'Tapered welded box-section dipper stick driven by the dorsal crowd cylinder, stick-mounted bucket curl cylinder, and forged H-link / dog-bone linkage.', 'Internal baffle plates welded inside the stick stop the steel box beam from twisting when prying up bedrock!', (g, m) => {
+      ['dipper-stick-crowd-cylinder', 'Dipper Arm Stick, Crowd/Curl Cylinders & H-Link Power Linkage', 'Front Linkage', false, [1.85, 0.85, 0], 'Tapered welded box-section dipper stick driven by the dorsal crowd cylinder, stick-mounted bucket curl cylinder, and forged H-link / dog-bone linkage.', 'Internal baffle plates welded inside the stick stop the steel box beam from twisting when prying up bedrock!', (g, m) => {
         // Tapered dipper stick profile articulating from boom nose (1.46, 0.60) down to bucket pin (1.84, -0.12)
         const stickPts = [
           [1.34, 0.82],
@@ -962,7 +968,7 @@ export const CONSTRUCTION_MODELS = [
           rbox(g, 0.045, 0.22, 0.025, 0.008, m.primary, [1.88, -0.02, lz], [0, 0, 0.45]);
         }
       }],
-      ['toothed-rock-bucket', '5-Tooth Hardox Steel Rock Bucket, Side Cutters & Wear Shrouds', 'Earthmoving Tool', true, [2.25, -0.45, 0], 'Abrasion-resistant curved Hardox 500 trenching bucket with 5 replaceable forged Tiger rock teeth, serrated side cutters, and top pin brackets.', 'Excavator bucket teeth are held on by locking pins so worn-out teeth can be hammered off and replaced in 10 minutes!', (g, m) => {
+      ['toothed-rock-bucket', '5-Tooth Hardox Steel Rock Bucket, Side Cutters & Wear Shrouds', 'Earthmoving Tool', false, [2.25, -0.45, 0], 'Abrasion-resistant curved Hardox 500 trenching bucket with 5 replaceable forged Tiger rock teeth, serrated side cutters, and top pin brackets.', 'Excavator bucket teeth are held on by locking pins so worn-out teeth can be hammered off and replaced in 10 minutes!', (g, m) => {
         extrudeProfile(
           g,
           [[-0.24, 0.24], [0.22, 0.24], [0.30, -0.10], [0.06, -0.28], [-0.26, -0.20]],
@@ -986,7 +992,7 @@ export const CONSTRUCTION_MODELS = [
           cone(g, 0.026, 0.15, 6, m.chrome, [2.13, -0.37, tz], [0, 0, -1.28]);
         }
       }],
-      ['turbodiesel-hydraulic-pump', 'Cat C9.3B Turbo-Diesel Engine (CAD), Swashplate Pumps & Service Deck', 'Powertrain & Hydraulics', true, [-0.95, 1.15, -1.15], 'Sculpted upper house enclosure with louvered service doors, catwalk handrails, vertical exhaust stack, cooling fan, CAD diesel engine, and twin 350-bar pumps.', 'Instead of a mechanical transmission, the diesel engine drives twin swashplate oil pumps at 5,000 PSI to power every motion!', (g, m) => {
+      ['turbodiesel-hydraulic-pump', 'Cat C9.3B Turbo-Diesel Engine (CAD), Swashplate Pumps & Service Deck', 'Powertrain & Hydraulics', false, [-0.95, 1.15, -1.15], 'Sculpted upper house enclosure with louvered service doors, catwalk handrails, vertical exhaust stack, cooling fan, CAD diesel engine, and twin 350-bar pumps.', 'Instead of a mechanical transmission, the diesel engine drives twin swashplate oil pumps at 5,000 PSI to power every motion!', (g, m) => {
         populateEngineCad(g, { pos: [-0.62, 0.22, -0.12], scale: 0.0016, primaryColor: 0xf59e0b });
         // Sculpted upper house chassis platform + starboard hydraulic tank + engine hood cowling
         rbox(g, 1.48, 0.10, 1.34, 0.025, m.darkSteel, [-0.38, -0.14, 0]);
@@ -1011,6 +1017,8 @@ export const CONSTRUCTION_MODELS = [
       { q: 'Which heavy rear block keeps the 36-ton excavator from tipping forward when the boom reaches out?', correctId: 'cast-iron-counterweight', distractors: ['rops-operator-cab', 'toothed-rock-bucket', 'crawler-track-undercarriage'] },
       { q: 'Which central bearing and rotary fluid union lets the excavator cab spin 360° continuously?', correctId: 'slew-ring-turntable-swivel', distractors: ['monoboom-lift-cylinders', 'dipper-stick-crowd-cylinder', 'cast-iron-counterweight'] },
       { q: 'Which attachment at the tip of the stick uses replaceable forged steel teeth to rip through rock?', correctId: 'toothed-rock-bucket', distractors: ['turbodiesel-hydraulic-pump', 'rops-operator-cab', 'slew-ring-turntable-swivel'] },
+      { q: 'Which curved box-section main boom and twin 350-bar cylinders lift 15+ tons straight out of a trench?', correctId: 'monoboom-lift-cylinders', distractors: ['rops-operator-cab', 'cast-iron-counterweight', 'crawler-track-undercarriage'] },
+      { q: 'Which triple-grouser steel tracks let the 36-ton excavator counter-rotate and spin on the spot?', correctId: 'crawler-track-undercarriage', distractors: ['toothed-rock-bucket', 'rops-operator-cab', 'dipper-stick-crowd-cylinder'] },
     ],
   }),
   buildRobotOrHeavyModel({
@@ -1271,6 +1279,8 @@ export const CONSTRUCTION_MODELS = [
       { q: 'Which spinning internal cylinder rubs grain kernels out of crop heads using centrifugal force?', correctId: 'axial-flow-threshing-rotor', distractors: ['high-flotation-drive-wheels', 'gps-autosteer-harvest-cab', 'grain-tank-unloading-auger'] },
       { q: 'Which shaking sieve and blower assembly separates clean grain from light chaff?', correctId: 'cleaning-shoe-sieves-fan', distractors: ['feederhouse-chain-conveyor', 'draper-header-spinning-reel', 'turbodiesel-residue-chopper'] },
       { q: 'Which swing-out boom empties 420 bushels of harvested grain into a truck while driving?', correctId: 'grain-tank-unloading-auger', distractors: ['axial-flow-threshing-rotor', 'draper-header-spinning-reel', 'high-flotation-drive-wheels'] },
+      { q: 'Which 40-foot front cutterbar and 6-bat spinning reel slices standing wheat and feeds it inward?', correctId: 'draper-header-spinning-reel', distractors: ['gps-autosteer-harvest-cab', 'cleaning-shoe-sieves-fan', 'turbodiesel-residue-chopper'] },
+      { q: 'Which panoramic glass cab uses a roof-mounted StarFire RTK GPS dome to steer hands-free within 2 cm?', correctId: 'gps-autosteer-harvest-cab', distractors: ['feederhouse-chain-conveyor', 'high-flotation-drive-wheels', 'axial-flow-threshing-rotor'] },
     ],
   }),
   buildRobotOrHeavyModel({
@@ -1344,7 +1354,7 @@ export const CONSTRUCTION_MODELS = [
         cyl(g, 0.038, 0.038, 0.30, 16, m.darkSteel, [-0.35, 0.14, 0.26]);
         cyl(g, 0.026, 0.026, 0.28, 16, m.chrome, [-0.35, 0.32, 0.26]);
       }],
-      ['slewing-turntable-cab', '360° Slewing Ring Gear, Framed LiCAB Operator Cabin & Anemometer', 'Slewing & Control', true, [-0.35, 1.15, 1.25], 'Triple-roller slewing ring bearing, dual planetary swing drives, machinery walkway, and glass-floor panoramic Liebherr operator cab.', 'The crane operator sits 500 feet in the air looking straight down through a thick glass window between their feet!', (g, m) => {
+      ['slewing-turntable-cab', '360° Slewing Ring Gear, Framed LiCAB Operator Cabin & Anemometer', 'Slewing & Control', false, [-0.35, 1.15, 1.25], 'Triple-roller slewing ring bearing, dual planetary swing drives, machinery walkway, and glass-floor panoramic Liebherr operator cab.', 'The crane operator sits 500 feet in the air looking straight down through a thick glass window between their feet!', (g, m) => {
         cyl(g, 0.24, 0.24, 0.12, 32, m.darkSteel, [-0.35, 0.68, 0]);
         torus(g, 0.245, 0.016, m.chrome, [-0.35, 0.68, 0], [Math.PI / 2, 0, 0]);
         for (const sz of [-0.18, 0.18]) cyl(g, 0.045, 0.045, 0.14, 14, m.primary, [-0.35, 0.76, sz]);
@@ -1366,7 +1376,7 @@ export const CONSTRUCTION_MODELS = [
           sphere(anem, 0.016, 10, m.primary, [Math.cos(ang) * 0.04, 0.02, Math.sin(ang) * 0.04]);
         }
       }],
-      ['apex-cathead-pendants', 'Pyramidal 4-Chord A-Frame Tower Head (Apex) & Pendant Tie-Rods', 'Tension Suspension', true, [-0.35, 1.75, 0], 'Towering 4-chord lattice A-frame cathead pinnacle with aviation beacon and 4 solid steel tension pendant rods.', 'Just like the towers of a suspension bridge, the A-frame apex transfers the weight of the long boom into steel tension rods!', (g, m) => {
+      ['apex-cathead-pendants', 'Pyramidal 4-Chord A-Frame Tower Head (Apex) & Pendant Tie-Rods', 'Tension Suspension', false, [-0.35, 1.75, 0], 'Towering 4-chord lattice A-frame cathead pinnacle with aviation beacon and 4 solid steel tension pendant rods.', 'Just like the towers of a suspension bridge, the A-frame apex transfers the weight of the long boom into steel tension rods!', (g, m) => {
         for (const dx of [-0.12, 0.12]) for (const dz of [-0.12, 0.12]) {
           tube(g, [[-0.35 + dx, 0.74, dz], [-0.35 + dx * 0.28, 1.32, dz * 0.28]], 0.016, m.primary);
         }
@@ -1400,7 +1410,7 @@ export const CONSTRUCTION_MODELS = [
         rbox(g, 0.56, 0.09, 0.012, 0.004, m.primary, [0.22, 0.84, 0.105], [-0.52, 0, 0]);
         sphere(g, 0.022, 12, 12, emissiveMat(0xef4444, 2.4), [2.08, 0.98, 0]);
       }],
-      ['counter-jib-ballast-blocks', 'Trussed Counter-Jib Deck, Walkways & 7 Concrete Counterweight Slabs', 'Counterbalance', true, [-1.85, 1.15, 0], 'Rear structural lattice counter-jib deck with safety handrails, electrical cabinet, and 7 suspended precast concrete counterweight slabs.', 'The rear counterweights are sized so that when the crane lifts a half-maximum load, the mast experiences zero bending moment!', (g, m) => {
+      ['counter-jib-ballast-blocks', 'Trussed Counter-Jib Deck, Walkways & 7 Concrete Counterweight Slabs', 'Counterbalance', false, [-1.85, 1.15, 0], 'Rear structural lattice counter-jib deck with safety handrails, electrical cabinet, and 7 suspended precast concrete counterweight slabs.', 'The rear counterweights are sized so that when the crane lifts a half-maximum load, the mast experiences zero bending moment!', (g, m) => {
         const concreteMat = mat(0x94a3b8, { roughness: 0.78, metalness: 0.08 });
         for (const dz of [-0.16, 0.16]) {
           box(g, 1.24, 0.042, 0.036, m.primary, [-0.95, 0.74, dz]);
@@ -1412,7 +1422,7 @@ export const CONSTRUCTION_MODELS = [
         }
         rbox(g, 0.62, 0.04, 0.32, 0.008, m.primary, [-1.22, 0.93, 0]);
       }],
-      ['hoist-winch-trolley-hook', 'Lebus Hoist Winch (CAD), Trolley, 4-Part Hook Block & Steel I-Beam Load', 'Hoisting System', true, [1.75, -0.35, 0], 'Real mechanical CAD hoist gearbox, wire-rope winch drum, traveling saddle trolley, 4-fall sheave hook block, and a rigged structural steel I-beam load.', 'Threading the steel wire rope 4 times between the trolley pulleys and hook block ("4-part reeving") quadruples lifting power!', (g, m) => {
+      ['hoist-winch-trolley-hook', 'Lebus Hoist Winch (CAD), Trolley, 4-Part Hook Block & Steel I-Beam Load', 'Hoisting System', false, [1.75, -0.35, 0], 'Real mechanical CAD hoist gearbox, wire-rope winch drum, traveling saddle trolley, 4-fall sheave hook block, and a rigged structural steel I-beam load.', 'Threading the steel wire rope 4 times between the trolley pulleys and hook block ("4-part reeving") quadruples lifting power!', (g, m) => {
         populateGearboxCad(g, { pos: [-0.68, 0.82, 0], scale: 0.008 });
         cyl(g, 0.065, 0.065, 0.22, 20, m.darkSteel, [-0.68, 0.82, 0], [Math.PI / 2, 0, 0]);
         // Traveling saddle trolley carriage at x = 1.38 + 4-fall vertical wire ropes
@@ -1442,6 +1452,8 @@ export const CONSTRUCTION_MODELS = [
       { q: 'Which hydraulic collar allows a skyscraper tower crane to jack itself up and insert new mast sections?', correctId: 'hydraulic-climbing-cage', distractors: ['cruciform-base-ballast', 'counter-jib-ballast-blocks', 'horizontal-saddle-jib'] },
       { q: 'Which rear deck holds hanging concrete blocks to balance the weight of the long front boom?', correctId: 'counter-jib-ballast-blocks', distractors: ['apex-cathead-pendants', 'slewing-turntable-cab', 'lattice-tower-mast-sections'] },
       { q: 'Which traveling carriage and 4-pulley pulley block rolls out along the boom to lift steel beams?', correctId: 'hoist-winch-trolley-hook', distractors: ['hydraulic-climbing-cage', 'cruciform-base-ballast', 'slewing-turntable-cab'] },
+      { q: 'Which 70-meter open triangular lattice main boom lets high-altitude winds blow right through it?', correctId: 'horizontal-saddle-jib', distractors: ['cruciform-base-ballast', 'hydraulic-climbing-cage', 'slewing-turntable-cab'] },
+      { q: 'Which cross-shaped ground foundation uses over 100 tons of concrete ballast blocks to anchor the tower crane?', correctId: 'cruciform-base-ballast', distractors: ['apex-cathead-pendants', 'hoist-winch-trolley-hook', 'slewing-turntable-cab'] },
     ],
   }),
 ];

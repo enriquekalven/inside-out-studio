@@ -681,6 +681,8 @@ function buildH145Model() {
       { q: 'What is the shrouded 10-blade tail fan on the Airbus H145 called?', correctId: 'fenestron-shrouded-tail-rotor', distractors: ['h145-bearingless-5blade-rotor', 'tubular-aluminum-skid-gear', 'twin-arriel-2e-turboshafts'] },
       { q: 'Why does the H145 use a 5-blade bearingless flexbeam rotor instead of hinged blades?', correctId: 'h145-bearingless-5blade-rotor', distractors: ['tubular-aluminum-skid-gear', 'helionix-cockpit-clamshell-bay', 'fenestron-shrouded-tail-rotor'] },
       { q: 'Which feature lets paramedics load a stretcher straight into the back of the H145?', correctId: 'helionix-cockpit-clamshell-bay', distractors: ['twin-arriel-2e-turboshafts', 'tubular-aluminum-skid-gear', 'h145-bearingless-5blade-rotor'] },
+      { q: 'Which twin FADEC turboshaft engines give the medevac helicopter safe single-engine climb power?', correctId: 'twin-arriel-2e-turboshafts', distractors: ['tubular-aluminum-skid-gear', 'hems-icu-stretcher-life-support', 'panoramic-bubble-windshield-helionix'] },
+      { q: 'Which external 90-meter hydraulic winch and searchlight rescue stranded hikers from steep cliffs?', correctId: 'rescue-winch-searchlight-flir', distractors: ['fenestron-shrouded-tail-rotor', 'tubular-aluminum-skid-gear', 'panoramic-bubble-windshield-helionix'] },
     ],
   };
 }
@@ -784,6 +786,8 @@ function buildDjiMavicModel() {
       { q: 'How does a quadcopter pitch, roll, and yaw without a tail rotor or mechanical swashplate?', correctId: 'brushless-outrunner-motors-props', distractors: ['hasselblad-3axis-gimbal', 'lipo-4s-flight-battery', 'magnesium-core-cooling-chassis'] },
       { q: 'Which 3-axis motorized mechanism keeps the drone camera level even when the drone tilts into the wind?', correctId: 'hasselblad-3axis-gimbal', distractors: ['omnidirectional-vision-gps', 'folding-carbon-arms-outrunners', 'lipo-4s-flight-battery'] },
       { q: 'Which sensor suite lets the quadcopter detect and fly around tree branches in all directions?', correctId: 'omnidirectional-vision-gps', distractors: ['magnesium-core-cooling-chassis', 'lipo-4s-flight-battery', 'hasselblad-3axis-gimbal'] },
+      { q: 'Which 4 hinged carbon-composite booms fold inward so the quadcopter fits inside a small bag?', correctId: 'folding-carbon-arms-outrunners', distractors: ['lipo-4s-flight-battery', 'o3-plus-sdr-video-transceiver', 'flight-controller-esc-gnss-stack'] },
+      { q: 'Which long-range Software-Defined Radio beams live 1080p/60fps video from up to 15 kilometers away?', correctId: 'o3-plus-sdr-video-transceiver', distractors: ['magnesium-core-cooling-chassis', 'hasselblad-3axis-gimbal', 'lipo-4s-flight-battery'] },
     ],
   };
 }
@@ -877,6 +881,8 @@ function buildIngenuityModel() {
       { q: 'Why does NASA Ingenuity use two counter-rotating coaxial rotors instead of a tail rotor?', correctId: 'coaxial-carbon-rotors', distractors: ['top-solar-array-panel', 'carbon-mars-landing-legs', 'kapton-avionics-fuselage'] },
       { q: 'What did most of Ingenuity’s solar-charged battery energy do during the -90°C Martian night?', correctId: 'top-solar-array-panel', distractors: ['carbon-mars-landing-legs', 'coaxial-carbon-rotors', 'kapton-avionics-fuselage'] },
       { q: 'Which gold-foiled central cube houses Ingenuity’s batteries, heaters, and Snapdragon flight computer?', correctId: 'kapton-avionics-fuselage', distractors: ['coaxial-carbon-rotors', 'carbon-mars-landing-legs', 'top-solar-array-panel'] },
+      { q: 'Which downward Garmin laser altimeter and navigation camera track Martian rocks 30 times per second without GPS?', correctId: 'garmin-lidar-navcam-downward', distractors: ['carbon-mars-landing-legs', 'top-solar-array-panel', 'six-cell-sony-li-ion-battery'] },
+      { q: 'Which 6 micro-servos and dual titanium swashplates tilt Ingenuity’s rotor blades 500 times per second?', correctId: 'dual-swashplate-pitch-servos', distractors: ['carbon-mars-landing-legs', 'six-cell-sony-li-ion-battery', 'top-solar-array-panel'] },
     ],
   };
 }
@@ -1074,6 +1080,8 @@ function buildSwissChronographModel() {
       { q: 'Which oscillating wheel and hairspring divide time into 8 exact beats per second (28,800 vph)?', correctId: 'swiss-lever-escapement-balance-rotor', distractors: ['mainspring-barrel-crown', 'oyster-316l-case-strap', 'chronograph-dial-hands-case'] },
       { q: 'Where is mechanical energy stored inside a battery-free automatic watch?', correctId: 'coiled-nivaflex-mainspring-barrel', distractors: ['going-train-gear-wheels', 'swiss-lever-escapement-balance-rotor', 'chronograph-dial-hands-case'] },
       { q: 'Why are synthetic rubies ("jewels") pressed into the movement bridges?', correctId: 'going-train-gear-wheels', distractors: ['oyster-316l-case-strap', 'mainspring-barrel-crown', 'chronograph-dial-hands-case'] },
+      { q: 'Which 8-pillar blued-steel turret coordinates starting, stopping, and resetting the stopwatch hands crisply?', correctId: 'column-wheel-chrono-clutch', distractors: ['oyster-316l-case-strap', 'ceramic-tachymeter-bezel-sapphire', 'chronograph-dial-hands-case'] },
+      { q: 'Which scratch-proof ceramic outer ring and sapphire crystal let drivers calculate speed over a measured mile?', correctId: 'ceramic-tachymeter-bezel-sapphire', distractors: ['coiled-nivaflex-mainspring-barrel', 'rhodium-mainplate-cotes-de-geneve', 'going-train-gear-wheels'] },
     ],
   };
 }
@@ -1231,6 +1239,8 @@ function buildGrandfatherClockModel() {
       { q: 'What powers the gears of a traditional grandfather clock for 8 days without electricity?', correctId: 'cable-driven-brass-weights', distractors: ['deadbeat-escapement-pendulum', 'westminster-chime-tubes-hammers', 'moon-phase-dial-mahogany-case'] },
       { q: 'How long does it take a ~1-meter grandfather clock pendulum to swing from one side to the other?', correctId: 'deadbeat-escapement-pendulum', distractors: ['going-striking-gear-train', 'cable-driven-brass-weights', 'westminster-chime-tubes-hammers'] },
       { q: 'Which mechanism counts out the exact number of strikes at the top of each hour?', correctId: 'going-striking-gear-train', distractors: ['moon-phase-dial-mahogany-case', 'deadbeat-escapement-pendulum', 'cable-driven-brass-weights'] },
+      { q: 'Which 9 tuned nickel-brass tubes and felt hammers play the famous four-note Westminster melody every 15 minutes?', correctId: 'westminster-chime-tubes-hammers', distractors: ['carved-base-plinth-bracket-feet', 'swan-neck-hood-bonnet-finials', 'waisted-mahogany-trunk-glass-door'] },
+      { q: 'Which hand-painted rotating dial disc advances one tooth per day to track the 29½-day lunar cycle?', correctId: 'rolling-moon-phase-calendar-disc', distractors: ['cable-driven-brass-weights', 'carved-base-plinth-bracket-feet', 'waisted-mahogany-trunk-glass-door'] },
     ],
   };
 }
@@ -1555,6 +1565,7 @@ function buildTernGsdModel() {
       { q: 'Which mid-mounted electric motor delivers 85 Nm of torque and up to 400% pedal assist?', correctId: 'bosch-cargo-line-mid-drive', distractors: ['bosch-dual-battery-1000wh', 'atlas-lockstand-kickstand', 'updeck-lowstep-cargo-frame'] },
       { q: 'Which auto-locking dual-leg mechanism keeps the Tern GSD stable while loading two kids onto the rear rack?', correctId: 'atlas-lockstand-kickstand', distractors: ['clubhouse-plus-passenger-cage', 'cargo-hold-52-panniers', 'suntour-cargo-suspension-fork'] },
       { q: 'Which rear safety rail system converts between carrying two child passengers and holding four Eurocrates?', correctId: 'clubhouse-plus-passenger-cage', distractors: ['physis-3d-folding-cockpit', 'updeck-lowstep-cargo-frame', 'cargo-hold-52-panniers'] },
+      { q: 'Which 4-piston hydraulic disc brake system stops a fully loaded 200-kg cargo e-bike safely on steep hills?', correctId: 'magura-mt5-quad-piston-brakes', distractors: ['cargo-hold-52-panniers', 'physis-3d-folding-cockpit', 'bosch-dual-battery-1000wh'] },
     ],
   };
 }
@@ -1758,6 +1769,7 @@ function buildCarbonRoadBikeModel() {
       { q: 'Which subsystem transfers 98.6% of the rider’s pedal torque to the rear wheel?', correctId: 'electronic-derailleur-crankset', distractors: ['monocoque-carbon-frame-fork', 'hydraulic-disc-brakes', 'deep-section-carbon-wheelset'] },
       { q: 'How does the crankset measure a cyclist’s exact pedaling output in Watts?', correctId: 'hollow-crankset-power-meter', distractors: ['clipless-carbon-pedals', 'd-profile-seatpost-3d-saddle', 'aero-carbon-bottle-cages-bidons'] },
       { q: 'Why did pro road bikes switch from rim brakes to hub-mounted hydraulic rotors?', correctId: 'hydraulic-disc-brakes', distractors: ['deep-section-carbon-wheelset', 'monocoque-carbon-frame-fork', 'electronic-derailleur-crankset'] },
+      { q: 'Why do 50mm deep-section carbon rims and bladed spokes slice through crosswinds faster than shallow box rims?', correctId: 'deep-section-carbon-wheelset', distractors: ['clipless-carbon-pedals', 'aero-carbon-bottle-cages-bidons', 'd-profile-seatpost-3d-saddle'] },
     ],
   };
 }
@@ -2237,6 +2249,8 @@ function buildDucatiPanigaleModel() {
       { q: 'How does Ducati’s Desmodromic system close engine valves at 16,500 RPM without steel springs?', correctId: 'desmosedici-v4-engine', distractors: ['ohlins-npx-forks-monoshock', 'motogp-biplane-winglets-fairing', 'aluminum-front-frame-swingarm'] },
       { q: 'What do the carbon-fiber biplane winglets on the front fairing do at 300 km/h?', correctId: 'motogp-biplane-winglets-fairing', distractors: ['brembo-stylema-marchesini-wheels', 'aluminum-front-frame-swingarm', 'ohlins-npx-forks-monoshock'] },
       { q: 'Why are the Öhlins NPX inverted front fork tubes coated in bright gold Titanium Nitride?', correctId: 'ohlins-npx-forks-monoshock', distractors: ['desmosedici-v4-engine', 'brembo-stylema-marchesini-wheels', 'motogp-biplane-winglets-fairing'] },
+      { q: 'Which hollow cast-aluminum rear arm holds the rear wheel from one side for lightning-fast pit-stop tire swaps?', correctId: 'single-sided-swingarm-chain', distractors: ['sculpted-tank-monoposto-tail', 'motogp-biplane-winglets-fairing', 'ohlins-npx-forks-monoshock'] },
+      { q: 'Which forged magnesium wheels and Brembo Stylema radial monobloc calipers shed unsprung weight for razor-sharp cornering?', correctId: 'brembo-stylema-marchesini-wheels', distractors: ['akrapovic-titanium-exhaust', 'sculpted-tank-monoposto-tail', 'aluminum-front-frame-swingarm'] },
     ],
   };
 }

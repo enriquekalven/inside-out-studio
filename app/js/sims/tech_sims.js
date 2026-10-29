@@ -1069,19 +1069,29 @@ export class SurfaceShipSim extends BaseSim {
   }
 }
 
-// 🏗️ Construction Excavator & Tower Crane Sim — Slews upper turret/jib, articulates hydraulic boom/stick/bucket or hoists crane hook without highway road lines!
+// 🏗️ Construction Excavator, Tower Crane & Combine Harvester Sim — Slews upper turret/jib or combine auger, articulates hydraulic boom/stick/bucket, or spins harvester reel & wheels without highway road lines!
 export class ExcavatorCraneSim extends BaseSim {
   constructor(viewer) {
     super(viewer, { engineSound: true });
-    this.st = { slewDeg: 0, boomPhase: 0, pressure: 320, autoDig: true };
+    const id = String(viewer.currentObject?.activeModelId || viewer.currentModel?.id || '').toLowerCase();
+    this.isCombine = /combine|harvester/i.test(id);
+    this.isCrane = /crane|liebherr/i.test(id);
+    this.st = { slewDeg: 0, boomPhase: 0, pressure: 320, grainPct: 42, autoDig: true };
   }
   onEnter() {
     this.viewer.roadLinesGroup.visible = false;
     this.viewer.headlightGroup.visible = true;
-    this.slewGroups = this.parts(/house|turret|slewing|jib|counter-jib|cab/);
-    this.boomGroups = this.parts(/boom/);
-    this.stickGroups = this.parts(/stick|dipper|trolley|hook/);
-    this.bucketGroups = this.parts(/bucket/);
+    if (this.isCombine) {
+      this.slewGroups = this.parts(/auger/);
+      this.boomGroups = this.parts(/header|feederhouse/);
+      this.stickGroups = this.parts(/sieve|cleaning/);
+      this.bucketGroups = [];
+    } else {
+      this.slewGroups = this.parts(/house|turret|slewing|jib|counter-jib|cab/);
+      this.boomGroups = this.parts(/boom/);
+      this.stickGroups = this.parts(/stick|dipper|trolley|hook/);
+      this.bucketGroups = this.parts(/bucket/);
+    }
   }
   onExit() {
     this.viewer.headlightGroup.visible = false;
@@ -1114,6 +1124,7 @@ export class ExcavatorCraneSim extends BaseSim {
       if (Math.abs(st.slewDeg) > 18) this.check('slew');
     }
 
+    const boostMult = inp.boost ? 1.55 : 1.0;
     if (inp.up || inp.down || inp.boost) {
       st.boomPhase += dt * (inp.up ? 2.2 : inp.down ? -2.2 : 3.0);
       this.check('boom');
@@ -1124,23 +1135,193 @@ export class ExcavatorCraneSim extends BaseSim {
       if (this.elapsed > 2.4) this.check('dig');
     }
 
+    this.spinFans(dt, 3.8 * boostMult);
+    if (this.isCombine) {
+      for (const w of this.viewer.driveWheels) w.rotation.z -= dt * 3.2 * boostMult;
+      const augerRad = ((Math.abs(st.slewDeg) / 65) * 0.42);
+      for (const sg of this.slewGroups) sg.rotation.y = augerRad;
+      const hdrFloat = Math.sin(st.boomPhase) * 0.025;
+      for (const bg of this.boomGroups) bg.position.y = hdrFloat;
+      for (const stg of this.stickGroups) stg.position.x = Math.sin(this.elapsed * 22) * 0.014;
+      st.grainPct = (st.grainPct + dt * 7.5 * boostMult) % 100;
+      const rotorRpm = Math.round(920 + (inp.boost ? 210 : Math.sin(st.boomPhase) * 45));
+      const ratePct = clamp(Math.round(74 * boostMult), 0, 100);
+      Object.assign(this.telemetry, {
+        pressure: `${rotorRpm}`,
+        slew: `${Math.round(Math.abs(st.slewDeg) * 1.3)}°`,
+        load: `${Math.round(st.grainPct)}% bu`,
+        cycle: `${ratePct}%`,
+        cycleBar: ratePct,
+        soundRpm: 1250 + rotorRpm * 0.45,
+        soundThrottle: 0.55 * boostMult,
+      });
+      return;
+    }
+
     const slewRad = (st.slewDeg * Math.PI) / 180;
     for (const sg of this.slewGroups) sg.rotation.y = slewRad * 0.35;
-    const boomAng = Math.sin(st.boomPhase) * 0.12;
+    const boomAng = Math.sin(st.boomPhase) * (this.isCrane ? 0.015 : 0.12);
     for (const bg of this.boomGroups) bg.rotation.z = boomAng;
-    for (const stg of this.stickGroups) stg.rotation.z = -boomAng * 1.4;
-    for (const bkg of this.bucketGroups) bkg.rotation.z = Math.cos(st.boomPhase) * 0.25;
+    if (this.isCrane) {
+      for (const stg of this.stickGroups) stg.position.y = Math.sin(st.boomPhase) * 0.14;
+    } else {
+      for (const stg of this.stickGroups) stg.rotation.z = -boomAng * 1.4;
+      for (const bkg of this.bucketGroups) bkg.rotation.z = Math.cos(st.boomPhase) * 0.25;
+    }
 
     const cycPct = Math.round(((Math.sin(st.boomPhase) + 1) * 0.5) * 100);
     st.pressure = 285 + Math.round(Math.abs(Math.cos(st.boomPhase)) * 65);
     Object.assign(this.telemetry, {
       pressure: `${st.pressure}`,
       slew: `${Math.round(st.slewDeg)}°`,
-      load: '18.4 t',
+      load: this.isCrane ? '12.0 t' : '18.4 t',
       cycle: `${cycPct}%`,
       cycleBar: cycPct,
       soundRpm: 1150 + cycPct * 6,
       soundThrottle: 0.45,
+    });
+  }
+}
+
+// 🤖 Precision Robotics & Planetary Rover Sim — Models 6-axis industrial articulated arm welding, Mars Perseverance 6-wheel regolith traverse + SuperCam LIBS rock laser, and agile quadruped trotting gait + spinning 3D LiDAR without highway road lines!
+export class RoboticsSim extends BaseSim {
+  constructor(viewer) {
+    const id = String(viewer.currentObject?.activeModelId || viewer.currentModel?.id || '').toLowerCase();
+    const isRover = /mars|perseverance|rover/i.test(id);
+    const isArm = /kuka|6axis|industrial-arm/i.test(id);
+    super(viewer, { engineSound: true, turbine: true });
+    this.isRover = isRover;
+    this.isArm = isArm;
+    this.isQuad = !isRover && !isArm;
+    this.st = { phase: 0, slewDeg: 0, toolPulse: 0, battery: 96, lights: true };
+  }
+  onEnter() {
+    const v = this.viewer;
+    v.roadLinesGroup.visible = false;
+    v.headlightGroup.visible = false;
+    const box = new THREE.Box3().setFromObject(v.rootGroup);
+    const floorY = v.stageFloorGroup.position.y;
+
+    this.baseGroups = this.parts(/slew-base|mast|supercam/);
+    this.shoulderGroups = this.parts(/lower-link|dorsal-manipulator|robotic-arm/);
+    this.forearmGroups = this.parts(/upper-cantilever|wrist-triad|end-effector/);
+    this.legGroups = this.parts(/articulated-legs|planetary-actuator-hips/);
+
+    if (this.isRover) {
+      // Martian Jezero Crater iron-oxide regolith terrain patch + target basalt rock for LIBS laser
+      const marsMat = new THREE.MeshStandardMaterial({ color: 0xb45309, roughness: 0.92, metalness: 0.06 });
+      const pad = new THREE.Mesh(new THREE.CylinderGeometry(3.4, 3.6, 0.04, 36), marsMat);
+      pad.position.set(0, floorY + 0.02, 0);
+      const rock = new THREE.Mesh(new THREE.DodecahedronGeometry(0.18, 0), new THREE.MeshStandardMaterial({ color: 0x78350f, roughness: 0.88 }));
+      rock.position.set(box.max.x + 0.42, floorY + 0.14, 0.12);
+      this.laserBeam = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.008, 0.008, 1.35, 8),
+        new THREE.MeshBasicMaterial({ color: 0xef4444, transparent: true, opacity: 0.9 }),
+      );
+      this.laserBeam.position.set(box.max.x - 0.05, (box.min.y + box.max.y) * 0.62, 0.06);
+      this.laserBeam.rotation.z = Math.PI / 2 - 0.42;
+      this.laserBeam.visible = false;
+      this.toolGlow = makeGlowQuad(0xf97316, 0.55, 0.9, true);
+      this.toolGlow.position.set(rock.position.x, rock.position.y + 0.06, rock.position.z);
+      this.toolGlow.visible = false;
+      this.env.add(pad, rock, this.laserBeam, this.toolGlow);
+    } else {
+      this.toolGlow = makeGlowQuad(this.isArm ? 0x38bdf8 : 0x22c55e, 0.72, 0.9, true);
+      this.toolGlow.position.set(box.max.x * 0.78, (box.min.y + box.max.y) * 0.55, 0);
+      this.toolGlow.visible = false;
+      this.env.add(this.toolGlow);
+    }
+  }
+  onExit() {
+    const v = this.viewer;
+    v.rootGroup.position.set(0, 0, 0);
+    v.rootGroup.rotation.set(0, 0, 0);
+    for (const g of [...this.baseGroups, ...this.shoulderGroups, ...this.forearmGroups, ...this.legGroups]) {
+      g.position.set(0, 0, 0);
+      g.rotation.set(0, 0, 0);
+    }
+  }
+  trigger(name) {
+    if (name === 'tool') {
+      this.st.toolPulse = 1.1;
+      playPop(660);
+      this.check('tool');
+      return true;
+    }
+    if (name === 'lights') {
+      this.st.lights = !this.st.lights;
+      this.viewer.headlightGroup.visible = this.st.lights && !this.isArm;
+      return this.st.lights;
+    }
+    return false;
+  }
+  onUpdate(dt) {
+    const v = this.viewer, st = this.st, inp = this.inputs;
+    const speedMult = inp.boost ? 1.85 : inp.up ? 1.35 : inp.down ? -0.85 : 1.0;
+    st.phase += dt * 2.1 * speedMult;
+    if (Math.abs(st.phase) > 1.2) this.check('move');
+
+    const turn = (inp.right ? 1 : 0) - (inp.left ? 1 : 0);
+    if (turn !== 0) {
+      st.slewDeg = clamp(st.slewDeg + turn * dt * 55, -75, 75);
+      this.check('slew');
+    } else {
+      st.slewDeg = Math.sin(this.elapsed * 0.85) * 32;
+      if (Math.abs(st.slewDeg) > 18) this.check('slew');
+    }
+
+    if (inp.space) this.trigger('tool');
+    st.toolPulse = Math.max(0, st.toolPulse - dt);
+    st.battery = clamp(st.battery - dt * 0.04, 18, 100);
+    this.spinFans(dt, 7.5 * Math.abs(speedMult));
+
+    const slewRad = (st.slewDeg * Math.PI) / 180;
+    for (const bg of this.baseGroups) bg.rotation.y = slewRad * 0.45;
+    for (const sg of this.shoulderGroups) sg.rotation.z = Math.sin(st.phase) * 0.14;
+    for (const fg of this.forearmGroups) fg.rotation.z = -Math.cos(st.phase * 1.2) * 0.18;
+
+    if (this.isRover) {
+      for (const w of v.driveWheels) w.rotation.z -= dt * 2.2 * speedMult;
+      v.rootGroup.rotation.z = Math.sin(st.phase * 1.4) * 0.012;
+      const firing = st.toolPulse > 0 || (Math.sin(this.elapsed * 1.8) > 0.86);
+      if (firing && this.elapsed > 2.0) this.check('tool');
+      this.laserBeam.visible = firing;
+      this.toolGlow.visible = firing;
+      if (firing) this.toolGlow.lookAt(v.camera.position);
+    } else if (this.isQuad) {
+      const trot = Math.sin(st.phase * 3.2);
+      v.rootGroup.position.y = Math.abs(trot) * 0.032;
+      v.rootGroup.rotation.z = trot * 0.025;
+      v.rootGroup.rotation.y = slewRad * 0.25;
+      for (const lg of this.legGroups) lg.rotation.z = trot * 0.08;
+      this.toolGlow.visible = st.toolPulse > 0;
+      if (this.toolGlow.visible) this.toolGlow.lookAt(v.camera.position);
+    } else {
+      const welding = st.toolPulse > 0 || (Math.sin(this.elapsed * 2.4) > 0.72);
+      if (welding && this.elapsed > 2.0) this.check('tool');
+      this.toolGlow.visible = welding;
+      if (welding) {
+        this.toolGlow.scale.setScalar(0.85 + Math.sin(this.elapsed * 45) * 0.22);
+        this.toolGlow.lookAt(v.camera.position);
+      }
+    }
+
+    const pwr = Math.round(clamp(58 + Math.abs(Math.sin(st.phase)) * 28 + (inp.boost ? 14 : 0), 15, 100));
+    const torqueNm = this.isArm ? Math.round(310 + pwr * 2.4) : this.isRover ? Math.round(140 + pwr * 1.1) : Math.round(45 + pwr * 0.65);
+    const poseLabel = this.isArm
+      ? `J1 ${Math.round(st.slewDeg)}°`
+      : this.isRover
+        ? (this.laserBeam?.visible ? 'LIBS ZAP' : `HDG ${Math.round((st.slewDeg + 360) % 360)}°`)
+        : (inp.boost ? 'SPRINT' : 'TROT 3Hz');
+
+    Object.assign(this.telemetry, {
+      power: pwr,
+      pose: poseLabel,
+      torque: `${torqueNm} Nm`,
+      battery: `${Math.round(st.battery)}%`,
+      batteryBar: st.battery,
+      soundRpm: 720 + pwr * 18,
+      soundThrottle: pwr / 100,
     });
   }
 }
