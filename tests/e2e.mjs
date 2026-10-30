@@ -616,15 +616,15 @@ async function runTests() {
     await cdp.screenshot('08-house-exploded-mobile.png');
     console.log('   ✓ Mobile layout & exploded 3D House captured.');
 
-    // 7. Test 12-Language Internationalization (en, zh-CN, zh-HK, es, fr, de, nl, pt, it, ja, ko, ar) + Chirp 3 HD Read Aloud + GA4
-    console.log('7. Testing 12-Language Internationalization, Google Cloud Chirp 3 HD Read Aloud & GA4 (EN, ZH-CN, ZH-HK, ES, FR, DE, NL, PT, IT, JA, KO, AR)...');
+    // 7. Test 13-Language Internationalization (en, zh-CN, zh-HK, es, es-419, fr, de, nl, pt, it, ja, ko, ar) + Chirp 3 HD Read Aloud + GA4
+    console.log('7. Testing 13-Language Internationalization, Google Cloud Chirp 3 HD Read Aloud & GA4 (EN, ZH-CN, ZH-HK, ES, ES-419, FR, DE, NL, PT, IT, JA, KO, AR)...');
     const langCodes = await cdp.eval(
       `Array.from(document.querySelectorAll('#lang-select option')).map((o) => o.value)`,
     );
     assert.deepEqual(
       langCodes,
-      ['en', 'zh-CN', 'zh-HK', 'es', 'fr', 'de', 'nl', 'pt', 'it', 'ja', 'ko', 'ar'],
-      `Expected all 12 language options in #lang-select, got ${JSON.stringify(langCodes)}`,
+      ['en', 'zh-CN', 'zh-HK', 'es', 'es-419', 'fr', 'de', 'nl', 'pt', 'it', 'ja', 'ko', 'ar'],
+      `Expected all 13 language options in #lang-select, got ${JSON.stringify(langCodes)}`,
     );
 
     const noveltyVoiceRe =
@@ -634,7 +634,7 @@ async function runTests() {
     await cdp.eval(`document.querySelector('.model-pill[data-model-id="modern-eco-home"]')?.click()`);
     await sleep(180);
 
-    for (const code of ['zh-CN', 'zh-HK', 'es', 'fr', 'de', 'nl', 'pt', 'it', 'ja', 'ko', 'ar', 'en']) {
+    for (const code of ['zh-CN', 'zh-HK', 'es', 'es-419', 'fr', 'de', 'nl', 'pt', 'it', 'ja', 'ko', 'ar', 'en']) {
       const langState = await cdp.eval(`(() => {
         const sel = document.querySelector('#lang-select');
         sel.value = ${JSON.stringify(code)};

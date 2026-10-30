@@ -1,28 +1,33 @@
 // ============================================================================
-// Marvel Comics Iron Man Powered Exoskeleton (Classic Model 4 / Extremis / OHOTMU Cutaway)
+// Marvel Comics Iron Man Powered Exoskeleton — Collector-Grade 1:1 Realism
+// (Eliot R. Brown OHOTMU Schematics • Bob Layton Model 4 • Adi Granov Extremis)
 //
-// Engineered from canonical Marvel Comics technical schematics (Eliot R. Brown's
-// Official Handbook of the Marvel Universe cutaway, Bob Layton & Alex Ross Classic
-// Red-and-Gold Model 4, and Adi Granov's Extremis Model 29):
-// 1. Canonical Marvel Comics Silhouette & Color Blocking:
-//    - Helmet: Hinged gleaming Comic Gold faceplate with Crimson widow's-peak crest,
-//      slanted rectangular comic eye slits, chiseled cheekbones, classic horizontal
-//      comic mouth slit, and circular Crimson/Gold phased-array ear transceivers.
-//    - Shoulders, Chest & Trunk: Flared rounded-bell Crimson comic shoulder pauldrons
-//      with gold rim trim, 100% Crimson broad heroic pectoral carapace with the
-//      circular/pentagonal-bezel Marvel Comics Unibeam projector, segmented Crimson
-//      abdominal rib lames, classic comic V-belt trunks, and twin circular Hip Power Pods.
-//    - Arms & Legs: 100% gleaming Comic Gold polarized micro-mesh bicep & thigh sleeves
-//      paired with dramatic flared-cuff Crimson repulsor gauntlets and flared-cuff
-//      Crimson jet boots with Eliot R. Brown calf ram-air intake louvers.
-// 2. True Wearable Hollow Clamshell Architecture ("Room for a Human Inside"):
-//    - Zero solid end-caps or stick-robot rods. Every armor plate and limb sleeve is a
-//      watertight, double-walled 3D hollow shell (~10–14 mm wall thickness) with a
-//      shaded dark-quilted titanium inner liner, stitched chamfered alloy rims, and
-//      an unmistakable hollow human pilot cavity & thermocouple undersuit sheath inside.
+// Photorealistic Aerospace & Diecast Engineering Upgrade:
+// 1. True Sobel Tangent-Space Normal Maps + Roughness Maps (512×512 linear):
+//    - CNC machined aerospace panel seams, chamfered bevels & micro-rivets on
+//      deep Candy-Apple Anodized Clearcoat Crimson plates.
+//    - Magnetically polarized 22K Champagne Titanium-Gold micro-chainmail weave
+//      & directional lathe brushing on the canonical golden bicep & thigh sleeves.
+//    - Diamond-quilted Kevlar/Nomex ballistic thermal liner on every inner wall.
+// 2. Canonical Marvel Comics Red & Gold Blocking + Multi-Plate Mechanical Detail:
+//    - Hinged 22K Champagne Gold faceplate with dark recessed CNC shut-line,
+//      pointed Crimson widow's-peak V-crest, multi-lens sapphire HUD eye slits,
+//      stepped vocal-grille mouth slit, split mandible chin guard & knurled ear pods.
+//    - Interlocking Crimson pectoral clamshell over a dark anodized titanium
+//      sub-frame reveal, NACA cooling vents, hex fasteners & a 3D 12-coil copper
+//      tokamak Chest Unibeam beneath a curved sapphire crystal dome.
+//    - Flared Crimson comic shoulder pauldrons with 6-tube brass munition pods,
+//      rotary hydraulic elbow/knee/ankle bearings, 5-fingered multi-phalange
+//      articulated hands, 4-lame Crimson rib girdle + Gold V-belt + Crimson trunks,
+//      machined twin circular Hip Power Pods, and flared Crimson jet boots with
+//      Eliot R. Brown calf ram-air louvers & gimbaled 12-vane sole turbo-nozzles.
+// 3. 100% True Double-Walled Hollow Wearable Architecture ("Room for a Person Inside"):
+//    - Every armor plate and limb cylinder is a watertight, open-ended double-walled
+//      hollow shell (~10–15 mm wall thickness) surrounding the unmistakable hollow
+//      human pilot cavity, thermocouple undersuit sheath & neuro-transponder HUD.
 // ============================================================================
 import * as THREE from '../../vendor/three.module.js';
-import { carPaint, brushedMetal, chromeMat, glassMat, emissiveMat, mat } from '../materials.js';
+import { brushedMetal, chromeMat, glassMat, emissiveMat, mat } from '../materials.js';
 import { loftRings, surfaceGrid, MeshBatch, smoothCurve, smoothstep, cachedCanvasTexture } from '../loft.js';
 
 const TAU = Math.PI * 2;
@@ -32,66 +37,289 @@ const V3 = (p) => new THREE.Vector3(p[0], p[1], p[2]);
 const gauss = (x, mu, sig) => Math.exp(-0.5 * ((x - mu) / sig) ** 2);
 
 // ----------------------------------------------------------------------------
-// Procedural Marvel Comics panel-line & micro-chainmail bump textures
+// True Tangent-Space Sobel Normal & Roughness Map Generators
 // ----------------------------------------------------------------------------
-function comicArmorBumpTex() {
-  return cachedCanvasTexture(
-    'marvel-comics-armor-bump-v2',
-    512,
-    512,
+
+/** Convert a Float32 heightfield [0..1] into a tangent-space RGB normal map on `ctx`. */
+function bakeSobelNormalToCanvas(ctx, w, h, heightArr, strength = 3.2) {
+  const img = ctx.createImageData?.(w, h);
+  if (!img?.data) return;
+  const d = img.data;
+  const at = (x, y) => heightArr[((y + h) % h) * w + ((x + w) % w)];
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const tl = at(x - 1, y - 1);
+      const tc = at(x, y - 1);
+      const tr = at(x + 1, y - 1);
+      const ml = at(x - 1, y);
+      const mr = at(x + 1, y);
+      const bl = at(x - 1, y + 1);
+      const bc = at(x, y + 1);
+      const br = at(x + 1, y + 1);
+
+      const dx = (tr + 2 * mr + br - (tl + 2 * ml + bl)) * strength;
+      const dy = (bl + 2 * bc + br - (tl + 2 * tc + tr)) * strength;
+      let nx = -dx;
+      let ny = dy; // WebGL tangent-space +Y up
+      let nz = 1.0;
+      const inv = 1 / Math.hypot(nx, ny, nz);
+      nx *= inv;
+      ny *= inv;
+      nz *= inv;
+
+      const idx = (y * w + x) * 4;
+      d[idx] = Math.round((nx * 0.5 + 0.5) * 255);
+      d[idx + 1] = Math.round((ny * 0.5 + 0.5) * 255);
+      d[idx + 2] = Math.round((nz * 0.5 + 0.5) * 255);
+      d[idx + 3] = 255;
+    }
+  }
+  ctx.putImageData(img, 0, 0);
+}
+
+/** Build CNC aerospace armor panel seam + micro-rivet + satin brush normal & roughness maps. */
+function getArmorPanelPbrMaps() {
+  const S = 512;
+  const buildHeight = () => {
+    const c = document.createElement('canvas');
+    c.width = S;
+    c.height = S;
+    const g = c.getContext('2d');
+    g.fillStyle = '#c8c8c8';
+    g.fillRect(0, 0, S, S);
+
+    // Fine directional aerospace satin finish
+    for (let y = 0; y < S; y += 2) {
+      const v = 196 + ((y * 17) % 11) - 5;
+      g.fillStyle = `rgb(${v},${v},${v})`;
+      g.fillRect(0, y, S, 1);
+    }
+
+    // Beveled CNC armor panel seams (outer soft bevel + sharp dark shut-line)
+    const drawSeam = (pts) => {
+      g.lineCap = 'round';
+      g.lineJoin = 'round';
+      g.strokeStyle = '#ececec';
+      g.lineWidth = 7;
+      g.beginPath();
+      pts.forEach(([x, y], idx) => (idx ? g.lineTo(x, y) : g.moveTo(x, y)));
+      g.stroke();
+
+      g.strokeStyle = '#242424';
+      g.lineWidth = 2.4;
+      g.beginPath();
+      pts.forEach(([x, y], idx) => (idx ? g.lineTo(x, y) : g.moveTo(x, y)));
+      g.stroke();
+    };
+
+    for (const yf of [0.22, 0.52, 0.80]) {
+      const y = yf * S;
+      drawSeam([
+        [0, y],
+        [S * 0.30, y + 14],
+        [S * 0.50, y + 2],
+        [S * 0.70, y + 14],
+        [S, y],
+      ]);
+      // Precision recessed micro-rivets flanking panel corners
+      for (const xf of [0.08, 0.28, 0.32, 0.48, 0.52, 0.68, 0.72, 0.92]) {
+        const rx = xf * S;
+        const ry = y + (xf > 0.25 && xf < 0.75 ? 18 : 8);
+        g.fillStyle = '#383838';
+        g.beginPath();
+        g.arc(rx, ry, 2.2, 0, TAU);
+        g.fill();
+        g.fillStyle = '#b4b4b4';
+        g.beginPath();
+        g.arc(rx, ry, 1.0, 0, TAU);
+        g.fill();
+      }
+    }
+    drawSeam([
+      [S * 0.5, 0],
+      [S * 0.5, S * 0.22],
+    ]);
+    drawSeam([
+      [S * 0.5, S * 0.52],
+      [S * 0.5, S * 0.80],
+    ]);
+
+    const imgData = g.getImageData?.(0, 0, S, S);
+    if (!imgData?.data) return new Float32Array(S * S).fill(0.75);
+    const raw = imgData.data;
+    const h = new Float32Array(S * S);
+    for (let i = 0; i < S * S; i++) h[i] = raw[i * 4] / 255;
+    return h;
+  };
+
+  let cachedH = null;
+  const ensureH = () => {
+    if (!cachedH) cachedH = buildHeight();
+    return cachedH;
+  };
+
+  const normal = cachedCanvasTexture(
+    'im-realistic-armor-normal-v3',
+    S,
+    S,
+    (ctx, w, h) => bakeSobelNormalToCanvas(ctx, w, h, ensureH(), 3.6),
+    { repeat: [2, 2], linear: true, anisotropy: 8 },
+  );
+
+  const roughness = cachedCanvasTexture(
+    'im-realistic-armor-rough-v3',
+    S,
+    S,
     (ctx, w, h) => {
-      ctx.fillStyle = '#808080';
-      ctx.fillRect(0, 0, w, h);
-      // Subtle polarized micro-chainmail / crystalline weave
-      ctx.strokeStyle = 'rgba(110,110,110,0.22)';
-      ctx.lineWidth = 1;
-      for (let y = 0; y < h; y += 12) {
-        ctx.beginPath();
-        ctx.moveTo(0, y);
-        ctx.lineTo(w, y);
-        ctx.stroke();
+      const hArr = ensureH();
+      const img = ctx.createImageData?.(w, h);
+      if (!img?.data) return;
+      const d = img.data;
+      for (let i = 0; i < w * h; i++) {
+        // Glossy clearcoat plates (~34/255 -> 0.13) with matte oil/shadow in panel seams (~175/255)
+        const seamFactor = clamp((0.76 - hArr[i]) * 2.4, 0, 1);
+        const rVal = Math.round(lerp(34, 185, seamFactor));
+        d[i * 4] = rVal;
+        d[i * 4 + 1] = rVal;
+        d[i * 4 + 2] = rVal;
+        d[i * 4 + 3] = 255;
       }
-      // Crisp comic-book armor seam lines
-      ctx.strokeStyle = '#303030';
-      ctx.lineWidth = 2.2;
-      for (const yFrac of [0.2, 0.48, 0.76]) {
-        const y = yFrac * h;
-        ctx.beginPath();
-        ctx.moveTo(0, y);
-        ctx.lineTo(w * 0.34, y + 10);
-        ctx.lineTo(w * 0.5, y + 2);
-        ctx.lineTo(w * 0.66, y + 10);
-        ctx.lineTo(w, y);
-        ctx.stroke();
-      }
+      ctx.putImageData(img, 0, 0);
     },
-    { repeat: [2, 2], linear: true },
+    { repeat: [2, 2], linear: true, anisotropy: 8 },
+  );
+
+  return { normal, roughness };
+}
+
+/** Build Marvel Comics polarized 22K titanium-gold micro-chainmail + brushed alloy normal & roughness maps. */
+function getGoldMicroMeshPbrMaps() {
+  const S = 512;
+  let cachedH = null;
+  const ensureH = () => {
+    if (cachedH) return cachedH;
+    const h = new Float32Array(S * S);
+    const freqX = 36;
+    const freqY = 48;
+    for (let y = 0; y < S; y++) {
+      const v = y / S;
+      // Subtle radial brushed lathe lines
+      const brush = 0.04 * Math.sin(v * TAU * 128) + 0.02 * Math.cos(v * TAU * 63);
+      // Articulated flex-ring seam grooves
+      const seam =
+        -0.38 *
+        (gauss(v, 0.25, 0.008) + gauss(v, 0.50, 0.008) + gauss(v, 0.75, 0.008));
+      for (let x = 0; x < S; x++) {
+        const u = x / S;
+        // Interlocking polarized hexagonal micro-scale / chainmail relief
+        const row = v * freqY;
+        const rowIdx = Math.floor(row);
+        const fy = row - rowIdx;
+        const ux = u * freqX + (rowIdx % 2) * 0.5;
+        const fx = ux - Math.floor(ux);
+        const dx = fx - 0.5;
+        const dy = fy - 0.5;
+        const scalePillow = clamp(1 - (dx * dx * 3.1 + dy * dy * 3.1), 0, 1);
+        h[y * S + x] = clamp(0.62 + 0.16 * scalePillow + brush + seam, 0, 1);
+      }
+    }
+    cachedH = h;
+    return h;
+  };
+
+  const normal = cachedCanvasTexture(
+    'im-realistic-goldmesh-normal-v3',
+    S,
+    S,
+    (ctx, w, h) => bakeSobelNormalToCanvas(ctx, w, h, ensureH(), 2.8),
+    { repeat: [2, 2], linear: true, anisotropy: 8 },
+  );
+
+  const roughness = cachedCanvasTexture(
+    'im-realistic-goldmesh-rough-v3',
+    S,
+    S,
+    (ctx, w, h) => {
+      const hArr = ensureH();
+      const img = ctx.createImageData?.(w, h);
+      if (!img?.data) return;
+      const d = img.data;
+      for (let i = 0; i < w * h; i++) {
+        const rVal = Math.round(clamp(lerp(115, 38, hArr[i]), 32, 160));
+        d[i * 4] = rVal;
+        d[i * 4 + 1] = rVal;
+        d[i * 4 + 2] = rVal;
+        d[i * 4 + 3] = 255;
+      }
+      ctx.putImageData(img, 0, 0);
+    },
+    { repeat: [2, 2], linear: true, anisotropy: 8 },
+  );
+
+  return { normal, roughness };
+}
+
+/** Quilted Kevlar/Nomex inner armor liner normal map. */
+function getInnerQuiltedNormalMap() {
+  const S = 256;
+  return cachedCanvasTexture(
+    'im-realistic-quilted-normal-v3',
+    S,
+    S,
+    (ctx, w, h) => {
+      const hArr = new Float32Array(w * h);
+      for (let y = 0; y < h; y++) {
+        for (let x = 0; x < w; x++) {
+          const u = ((x + y) % 32) / 32 - 0.5;
+          const v = ((x - y + 512) % 32) / 32 - 0.5;
+          const cushion = clamp(1 - 3.4 * (u * u + v * v), 0.15, 1.0);
+          hArr[y * w + x] = cushion;
+        }
+      }
+      bakeSobelNormalToCanvas(ctx, w, h, hArr, 2.6);
+    },
+    { repeat: [4, 4], linear: true, anisotropy: 4 },
   );
 }
 
-function innerQuiltedBumpTex() {
+/** Multi-ring Stark tokamak / Unibeam optical emitter texture (prevents flat white clipping!). */
+function getUnibeamEmitterTex() {
   return cachedCanvasTexture(
-    'marvel-comics-inner-liner-bump-v1',
+    'im-realistic-unibeam-emitter-v3',
     256,
     256,
     (ctx, w, h) => {
-      ctx.fillStyle = '#808080';
+      const cx = w / 2;
+      const cy = h / 2;
+      const rMax = w * 0.48;
+      const grad = ctx.createRadialGradient(cx, cy, 2, cx, cy, rMax);
+      grad.addColorStop(0.00, '#ffffff');
+      grad.addColorStop(0.28, '#e0f7ff');
+      grad.addColorStop(0.55, '#38bdf8');
+      grad.addColorStop(0.82, '#0284c7');
+      grad.addColorStop(1.00, '#082f49');
+      ctx.fillStyle = grad;
       ctx.fillRect(0, 0, w, h);
-      ctx.strokeStyle = '#454545';
-      ctx.lineWidth = 2;
-      const step = 32;
-      for (let i = -h; i < w + h; i += step) {
+
+      // Concentric tokamak containment rings & 12 radial magnetic field spokes
+      ctx.strokeStyle = 'rgba(255,255,255,0.85)';
+      for (const rf of [0.30, 0.54, 0.78]) {
+        ctx.lineWidth = rf === 0.54 ? 3.0 : 1.6;
         ctx.beginPath();
-        ctx.moveTo(i, 0);
-        ctx.lineTo(i + h, h);
+        ctx.arc(cx, cy, rMax * rf, 0, TAU);
         ctx.stroke();
+      }
+      ctx.strokeStyle = 'rgba(12, 74, 110, 0.55)';
+      ctx.lineWidth = 2.2;
+      for (let k = 0; k < 12; k++) {
+        const a = (k / 12) * TAU;
         ctx.beginPath();
-        ctx.moveTo(i, h);
-        ctx.lineTo(i + h, 0);
+        ctx.moveTo(cx + Math.cos(a) * rMax * 0.32, cy + Math.sin(a) * rMax * 0.32);
+        ctx.lineTo(cx + Math.cos(a) * rMax * 0.96, cy + Math.sin(a) * rMax * 0.96);
         ctx.stroke();
       }
     },
-    { repeat: [3, 3], linear: true },
+    { linear: false, anisotropy: 4 },
   );
 }
 
@@ -196,7 +424,6 @@ function buildAnnularRim(outerRing, innerRing, outwardDir) {
     uv[k1 * 2 + 1] = 1;
   }
 
-  // Verify triangle winding faces +ax
   let flip = false;
   for (let j = 0; j < N; j++) {
     const p0 = outerRing[j];
@@ -261,6 +488,15 @@ function axialLoft(o) {
   return loftRings(rings, { capStart: o.capStart ?? false, capEnd: o.capEnd ?? false });
 }
 
+/** True 360° outward-facing conforming trim band (avoids full-circle outHint cancellation). */
+function axialBand(o) {
+  const { rings } = sampleAxialRings(
+    { ...o, N: o.N ?? 48, steps: o.steps ?? 5 },
+    o.scaleMul ?? 1.032,
+  );
+  return loftRings(rings, { capStart: false, capEnd: false });
+}
+
 /**
  * Build a TRUE OPEN-ENDED DOUBLE-WALLED HOLLOW ARMOR SLEEVE:
  * - Outer sculpted skin (outerMat)
@@ -290,7 +526,7 @@ function addHollowTube(batch, o, outerMat, innerMat, rimMat = outerMat) {
   }
 }
 
-/** Thin conforming exterior surface patch (trim accents, brow crests, muscle bevels). */
+/** Thin conforming exterior surface patch (shut-line reveals, trim accents, muscle bevels). */
 function axialPatch(o) {
   const frame = axisFrame(o.origin, o.axis, o.up);
   const len = V3(o.axis).length();
@@ -430,14 +666,12 @@ function addThickClamshell(batch, o, outerMat, innerMat, rimMat = outerMat) {
   batch.add(makeSheet(Pout, 1, false), outerMat);
   batch.add(makeSheet(Pin, -1, true), innerMat);
 
-  // Build stitched perimeter edge strips along all 4 boundaries
   const addEdgeStrip = (indices, interiorIndices) => {
     const M = indices.length;
     const pos = new Float32Array(M * 2 * 3);
     const nor = new Float32Array(M * 2 * 3);
     const uv = new Float32Array(M * 2 * 2);
 
-    // Outward edge hint = boundary point minus interior neighbor
     const hints = new Array(M);
     for (let m = 0; m < M; m++) {
       const pb = P[indices[m]];
@@ -505,7 +739,6 @@ function addThickClamshell(batch, o, outerMat, innerMat, rimMat = outerMat) {
     batch.add(geo, rimMat);
   };
 
-  // Bottom edge (i = 0) & Top edge (i = ns)
   const row0 = [];
   const row1 = [];
   const rowTop = [];
@@ -519,7 +752,6 @@ function addThickClamshell(batch, o, outerMat, innerMat, rimMat = outerMat) {
   addEdgeStrip(row0, row1);
   addEdgeStrip(rowTop, rowTopIn);
 
-  // Left seam (j = 0) & Right seam (j = nt)
   const col0 = [];
   const col1 = [];
   const colR = [];
@@ -543,48 +775,146 @@ function eulerAlong(dir) {
   return [_e.x, _e.y, _e.z];
 }
 
+/** Add a realistic mechanical hydraulic cylinder strut (outer barrel + gleaming chrome piston rod + end clevises). */
+function addHydraulicStrut(b, p0, p1, rBarrel, barrelMat, rodMat, clevisMat) {
+  const d = [p1[0] - p0[0], p1[1] - p0[1], p1[2] - p0[2]];
+  const L = Math.hypot(d[0], d[1], d[2]);
+  if (L < 1e-5) return;
+  const rot = eulerAlong(d);
+  const midBarrel = [lerp(p0[0], p1[0], 0.30), lerp(p0[1], p1[1], 0.30), lerp(p0[2], p1[2], 0.30)];
+  const midRod = [lerp(p0[0], p1[0], 0.72), lerp(p0[1], p1[1], 0.72), lerp(p0[2], p1[2], 0.72)];
+  const collar = [lerp(p0[0], p1[0], 0.56), lerp(p0[1], p1[1], 0.56), lerp(p0[2], p1[2], 0.56)];
+  b.cyl(rBarrel, rBarrel, L * 0.56, 12, barrelMat, midBarrel, rot);
+  b.cyl(rBarrel * 0.62, rBarrel * 0.62, L * 0.52, 10, rodMat, midRod, rot);
+  b.cyl(rBarrel * 1.18, rBarrel * 1.18, L * 0.08, 12, clevisMat, collar, rot);
+  b.sphere(rBarrel * 1.15, 10, 8, clevisMat, p0);
+  b.sphere(rBarrel * 1.05, 10, 8, clevisMat, p1);
+}
+
 // ============================================================================
-// MAIN BUILDER — MARVEL COMICS IRON MAN POWERED EXOSKELETON
+// MAIN BUILDER — COLLECTOR-GRADE MARVEL COMICS IRON MAN POWERED EXOSKELETON
 // ============================================================================
 export function buildIronManModel() {
-  // Canonical Marvel Comics Palette: vibrant enameled Crimson + radiant Golden Avenger Gold
-  const bump = comicArmorBumpTex();
-  const linerBump = innerQuiltedBumpTex();
-  const applyBump = (m, scale = 0.0022, tex = bump) => {
-    m.bumpMap = tex;
-    m.bumpScale = scale;
-    return m;
-  };
+  const panelMaps = getArmorPanelPbrMaps();
+  const goldMeshMaps = getGoldMicroMeshPbrMaps();
+  const quiltedNormal = getInnerQuiltedNormalMap();
+  const unibeamTex = getUnibeamEmitterTex();
 
-  const comicCrimson = applyBump(carPaint(0xd91424, { metalness: 0.72, roughness: 0.16 }));
-  const deepCrimson = applyBump(carPaint(0x9e0b18, { metalness: 0.78, roughness: 0.20 }));
-  const comicGold = applyBump(carPaint(0xf6be24, { metalness: 0.86, roughness: 0.16 }));
-  const richGold = applyBump(carPaint(0xd89610, { metalness: 0.88, roughness: 0.22 }));
-  const innerLiner = applyBump(mat(0x1b2332, 0.58, 0.35), 0.0035, linerBump);
-  const rimTitanium = brushedMetal(0xcbd5e1, { roughness: 0.24, metalness: 0.90 });
-  const rimGold = brushedMetal(0xeab308, { roughness: 0.22, metalness: 0.92 });
-  const gunmetal = brushedMetal(0x232934, { roughness: 0.32, metalness: 0.86 });
-  const darkSlot = mat(0x0c1017, 0.42, 0.75);
-  const silver = chromeMat(0xe2e8f0);
-  const undersuitNavy = applyBump(mat(0x131c2e, 0.46, 0.42), 0.0025, linerBump);
-  const pilotHolo = glassMat(0x67e8f9, 0.26, 0.15);
+  // 1. Deep Candy-Apple Anodized Clearcoat Crimson (Hot Toys Diecast / Adi Granov Extremis finish)
+  const comicCrimson = new THREE.MeshPhysicalMaterial({
+    color: 0xb80d1d,
+    metalness: 0.86,
+    roughness: 0.14,
+    clearcoat: 1.0,
+    clearcoatRoughness: 0.035,
+    reflectivity: 1.0,
+    sheen: 0.20,
+    sheenColor: new THREE.Color(0xff4d5e),
+    normalMap: panelMaps.normal,
+    normalScale: new THREE.Vector2(0.38, 0.38),
+    roughnessMap: panelMaps.roughness,
+  });
 
-  const unibeamWhite = emissiveMat(0xffffff, 0x7dd3fc, 3.6);
-  const unibeamCyan = emissiveMat(0xbae6fd, 0x38bdf8, 2.7);
-  const hudEyeGlow = emissiveMat(0xf8fafc, 0x7dd3fc, 3.2);
-  const repulsorGold = emissiveMat(0xfef08a, 0xf59e0b, 2.4);
-  const bioScanCyan = emissiveMat(0x67e8f9, 0x06b6d4, 1.9);
+  // Secondary darker anodized maroon-crimson for overlapping armor plates & tonal separation
+  const deepCrimson = new THREE.MeshPhysicalMaterial({
+    color: 0x7e0814,
+    metalness: 0.88,
+    roughness: 0.19,
+    clearcoat: 0.92,
+    clearcoatRoughness: 0.05,
+    reflectivity: 1.0,
+    normalMap: panelMaps.normal,
+    normalScale: new THREE.Vector2(0.34, 0.34),
+    roughnessMap: panelMaps.roughness,
+  });
+
+  // 2. Aerospace 22K Brushed Champagne Titanium-Gold (rigid faceplate, Unibeam bezel, V-belt, rims)
+  const comicGold = new THREE.MeshPhysicalMaterial({
+    color: 0xe6b85c,
+    metalness: 0.95,
+    roughness: 0.16,
+    clearcoat: 0.62,
+    clearcoatRoughness: 0.07,
+    reflectivity: 1.0,
+    normalMap: panelMaps.normal,
+    normalScale: new THREE.Vector2(0.30, 0.30),
+    roughnessMap: panelMaps.roughness,
+  });
+
+  // 3. Polarized 22K Titanium-Gold Micro-Chainmail Weave (bicep & thigh muscular sleeves!)
+  const polarizedGoldMesh = new THREE.MeshPhysicalMaterial({
+    color: 0xdfa944,
+    metalness: 0.94,
+    roughness: 0.21,
+    clearcoat: 0.45,
+    clearcoatRoughness: 0.10,
+    reflectivity: 1.0,
+    normalMap: goldMeshMaps.normal,
+    normalScale: new THREE.Vector2(0.55, 0.55),
+    roughnessMap: goldMeshMaps.roughness,
+  });
+
+  // Warm machined bronze-gold for collars, brow bevels & hydraulic fittings
+  const richGold = new THREE.MeshPhysicalMaterial({
+    color: 0xc28624,
+    metalness: 0.93,
+    roughness: 0.23,
+    clearcoat: 0.45,
+    clearcoatRoughness: 0.12,
+  });
+
+  // Quilted Kevlar/Nomex ballistic thermal inner liner (facing inward inside every hollow shell!)
+  const innerLiner = new THREE.MeshStandardMaterial({
+    color: 0x161d2a,
+    roughness: 0.64,
+    metalness: 0.28,
+    normalMap: quiltedNormal,
+    normalScale: new THREE.Vector2(0.55, 0.55),
+  });
+
+  // Precision CNC mechanical metals, copper windings & sapphire crystal optics
+  const rimTitanium = brushedMetal(0xcbd5e1, { roughness: 0.19, metalness: 0.94, clearcoat: 0.45 });
+  const rimGold = brushedMetal(0xe2b04a, { roughness: 0.19, metalness: 0.95, clearcoat: 0.48 });
+  const gunmetal = brushedMetal(0x202632, { roughness: 0.28, metalness: 0.90, clearcoat: 0.28 });
+  const darkSlot = mat(0x080b11, { roughness: 0.48, metalness: 0.68 });
+  const silver = chromeMat(0xeef4fa);
+  const copperCoil = brushedMetal(0xd97736, { roughness: 0.18, metalness: 0.95, clearcoat: 0.40 });
+  const sapphireLens = glassMat(0xdbeafe, 0.34);
+
+  const undersuitNavy = new THREE.MeshStandardMaterial({
+    color: 0x111928,
+    roughness: 0.50,
+    metalness: 0.38,
+    normalMap: quiltedNormal,
+    normalScale: new THREE.Vector2(0.42, 0.42),
+  });
+  const pilotHolo = glassMat(0x67e8f9, 0.25);
+
+  // Calibrated HDR-safe optical emitters (zero 8-million-intensity whiteout clipping!)
+  const unibeamCore = new THREE.MeshStandardMaterial({
+    color: 0xffffff,
+    map: unibeamTex,
+    emissive: 0xbae6fd,
+    emissiveMap: unibeamTex,
+    emissiveIntensity: 2.35,
+    roughness: 0.12,
+    metalness: 0.10,
+  });
+  const unibeamCyan = emissiveMat(0x38bdf8, 1.85);
+  const hudEyeGlow = emissiveMat(0xe0f2fe, 2.25);
+  const repulsorGold = emissiveMat(0xfbbf24, 1.65);
+  const bioScanCyan = emissiveMat(0x22d3ee, 1.40);
 
   // --------------------------------------------------------------------------
-  // Heroic 8-Head Marvel Comics Proportions (Y = -1.00 soles to +1.34 crown)
+  // Heroic 8-Head Athletic Ready-Stance Proportions (Y = -1.00 soles to +1.34 crown)
   // Facing +X, Up +Y, Right/Starboard +Z
   // --------------------------------------------------------------------------
-  const SHOULDER = (s) => [-0.005, 0.855, s * 0.305];
-  const ELBOW = (s) => [-0.015, 0.515, s * 0.372];
-  const WRIST = (s) => [0.095, 0.185, s * 0.415];
-  const HIP = (s) => [0.005, 0.135, s * 0.148];
-  const KNEE = (s) => [0.020, -0.425, s * 0.176];
-  const ANKLE = (s) => [-0.005, -0.885, s * 0.194];
+  const SHOULDER = (s) => [-0.010, 0.858, s * 0.312];
+  const ELBOW = (s) => [-0.032, 0.520, s * 0.376];
+  const WRIST = (s) => [0.112, 0.192, s * 0.412];
+  const HIP = (s) => [0.006, 0.138, s * 0.152];
+  const KNEE = (s) => [0.022, -0.422, s * 0.180];
+  const ANKLE = (s) => [-0.006, -0.885, s * 0.198];
 
   // Shared Heroic Thoracic & Abdominal Loft Envelope (y = 0.06 .. 0.99)
   const TORSO_Y0 = 0.06;
@@ -592,28 +922,29 @@ export function buildIronManModel() {
   const T_AT = (y) => (y - TORSO_Y0) / TORSO_H;
 
   const TORSO_STATIONS = [
-    { t: 0.00, r1: 0.112, r1n: 0.108, r2: 0.148, n: 2.5, c1: 0.006 }, // y = 0.06 lower trunk arch
-    { t: 0.13, r1: 0.132, r1n: 0.128, r2: 0.184, n: 2.6, c1: 0.008 }, // y = 0.18 iliac hip crest
-    { t: 0.25, r1: 0.126, r1n: 0.122, r2: 0.168, n: 2.5, c1: 0.008 }, // y = 0.29 waist belt
-    { t: 0.35, r1: 0.124, r1n: 0.118, r2: 0.156, n: 2.5, c1: 0.010 }, // y = 0.39 athletic comic taper!
-    { t: 0.48, r1: 0.142, r1n: 0.132, r2: 0.186, n: 2.6, c1: 0.014 }, // y = 0.51 lower ribcage rim
-    { t: 0.64, r1: 0.172, r1n: 0.152, r2: 0.228, n: 2.7, c1: 0.020 }, // y = 0.66 mid chest / lats
-    { t: 0.79, r1: 0.192, r1n: 0.162, r2: 0.258, n: 2.8, c1: 0.024 }, // y = 0.79 broad heroic pectorals!
-    { t: 0.91, r1: 0.156, r1n: 0.138, r2: 0.222, n: 2.6, c1: 0.012 }, // y = 0.91 clavicles / traps
+    { t: 0.00, r1: 0.114, r1n: 0.110, r2: 0.150, n: 2.5, c1: 0.006 }, // y = 0.06 lower pelvic arch
+    { t: 0.13, r1: 0.134, r1n: 0.130, r2: 0.186, n: 2.6, c1: 0.008 }, // y = 0.18 iliac hip crest
+    { t: 0.25, r1: 0.128, r1n: 0.124, r2: 0.170, n: 2.5, c1: 0.009 }, // y = 0.29 V-belt waist
+    { t: 0.35, r1: 0.126, r1n: 0.120, r2: 0.158, n: 2.5, c1: 0.011 }, // y = 0.39 athletic comic taper!
+    { t: 0.48, r1: 0.146, r1n: 0.134, r2: 0.190, n: 2.6, c1: 0.015 }, // y = 0.51 lower ribcage rim
+    { t: 0.64, r1: 0.176, r1n: 0.156, r2: 0.232, n: 2.7, c1: 0.021 }, // y = 0.66 mid chest / serratus / lats
+    { t: 0.79, r1: 0.198, r1n: 0.166, r2: 0.264, n: 2.8, c1: 0.025 }, // y = 0.79 broad heroic pectorals!
+    { t: 0.91, r1: 0.158, r1n: 0.140, r2: 0.226, n: 2.6, c1: 0.013 }, // y = 0.91 clavicles / trapezius
     { t: 1.00, r1: 0.096, r1n: 0.094, r2: 0.108, n: 2.3, c1: 0.002 }, // y = 0.99 open neck collar aperture
   ];
 
   const torsoRadial = (t, a) => {
     const aa = Math.abs(a);
-    // Broad sculpted Marvel Comics pectoral shelves with crisp sternum valley
-    const pec = 0.072 * gauss(t, 0.77, 0.085) * gauss(aa, 0.38, 0.22);
-    const sternum = -0.028 * gauss(t, 0.74, 0.11) * gauss(aa, 0.0, 0.10);
-    // Comic abdominal six-pack/rib contour
-    const abs = 0.022 * gauss(t, 0.38, 0.10) * gauss(aa, 0.22, 0.16);
-    // Rear scapular & latissimus V-taper
-    const lats = 0.048 * gauss(t, 0.74, 0.11) * gauss(aa, 2.48, 0.28);
-    const spineGroove = -0.030 * gauss(t, 0.66, 0.18) * gauss(aa, Math.PI, 0.12);
-    return 1 + pec + sternum + abs + lats + spineGroove;
+    // Broad sculpted Marvel Comics pectoral shelves + crisp central sternum channel
+    const pec = 0.078 * gauss(t, 0.77, 0.082) * gauss(aa, 0.39, 0.21);
+    const sternum = -0.032 * gauss(t, 0.74, 0.11) * gauss(aa, 0.0, 0.095);
+    // Rectus abdominis & lateral serratus muscle definition
+    const abs = 0.026 * gauss(t, 0.38, 0.10) * gauss(aa, 0.20, 0.15);
+    const serratus = 0.024 * gauss(t, 0.58, 0.08) * gauss(aa, 1.05, 0.22);
+    // Rear scapular wings & latissimus dorsi V-taper
+    const lats = 0.054 * gauss(t, 0.74, 0.11) * gauss(aa, 2.46, 0.27);
+    const spineGroove = -0.034 * gauss(t, 0.66, 0.18) * gauss(aa, Math.PI, 0.11);
+    return 1 + pec + sternum + abs + serratus + lats + spineGroove;
   };
 
   const TORSO = {
@@ -625,79 +956,107 @@ export function buildIronManModel() {
   };
   const torsoSample = stationSampler(TORSO_STATIONS);
 
-  // Hollow Cranial Helmet Envelope (open neck bottom at y = 1.045, closed crown at y = 1.338)
+  // Sculpted Cranial Helmet Envelope (open neck bottom at y = 1.045, closed crown at y = 1.340)
   const HELMET = {
     origin: [0.008, 1.045, 0],
-    axis: [0, 0.293, 0],
+    axis: [0, 0.295, 0],
     up: [1, 0, 0],
     stations: [
       { t: 0.00, r1: 0.098, r1n: 0.094, r2: 0.086, n: 2.5, c1: 0.012 }, // Open neck/jaw aperture!
-      { t: 0.16, r1: 0.118, r1n: 0.104, r2: 0.094, n: 2.8, c1: 0.018 }, // Chiseled comic chin & jaw
-      { t: 0.38, r1: 0.126, r1n: 0.114, r2: 0.102, n: 2.9, c1: 0.014 }, // Cheekbones
-      { t: 0.58, r1: 0.128, r1n: 0.120, r2: 0.106, n: 2.7, c1: 0.010 }, // Brow & ear pods
-      { t: 0.78, r1: 0.118, r1n: 0.116, r2: 0.098, n: 2.4, c1: 0.004 }, // Forehead dome
-      { t: 0.93, r1: 0.078, r1n: 0.080, r2: 0.068, n: 2.2, c1: -0.002 },
+      { t: 0.16, r1: 0.120, r1n: 0.105, r2: 0.095, n: 2.9, c1: 0.019 }, // Chiseled mandible & chin
+      { t: 0.38, r1: 0.129, r1n: 0.116, r2: 0.103, n: 3.1, c1: 0.015 }, // Angular zygomatic cheekbones!
+      { t: 0.58, r1: 0.130, r1n: 0.122, r2: 0.107, n: 2.8, c1: 0.011 }, // Supraorbital brow & ear pods
+      { t: 0.78, r1: 0.119, r1n: 0.118, r2: 0.099, n: 2.4, c1: 0.004 }, // Frontal cranium dome
+      { t: 0.93, r1: 0.080, r1n: 0.082, r2: 0.069, n: 2.2, c1: -0.002 },
       { t: 1.00, r1: 0.010, r1n: 0.010, r2: 0.010, n: 2.0, c1: -0.004 }, // Crown apex
     ],
     radial: (t, a) => {
       const aa = Math.abs(a);
-      const jaw = 0.042 * gauss(t, 0.20, 0.10) * gauss(aa, 0.72, 0.22);
-      const brow = 0.036 * gauss(t, 0.57, 0.065) * gauss(aa, 0.28, 0.28);
-      const eyeSocket = -0.042 * gauss(t, 0.50, 0.045) * gauss(aa, 0.36, 0.16);
-      const chin = 0.044 * gauss(t, 0.10, 0.07) * gauss(aa, 0.0, 0.22);
-      return 1 + jaw + brow + eyeSocket + chin;
+      const jaw = 0.046 * gauss(t, 0.20, 0.095) * gauss(aa, 0.70, 0.20);
+      const cheek = 0.036 * gauss(t, 0.37, 0.065) * gauss(aa, 0.44, 0.16);
+      const templeSink = -0.026 * gauss(t, 0.56, 0.08) * gauss(aa, 0.95, 0.18);
+      const brow = 0.040 * gauss(t, 0.58, 0.058) * gauss(aa, 0.28, 0.26);
+      const eyeSocket = -0.046 * gauss(t, 0.50, 0.042) * gauss(aa, 0.36, 0.15);
+      const chin = 0.048 * gauss(t, 0.10, 0.065) * gauss(aa, 0.0, 0.20);
+      return 1 + jaw + cheek + templeSink + brow + eyeSocket + chin;
     },
   };
 
   const parts = [
     // ========================================================================
-    // 1. MARVEL COMICS GOLD FACEPLATE & HOLLOW CRIMSON CYBERNETIC HELMET
+    // 1. MARVEL COMICS 22K GOLD FACEPLATE & HOLLOW CRIMSON CYBERNETIC HELMET
     // ========================================================================
     {
       id: 'mark85-helmet-hud',
-      name: 'Marvel Comics Gold Faceplate, Crimson Clamshell Helmet & Cybernetic Transponder',
+      i18n: {"es-419":{"name":"Placa Facial de Oro de 22K, Casco Carmesí y Transpondedor Cibernético","desc":"Casco hueco articulado de doble pared con placa facial de aleación de titanio y oro cepillado de 22K, pico de viuda clásico de Marvel Comics, visores ópticos HUD de cristal de zafiro, rejilla vocal escalonada, respirador de oxígeno de emergencia para 1 hora y transpondedores cibernéticos que leen las órdenes neuronales de Tony Stark en tiempo real.","funFact":"¡En los planos técnicos oficiales de Marvel Comics diseñados por Eliot R. Brown, los captadores cibernéticos dentro del casco traducen los impulsos cerebrales de Tony Stark en órdenes de vuelo en menos de 2 milisegundos!"},"es":{"name":"Placa Facial de Oro de 22K, Casco Carmesí y Transpondedor Cibernético","desc":"Casco hueco articulado de doble pared con placa facial de aleación de titanio y oro cepillado de 22K, pico de viuda clásico de Marvel Comics, visores ópticos HUD de cristal de zafiro, rejilla vocal escalonada y transpondedores cibernéticos neuronales.","funFact":"¡En los esquemas oficiales de Marvel Comics creados por Eliot R. Brown, los sensores cibernéticos del casco traducen las ondas cerebrales de Tony Stark en maniobras de vuelo instantáneas!"}},
+      name: 'Marvel Comics 22K Gold Faceplate, Crimson Clamshell Helmet & Cybernetic Transponder',
       category: 'Helmet & Cybernetics',
       isOuter: true,
-      explodeOffset: [0.15, 0.96, 0],
-      desc: 'Authentic Marvel Comics clamshell helmet (Model 4 / Extremis) sculpted as a true open-necked hollow shell (~10 mm wall thickness) with room for Tony Stark’s head inside: gleaming Comic Gold hinged faceplate, Crimson widow’s-peak brow crest, slanted rectangular comic eye slits, classic horizontal mouth slit, and phased-array ear transceivers.',
+      explodeOffset: [0.16, 0.96, 0],
+      desc: 'Collector-grade Marvel Comics clamshell helmet (Bob Layton Model 4 / Adi Granov Extremis) machined as an open-necked hollow shell (~10 mm wall thickness) with room for Tony Stark’s head inside: hinged 22K brushed Champagne Gold faceplate with dark CNC shut-line, pointed Crimson widow’s-peak V-crest, sapphire-lensed HUD eye slits, stepped vocal-grille mouth slit, and knurled phased-array ear pods.',
       funFact: 'In Marvel Comics schematics by Eliot R. Brown, Iron Man’s helmet houses cybernetic neuro-transponder pick-ups that read Tony’s brainwaves at the speed of thought, plus a collapsible 1-hour emergency oxygen supply!',
       build(g) {
         const b = new MeshBatch();
 
-        // 1. Open-ended hollow segmented Crimson neck collar ring (y = 0.965 .. 1.055)
+        // 1. Open-ended hollow multi-ring articulated cervical neck collar (y = 0.962 .. 1.056)
         const neckSpec = {
-          origin: [0.004, 0.965, 0],
-          axis: [0, 0.090, 0],
+          origin: [0.004, 0.962, 0],
+          axis: [0, 0.094, 0],
           up: [1, 0, 0],
-          N: 40,
-          steps: 8,
+          N: 44,
+          steps: 10,
           wallRatio: 0.84,
           openStart: true,
           openEnd: true,
           stations: [
-            { t: 0.0, r1: 0.094, r1n: 0.092, r2: 0.102, n: 2.3, c1: 0.004 },
-            { t: 0.5, r1: 0.086, r1n: 0.086, r2: 0.090, n: 2.3, c1: 0.006 },
-            { t: 1.0, r1: 0.090, r1n: 0.088, r2: 0.086, n: 2.4, c1: 0.008 },
+            { t: 0.0, r1: 0.095, r1n: 0.093, r2: 0.103, n: 2.3, c1: 0.004 },
+            { t: 0.5, r1: 0.086, r1n: 0.086, r2: 0.091, n: 2.3, c1: 0.006 },
+            { t: 1.0, r1: 0.091, r1n: 0.089, r2: 0.087, n: 2.4, c1: 0.008 },
           ],
         };
-        addHollowTube(b, neckSpec, deepCrimson, innerLiner, rimGold);
+        addHollowTube(b, neckSpec, gunmetal, innerLiner, rimGold);
+        // 3 overlapping Crimson ballistic neck lames over the dark gunmetal collar
+        for (const [t0, t1, m] of [
+          [0.06, 0.30, comicCrimson],
+          [0.36, 0.62, deepCrimson],
+          [0.68, 0.94, comicCrimson],
+        ]) {
+          b.add(
+            axialBand({ ...neckSpec, tFrom: t0, tTo: t1, N: 44, steps: 4, scaleMul: 1.036 }),
+            m,
+          );
+        }
 
-        // 2. Hollow Crimson Cranial Helmet Shell: OPEN neck aperture (openStart: true), closed crown dome (openEnd: false)
+        // 2. Hollow Candy-Apple Crimson Cranial Helmet Shell: OPEN neck aperture, closed crown dome
         addHollowTube(
           b,
-          { ...HELMET, N: 52, steps: 24, wallRatio: 0.86, openStart: true, openEnd: false },
+          { ...HELMET, N: 56, steps: 26, wallRatio: 0.86, openStart: true, openEnd: false },
           comicCrimson,
           innerLiner,
           rimGold,
         );
 
-        // 3. Hinged Gleaming Marvel Comics Gold Faceplate (thick double-walled front clamshell!)
+        // Dark recessed CNC mechanical shut-line framing the hinged Gold Faceplate!
         const faceMask = (t, a) => {
           const aa = Math.abs(a);
-          // Classic Marvel Comics Crimson Widow's-Peak dipping into center forehead
-          const widowCut = 0.17 * smoothstep(0.66, 0.84, t) * gauss(aa, 0.0, 0.24);
+          const widowCut = 0.18 * smoothstep(0.65, 0.84, t) * gauss(aa, 0.0, 0.24);
           return aa < 0.44 * Math.PI - widowCut ? 1 : 0;
         };
+        b.add(
+          axialPatch({
+            ...HELMET,
+            aFrom: -0.455 * Math.PI,
+            aTo: 0.455 * Math.PI,
+            tFrom: 0.035,
+            tTo: 0.825,
+            ns: 18,
+            nt: 26,
+            offset: 0.0022,
+          }),
+          darkSlot,
+        );
+
+        // 3. Hinged 22K Brushed Champagne Gold Faceplate (thick double-walled front clamshell!)
         addThickClamshell(
           b,
           {
@@ -706,85 +1065,138 @@ export function buildIronManModel() {
             aTo: 0.43 * Math.PI,
             tFrom: 0.05,
             tTo: 0.80,
-            ns: 22,
-            nt: 28,
-            offset: 0.005,
-            wallThick: 0.008,
-            radial: (t, a) => HELMET.radial(t, a) * (faceMask(t, a) ? 1.0 : 0.955),
+            ns: 24,
+            nt: 30,
+            offset: 0.0058,
+            wallThick: 0.0085,
+            radial: (t, a) => HELMET.radial(t, a) * (faceMask(t, a) ? 1.0 : 0.952),
           },
           comicGold,
           innerLiner,
-          rimGold,
+          rimTitanium,
         );
 
-        // Crisp Marvel Comics Crimson Widow's-Peak Forehead V-Crest & Crown Ridge
+        // Sculpted Zygomatic Cheekbone Planes & Occipital Backplate Armor Step
+        for (const side of [-1, 1]) {
+          b.add(
+            axialPatch({
+              ...HELMET,
+              aFrom: side > 0 ? 0.14 * Math.PI : -0.36 * Math.PI,
+              aTo: side > 0 ? 0.36 * Math.PI : -0.14 * Math.PI,
+              tFrom: 0.24,
+              tTo: 0.43,
+              ns: 8,
+              nt: 10,
+              offset: 0.0108,
+            }),
+            richGold,
+          );
+          // Crimson lateral mandible & cheek guards with recessed temple intake slot
+          b.add(
+            axialPatch({
+              ...HELMET,
+              aFrom: side > 0 ? 0.38 * Math.PI : -0.66 * Math.PI,
+              aTo: side > 0 ? 0.66 * Math.PI : -0.38 * Math.PI,
+              tFrom: 0.04,
+              tTo: 0.56,
+              ns: 12,
+              nt: 12,
+              offset: 0.0105,
+            }),
+            comicCrimson,
+          );
+          // Temple micro-cooling vent slot
+          b.rbox(0.022, 0.008, 0.010, 0.002, darkSlot, [0.068, 1.236, side * 0.094], [0, side * 0.38, -0.18]);
+
+          // Machined Phased-Array Ear Transceiver Discs (knurled gold ring + 6 hex bolts + gunmetal radar cap)
+          const ez = side * 0.107;
+          b.cyl(0.034, 0.036, 0.014, 28, comicCrimson, [0.008, 1.194, ez], [Math.PI / 2, 0, 0]);
+          b.torus(0.028, 0.0042, comicGold, [0.008, 1.194, ez + side * 0.0065], [0, Math.PI / 2, 0]);
+          b.cyl(0.017, 0.019, 0.016, 20, gunmetal, [0.008, 1.194, ez + side * 0.003], [Math.PI / 2, 0, 0]);
+          b.cyl(0.007, 0.007, 0.018, 14, rimTitanium, [0.008, 1.194, ez + side * 0.004], [Math.PI / 2, 0, 0]);
+          for (let k = 0; k < 6; k++) {
+            const ka = (k / 6) * TAU;
+            b.cyl(
+              0.0022,
+              0.0022,
+              0.006,
+              6,
+              silver,
+              [0.008 + Math.cos(ka) * 0.022, 1.194 + Math.sin(ka) * 0.022, ez + side * 0.008],
+              [Math.PI / 2, 0, 0],
+            );
+          }
+        }
+
+        // Occipital rear cranial armor plate + gold neck sensor strip
+        b.add(
+          axialPatch({
+            ...HELMET,
+            aFrom: 0.72 * Math.PI,
+            aTo: 1.28 * Math.PI,
+            tFrom: 0.14,
+            tTo: 0.76,
+            ns: 10,
+            nt: 14,
+            offset: 0.006,
+          }),
+          deepCrimson,
+        );
+
+        // Crisp Marvel Comics Crimson Widow's-Peak Forehead V-Crest & Aero Crown Ridge
         b.add(
           axialPatch({
             ...HELMET,
             aFrom: -0.14 * Math.PI,
             aTo: 0.14 * Math.PI,
-            tFrom: 0.68,
+            tFrom: 0.67,
             tTo: 0.97,
             ns: 12,
             nt: 14,
-            offset: 0.0115,
+            offset: 0.012,
           }),
           comicCrimson,
         );
-        // Pointed V-tip of the Crimson Widow's Peak dipping down between the brows
-        b.cone(0.026, 0.052, 4, comicCrimson, [0.149, 1.236, 0], [0, Math.PI / 4, Math.PI]);
+        b.cone(0.027, 0.056, 4, comicCrimson, [0.153, 1.236, 0], [0, Math.PI / 4, Math.PI]);
 
-        // Crimson Jaw/Cheek Side Framing Guards (classic Layton / Granov cheekbone sweep)
+        // 4. Multi-Layer Optical HUD Eye Slits (Dark Chamfer + Titanium Bezel + Glowing HUD + Sapphire Lens)
         for (const side of [-1, 1]) {
-          b.add(
-            axialPatch({
-              ...HELMET,
-              aFrom: side > 0 ? 0.36 * Math.PI : -0.64 * Math.PI,
-              aTo: side > 0 ? 0.64 * Math.PI : -0.36 * Math.PI,
-              tFrom: 0.04,
-              tTo: 0.54,
-              ns: 12,
-              nt: 12,
-              offset: 0.010,
-            }),
-            comicCrimson,
-          );
-          // Circular Marvel Comics Phased-Array Ear Transceiver Discs
-          const ez = side * 0.106;
-          b.cyl(0.032, 0.034, 0.014, 24, comicCrimson, [0.008, 1.192, ez], [Math.PI / 2, 0, 0]);
-          b.torus(0.026, 0.004, comicGold, [0.008, 1.192, ez + side * 0.006], [0, Math.PI / 2, 0]);
-          b.cyl(0.014, 0.014, 0.016, 18, gunmetal, [0.008, 1.192, ez + side * 0.002], [Math.PI / 2, 0, 0]);
+          const rotEye = [-side * 0.14, -side * 0.34, 0];
+          b.rbox(0.020, 0.019, 0.056, 0.003, darkSlot, [0.152, 1.197, side * 0.042], rotEye);
+          b.rbox(0.018, 0.015, 0.051, 0.0025, rimTitanium, [0.154, 1.197, side * 0.042], rotEye);
+          b.rbox(0.016, 0.0105, 0.046, 0.002, hudEyeGlow, [0.156, 1.197, side * 0.042], rotEye);
+          b.rbox(0.004, 0.0115, 0.048, 0.0015, sapphireLens, [0.163, 1.197, side * 0.042], rotEye);
+          // Angry sculpted 22K Gold supraorbital brow ridge
+          b.rbox(0.020, 0.008, 0.058, 0.002, richGold, [0.158, 1.208, side * 0.041], [-side * 0.16, -side * 0.34, 0]);
         }
 
-        // 4. Classic Marvel Comics Slanted Rectangular Eye Slits + Angry Brow Ridge
-        for (const side of [-1, 1]) {
-          b.rbox(0.018, 0.018, 0.054, 0.003, darkSlot, [0.146, 1.196, side * 0.042], [-side * 0.14, -side * 0.34, 0]);
-          b.rbox(0.016, 0.011, 0.046, 0.002, hudEyeGlow, [0.149, 1.196, side * 0.042], [-side * 0.14, -side * 0.34, 0]);
-          // Sculpted gold brow frown bevel above each eye slit
-          b.rbox(0.018, 0.007, 0.056, 0.002, richGold, [0.150, 1.207, side * 0.041], [-side * 0.16, -side * 0.34, 0]);
+        // 5. Recessed Stepped Marvel Comics Mouth Slit with Micro-Grille + Split Mandible Chin Guard
+        b.rbox(0.020, 0.010, 0.058, 0.002, darkSlot, [0.156, 1.107, 0]);
+        for (let gv = -3; gv <= 3; gv++) {
+          b.box(0.004, 0.0075, 0.0018, gunmetal, [0.163, 1.107, gv * 0.007]);
         }
-
-        // 5. Signature Marvel Comics Recessed Horizontal/Stepped Mouth Slit & Chiseled Chin Guard
-        b.rbox(0.018, 0.009, 0.058, 0.002, darkSlot, [0.151, 1.106, 0]);
         for (const side of [-1, 1]) {
-          b.rbox(0.016, 0.0075, 0.022, 0.002, darkSlot, [0.145, 1.102, side * 0.033], [side * 0.14, -side * 0.28, 0]);
+          b.rbox(0.018, 0.0085, 0.022, 0.002, darkSlot, [0.151, 1.102, side * 0.034], [side * 0.14, -side * 0.28, 0]);
+          // Crimson lower-jaw corner accent flanking the gold chin
+          b.rbox(0.022, 0.018, 0.024, 0.004, comicCrimson, [0.139, 1.072, side * 0.034], [0, -side * 0.32, 0]);
         }
-        b.rbox(0.018, 0.024, 0.052, 0.005, comicGold, [0.150, 1.076, 0], [0, 0, -0.08]);
+        b.rbox(0.021, 0.024, 0.048, 0.005, comicGold, [0.156, 1.076, 0], [0, 0, -0.08]);
 
         b.flush(g);
       },
     },
 
     // ========================================================================
-    // 2. MARVEL COMICS CRIMSON FRONT THORACIC CLAMSHELL & UNIBEAM PROJECTOR
+    // 2. INTERLOCKING CRIMSON FRONT THORACIC CLAMSHELL & 12-COIL SAPPHIRE UNIBEAM
     // ========================================================================
     {
       id: 'arc-reactor-chestplate',
-      name: 'Marvel Comics Crimson Thoracic Clamshell & Multi-Spectrum Unibeam Chest Projector',
+      i18n: {"es-419":{"name":"Coraza Pectoral Carmesí y Proyector Unirrayo de Zafiro de 12 Bobinas","desc":"Coraza pectoral anatómica hueca de doble pared con acabado carmesí multicapa y líneas de cierre mecanizadas por CNC. En el centro del esternón aloja el legendario Unirrayo de zafiro rodeado por 12 bobinas electromagnéticas de cobre capaces de proyectar reflectores halógenos, rayos tractores magnéticos, láseres ultravioletas y descargas de energía pura.","funFact":"¡En los cómics clásicos de Iron Man, el Unirrayo pectoral no es solo una ventana del reactor: es un proyector multiespectro capaz de emitir luz de búsqueda, campos de tracción y pulsos electromagnéticos!"},"es":{"name":"Coraza Pectoral Carmesí y Proyector Unirrayo de Zafiro de 12 Bobinas","desc":"Coraza pectoral anatómica hueca de doble pared con acabado carmesí multicapa, líneas de cierre CNC y proyector central Unirrayo de cristal de zafiro con 12 bobinas electromagnéticas de cobre.","funFact":"¡En los cómics clásicos de Marvel, el Unirrayo del pecho actúa como proyector multiespectro de haces tractores, láseres y descargas concusivas!"}},
+      name: 'Interlocking Crimson Thoracic Clamshell & 12-Coil Sapphire Unibeam Projector',
       category: 'Front Chest Clamshell',
       isOuter: true,
       explodeOffset: [1.18, 0.16, 0],
-      desc: '100% Marvel Comics Crimson front thoracic clamshell sculpted as a true double-walled hollow half-shell (~14 mm wall thickness) with a dark quilted titanium inner liner and magnetic side-seam latches. Houses the iconic circular/pentagonal-bezel Unibeam Chest Projector flush in the sternum wall so Tony Stark’s chest fits comfortably inside.',
+      desc: '100% Marvel Comics Crimson front thoracic clamshell engineered as a true double-walled hollow half-shell (~15 mm wall thickness) with a diamond-quilted Kevlar inner liner, interlocking multi-plate pectoral armor over dark titanium shut-lines, clavicle NACA intakes, and a deep 3D 12-coil copper tokamak Unibeam projector sealed behind a curved sapphire crystal lens.',
       funFact: 'In Marvel Comics, Iron Man’s chest Unibeam doesn’t just fire concussive blasts—it projects a high-intensity searchlight, ultraviolet/infrared scan beams, laser cutters, and electromagnetic tractor beams!',
       build(g) {
         const b = new MeshBatch();
@@ -798,8 +1210,8 @@ export function buildIronManModel() {
             aTo: 0.50 * Math.PI,
             tFrom: T_AT(0.50),
             tTo: T_AT(0.99),
-            ns: 24,
-            nt: 32,
+            ns: 26,
+            nt: 34,
             wallThick: 0.015,
           },
           comicCrimson,
@@ -807,88 +1219,154 @@ export function buildIronManModel() {
           rimTitanium,
         );
 
-        // 2. Sculpted Heroic Marvel Comics Pectoral Armor Plates & Collarbone Ring (100% Crimson + Gold Trim)
+        // Dark anodized titanium sternum & sub-pectoral razor-thin CNC shut-line reveal channel
+        b.add(
+          axialPatch({
+            ...TORSO,
+            aFrom: -0.44 * Math.PI,
+            aTo: 0.44 * Math.PI,
+            tFrom: T_AT(0.59),
+            tTo: T_AT(0.90),
+            ns: 14,
+            nt: 24,
+            offset: 0.0080,
+          }),
+          darkSlot,
+        );
+
+        // 2. Overlapping Sculpted Left & Right Crimson Pectoral Plates, Clavicle Yokes & Latches
         for (const side of [-1, 1]) {
+          // Main broad Crimson pectoral armor plate (leaves razor-sharp ~3 mm CNC sternum & sub-pec shut-lines!)
           b.add(
             axialPatch({
               ...TORSO,
-              aFrom: side > 0 ? 0.05 * Math.PI : -0.44 * Math.PI,
-              aTo: side > 0 ? 0.44 * Math.PI : -0.05 * Math.PI,
-              tFrom: T_AT(0.65),
-              tTo: T_AT(0.89),
-              ns: 12,
-              nt: 16,
-              offset: 0.010,
+              aFrom: side > 0 ? 0.011 * Math.PI : -0.445 * Math.PI,
+              aTo: side > 0 ? 0.445 * Math.PI : -0.011 * Math.PI,
+              tFrom: T_AT(0.654),
+              tTo: T_AT(0.888),
+              ns: 14,
+              nt: 18,
+              offset: 0.0112,
             }),
             comicCrimson,
           );
-          // Lower pectoral comic bevel crease
+          // Upper clavicle Crimson yoke plate
           b.add(
             axialPatch({
               ...TORSO,
-              aFrom: side > 0 ? 0.08 * Math.PI : -0.42 * Math.PI,
-              aTo: side > 0 ? 0.42 * Math.PI : -0.08 * Math.PI,
-              tFrom: T_AT(0.61),
-              tTo: T_AT(0.65),
-              ns: 4,
+              aFrom: side > 0 ? 0.014 * Math.PI : -0.435 * Math.PI,
+              aTo: side > 0 ? 0.435 * Math.PI : -0.014 * Math.PI,
+              tFrom: T_AT(0.894),
+              tTo: T_AT(0.972),
+              ns: 6,
               nt: 14,
-              offset: 0.009,
+              offset: 0.0105,
             }),
             deepCrimson,
           );
-          // Side-seam magnetic clamshell latch lugs (visible when exploded!)
-          for (const yLatch of [0.58, 0.70, 0.82]) {
+          // Lower sub-pectoral angled bevel plate + serratus rib guard
+          b.add(
+            axialPatch({
+              ...TORSO,
+              aFrom: side > 0 ? 0.014 * Math.PI : -0.455 * Math.PI,
+              aTo: side > 0 ? 0.455 * Math.PI : -0.014 * Math.PI,
+              tFrom: T_AT(0.535),
+              tTo: T_AT(0.648),
+              ns: 8,
+              nt: 16,
+              offset: 0.0102,
+            }),
+            deepCrimson,
+          );
+
+          // Recessed collarbone NACA cooling intake louver + titanium hex fasteners
+          b.rbox(0.016, 0.018, 0.046, 0.003, gunmetal, [0.148, 0.905, side * 0.105], [0, -side * 0.35, -0.25]);
+          b.rbox(0.010, 0.008, 0.036, 0.002, darkSlot, [0.154, 0.905, side * 0.105], [0, -side * 0.35, -0.25]);
+          for (const [bx, by, bz] of [
+            [0.195, 0.855, side * 0.165],
+            [0.202, 0.675, side * 0.155],
+            [0.158, 0.565, side * 0.135],
+          ]) {
+            b.cyl(0.0038, 0.0038, 0.006, 6, rimTitanium, [bx, by, bz], [0, 0, Math.PI / 2]);
+          }
+
+          // Side-seam magnetic clamshell latch clevises (visible when exploded!)
+          for (const yLatch of [0.57, 0.70, 0.83]) {
             const st = torsoSample(T_AT(yLatch));
-            b.rbox(0.026, 0.022, 0.014, 0.003, rimGold, [st.c1, yLatch, side * (st.r2 + 0.004)]);
+            b.rbox(0.028, 0.022, 0.016, 0.003, rimGold, [st.c1, yLatch, side * (st.r2 + 0.004)]);
+            b.cyl(0.004, 0.004, 0.028, 10, silver, [st.c1, yLatch, side * (st.r2 + 0.008)]);
           }
         }
 
-        // Crisp Gold Collarbone Rim Trim around the open neck aperture
-        b.torus(0.104, 0.0065, comicGold, [0.006, 0.985, 0], [Math.PI / 2 + 0.14, 0, 0], [0.92, 1.04, 1]);
+        // Crisp 22K Champagne Gold Collarbone Rim Trim around the open neck aperture
+        b.torus(0.105, 0.007, comicGold, [0.006, 0.986, 0], [Math.PI / 2 + 0.14, 0, 0], [0.92, 1.04, 1]);
 
-        // 3. Canonical Marvel Comics Circular Unibeam Chest Projector (with Adi Granov Gold Bezel Collar)
-        const ux = 0.214;
+        // 3. Collector-Grade 3D 12-Coil Tokamak / Marvel Comics Unibeam Chest Projector
+        const ux = 0.218;
         const uy = 0.758;
         const tiltZ = -0.10;
-        // Outer sculpted gold Unibeam bezel ring + 5 radial comic accent lugs
-        b.torus(0.064, 0.009, comicGold, [ux, uy, 0], [0, Math.PI / 2, tiltZ]);
-        b.torus(0.052, 0.006, silver, [ux + 0.005, uy, 0], [0, Math.PI / 2, tiltZ]);
-        b.cyl(0.050, 0.054, 0.016, 32, gunmetal, [ux - 0.002, uy, 0], [0, 0, Math.PI / 2 + tiltZ]);
-        // Glowing multi-spectrum Unibeam lens + concentric focussing rings
-        b.cyl(0.044, 0.044, 0.010, 32, unibeamCyan, [ux + 0.004, uy, 0], [0, 0, Math.PI / 2 + tiltZ]);
-        b.cyl(0.026, 0.026, 0.012, 24, unibeamWhite, [ux + 0.006, uy, 0], [0, 0, Math.PI / 2 + tiltZ]);
-        b.torus(0.035, 0.0025, silver, [ux + 0.010, uy, 0], [0, Math.PI / 2, tiltZ]);
+        // Outer chamfered 22K Champagne Gold circular-pentagonal bezel + 5 Adi Granov armor lugs
+        b.torus(0.068, 0.0095, comicGold, [ux, uy, 0], [0, Math.PI / 2, tiltZ]);
+        b.torus(0.056, 0.0055, rimTitanium, [ux + 0.005, uy, 0], [0, Math.PI / 2, tiltZ]);
+        b.cyl(0.055, 0.058, 0.018, 36, darkSlot, [ux - 0.003, uy, 0], [0, 0, Math.PI / 2 + tiltZ]);
+
+        // 12 radial electromagnetic copper tokamak coils + palladium stator teeth inside the chamber!
+        for (let k = 0; k < 12; k++) {
+          const ang = (k / 12) * TAU;
+          const cyOff = Math.cos(ang) * 0.044;
+          const czOff = Math.sin(ang) * 0.044;
+          b.rbox(0.010, 0.009, 0.013, 0.002, copperCoil, [ux + 0.005, uy + cyOff, czOff], [ang, 0, tiltZ]);
+          b.box(0.012, 0.0035, 0.008, silver, [ux + 0.007, uy + cyOff * 0.88, czOff * 0.88], [ang, 0, tiltZ]);
+        }
+        // 5 radial Marvel Comics pentagonal gold clamps + 5 hex bolts
         for (let k = 0; k < 5; k++) {
           const ang = (k / 5) * TAU - Math.PI / 2;
           b.rbox(
+            0.012,
+            0.016,
             0.010,
-            0.014,
-            0.008,
-            0.002,
+            0.0025,
             comicGold,
-            [ux + 0.006, uy + Math.cos(ang) * 0.058, Math.sin(ang) * 0.058],
+            [ux + 0.007, uy + Math.cos(ang) * 0.062, Math.sin(ang) * 0.062],
             [ang, 0, 0],
+          );
+          const bAng = ang + Math.PI / 5;
+          b.cyl(
+            0.0028,
+            0.0028,
+            0.008,
+            6,
+            silver,
+            [ux + 0.009, uy + Math.cos(bAng) * 0.066, Math.sin(bAng) * 0.066],
+            [0, 0, Math.PI / 2 + tiltZ],
           );
         }
 
-        // Shallow inner concave sternum Unibeam backing cap (leaves 100% of ribcage cavity hollow!)
-        b.cyl(0.056, 0.056, 0.012, 24, rimTitanium, [ux - 0.016, uy, 0], [0, 0, Math.PI / 2 + tiltZ]);
+        // Multi-ring glowing tokamak core + central titanium focus ring + curved Sapphire Crystal Dome!
+        b.torus(0.042, 0.0042, unibeamCyan, [ux + 0.007, uy, 0], [0, Math.PI / 2, tiltZ]);
+        b.cyl(0.036, 0.036, 0.008, 32, unibeamCore, [ux + 0.006, uy, 0], [0, 0, Math.PI / 2 + tiltZ]);
+        b.torus(0.020, 0.0024, silver, [ux + 0.011, uy, 0], [0, Math.PI / 2, tiltZ]);
+        b.sphere(0.052, 24, 16, sapphireLens, [ux + 0.006, uy, 0], [0, 0, tiltZ], [0.24, 1.0, 1.0]);
+
+        // Shallow inner concave sternum Unibeam backing ring (leaves 100% of ribcage cavity hollow!)
+        b.cyl(0.058, 0.058, 0.010, 28, rimTitanium, [ux - 0.016, uy, 0], [0, 0, Math.PI / 2 + tiltZ]);
 
         b.flush(g);
       },
     },
 
     // ========================================================================
-    // 3. HOLLOW REAR DORSAL CLAMSHELL, POP-OUT AIRBRAKES & FLIGHT STABILIZERS
+    // 3. HOLLOW REAR DORSAL CLAMSHELL, HYDRAULIC AIRBRAKES & SPINE CAPACITORS
     // ========================================================================
     {
       id: 'dorsal-airbrake-array',
-      name: 'Hollow Rear Dorsal Clamshell, Pop-Out Airbrake Flaps & Micro-Turbine Louvers',
+      i18n: {"es-419":{"name":"Coraza Dorsal Hueca, Aerofrenos Hidráulicos y Capacitores Espinales","desc":"Coraza dorsal ergonómica de doble pared esculpida sobre los trapecios y omóplatos del piloto, equipada con dos flaps hidráulicos de frenado aerodinámico con pistones de titanio visibles, columna vertebral articulada de 6 vértebras doradas y bancos de capacitores termoeléctricos.","funFact":"¡Al volar a más de Mach 3, los aerofrenos dorsales se despliegan con microactuadores hidráulicos para estabilizar giros cerrados de alta gravedad sin perder sustentación!"},"es":{"name":"Coraza Dorsal Hueca, Aerofrenos Hidráulicos y Condensadores Espinales","desc":"Coraza dorsal ergonómica de doble pared con dos flaps hidráulicos de frenado aerodinámico, actuadores de titanio visibles, columna articulada de 6 vértebras doradas y condensadores espinales.","funFact":"¡A velocidades superiores a Mach 3, los aerofrenos dorsales se despliegan hidráulicamente para ejecutar maniobras cerradas de alta gravedad!"}},
+      name: 'Hollow Rear Dorsal Clamshell, Hydraulic Airbrake Flaps & Spine Capacitors',
       category: 'Rear Dorsal Clamshell',
       isOuter: true,
       explodeOffset: [-1.18, 0.20, 0],
-      desc: 'Matching Marvel Comics Crimson rear thoracic clamshell (~14 mm thick hollow concave plate) that splits away from the front chestplate so Tony Stark can step inside. Houses twin hinged aerodynamic airbrake flaps, upper-back micro-turbine exhaust louvers, and a flush spinal ECM countermeasure pack.',
-      funFact: 'When Iron Man decelerates from Mach 3+ supersonic flight, twin dorsal airbrake flaps pop open from his upper backplate while his palm repulsors fire forward as retro-thrusters!',
+      desc: 'Matching Marvel Comics Crimson rear thoracic clamshell (~15 mm thick hollow concave plate) that splits away from the front chestplate so Tony Stark can step inside. Features overlapping scapular armor plates, twin deployed airbrake flaps with exposed hydraulic cylinders, micro-turbine exhaust louvers, and a 5-cell spinal capacitor array.',
+      funFact: 'When Iron Man decelerates from Mach 3+ supersonic flight, twin dorsal airbrake flaps deploy on hydraulic struts from his upper backplate while his palm repulsors fire forward as retro-thrusters!',
       build(g) {
         const b = new MeshBatch();
 
@@ -901,8 +1379,8 @@ export function buildIronManModel() {
             aTo: 1.50 * Math.PI,
             tFrom: T_AT(0.50),
             tTo: T_AT(0.99),
-            ns: 24,
-            nt: 32,
+            ns: 26,
+            nt: 34,
             wallThick: 0.015,
           },
           comicCrimson,
@@ -910,41 +1388,78 @@ export function buildIronManModel() {
           rimTitanium,
         );
 
-        // 2. Sculpted Scapular Armor Plates, Gold Dorsal Trim & Hinged Pop-Out Airbrake Flaps
+        // Dark mechanical dorsal shut-line channel
+        b.add(
+          axialPatch({
+            ...TORSO,
+            aFrom: 0.58 * Math.PI,
+            aTo: 1.42 * Math.PI,
+            tFrom: T_AT(0.64),
+            tTo: T_AT(0.93),
+            ns: 12,
+            nt: 22,
+            offset: 0.008,
+          }),
+          darkSlot,
+        );
+
+        // 2. Overlapping Scapular Wing Plates, Hydraulic Pop-Out Airbrakes & Exhaust Louvers
         for (const side of [-1, 1]) {
-          // Raised crimson scapular wing bevel
           b.add(
             axialPatch({
               ...TORSO,
               aFrom: side > 0 ? 0.60 * Math.PI : 1.12 * Math.PI,
               aTo: side > 0 ? 0.88 * Math.PI : 1.40 * Math.PI,
-              tFrom: T_AT(0.68),
+              tFrom: T_AT(0.66),
               tTo: T_AT(0.92),
               ns: 12,
               nt: 14,
-              offset: 0.010,
+              offset: 0.011,
             }),
             deepCrimson,
           );
 
-          // Deployed Marvel Comics Dorsal Aerodynamic Airbrake Flap + Gold Hydraulic Strut
-          const bx = -0.156;
-          const by = 0.785;
-          const bz = side * 0.105;
-          b.rbox(0.012, 0.165, 0.068, 0.004, comicCrimson, [bx - 0.022, by, bz], [side * 0.14, -side * 0.28, -0.22]);
-          b.rbox(0.008, 0.145, 0.052, 0.003, comicGold, [bx - 0.015, by, bz + side * 0.003], [side * 0.14, -side * 0.28, -0.22]);
-          b.cyl(0.005, 0.005, 0.048, 10, silver, [bx - 0.004, by - 0.02, bz], [0, 0, Math.PI / 2]);
+          // Deployed Dorsal Aerodynamic Airbrake Flap + Twin Hydraulic Actuator Cylinders
+          const bx = -0.160;
+          const by = 0.790;
+          const bz = side * 0.108;
+          const flapRot = [side * 0.15, -side * 0.30, -0.24];
+          b.rbox(0.012, 0.172, 0.072, 0.004, comicCrimson, [bx - 0.026, by, bz], flapRot);
+          b.rbox(0.008, 0.150, 0.054, 0.003, comicGold, [bx - 0.019, by, bz + side * 0.003], flapRot);
+          b.rbox(0.022, 0.154, 0.044, 0.003, darkSlot, [bx + 0.006, by, bz - side * 0.004]);
+          addHydraulicStrut(
+            b,
+            [bx + 0.008, by + 0.032, bz],
+            [bx - 0.024, by + 0.042, bz + side * 0.004],
+            0.0048,
+            gunmetal,
+            silver,
+            richGold,
+          );
+          addHydraulicStrut(
+            b,
+            [bx + 0.008, by - 0.036, bz],
+            [bx - 0.024, by - 0.026, bz + side * 0.004],
+            0.0048,
+            gunmetal,
+            silver,
+            richGold,
+          );
 
-          // Recessed dorsal micro-turbine exhaust louver port
-          b.rbox(0.018, 0.044, 0.036, 0.004, gunmetal, [-0.148, 0.62, side * 0.088], [0, -side * 0.22, 0]);
-          b.rbox(0.010, 0.028, 0.024, 0.002, unibeamCyan, [-0.155, 0.62, side * 0.088], [0, -side * 0.22, 0]);
+          // Recessed dorsal micro-turbine exhaust louver port with titanium vanes
+          b.rbox(0.020, 0.052, 0.040, 0.004, gunmetal, [-0.150, 0.615, side * 0.092], [0, -side * 0.22, 0]);
+          b.rbox(0.010, 0.034, 0.026, 0.002, unibeamCyan, [-0.156, 0.615, side * 0.092], [0, -side * 0.22, 0]);
+          for (let lv = -1; lv <= 1; lv++) {
+            b.box(0.008, 0.0035, 0.032, rimTitanium, [-0.159, 0.615 + lv * 0.011, side * 0.092], [0, -side * 0.22, 0.25]);
+          }
         }
 
-        // Flush Spinal Auxiliary Battery & Chaff Dispenser Ridge (exterior-mounted so inside stays hollow!)
-        for (let i = 0; i < 4; i++) {
-          const sy = 0.56 + i * 0.072;
-          b.rbox(0.022, 0.054, 0.064, 0.006, deepCrimson, [-0.144, sy, 0]);
-          b.rbox(0.012, 0.036, 0.042, 0.003, comicGold, [-0.152, sy, 0]);
+        // 3. Exterior 5-Vertebra Spinal Capacitor & Chaff Dispenser Ridge (inside stays 100% hollow!)
+        for (let i = 0; i < 5; i++) {
+          const sy = 0.545 + i * 0.068;
+          b.rbox(0.024, 0.052, 0.068, 0.006, i % 2 === 0 ? comicCrimson : deepCrimson, [-0.146, sy, 0]);
+          b.rbox(0.014, 0.032, 0.044, 0.003, comicGold, [-0.155, sy, 0]);
+          b.cyl(0.0032, 0.0032, 0.056, 8, rimTitanium, [-0.156, sy, 0], [Math.PI / 2, 0, 0]);
         }
 
         b.flush(g);
@@ -952,33 +1467,34 @@ export function buildIronManModel() {
     },
 
     // ========================================================================
-    // 4. FLARED CRIMSON COMIC SHOULDER PAULDRONS & MICRO-MUNITION PODS
+    // 4. MULTI-TIERED FLARED CRIMSON COMIC SHOULDER PAULDRONS & MUNITION PODS
     // ========================================================================
     {
       id: 'pauldron-missile-pods',
-      name: 'Flared Crimson Comic Shoulder Pauldrons & Pop-Up Micro-Munition Pods',
+      i18n: {"es-419":{"name":"Hombreras Carmesí Escalonadas y Módulos Desplegables de Micro-Munición","desc":"Hombreras blindadas acampanadas al estilo clásico de Marvel Comics con rebordes en oro cepillado de 22K, montadas sobre anillos cardánicos que permiten rotación completa del brazo, integrando módulos superiores desplegables con 6 tubos de micro-municiones guiadas.","funFact":"¡Las hombreras acampanadas inmortalizadas por Bob Layton ocultan lanzadores miniaturizados guiados por el radar del casco sin sacrificar la movilidad de los hombros!"},"es":{"name":"Hombreras Carmesí Escalonadas y Módulos Desplegables de Micro-Munición","desc":"Hombreras blindadas acampanadas al estilo clásico de Marvel Comics con rebordes de oro de 22K, juntas cardánicas y módulos desplegables con 6 tubos de micro-munición guiada.","funFact":"¡Las icónicas hombreras acampanadas de Bob Layton alojan micro-lanzadores guiados por el visor HUD sin limitar el giro del brazo!"}},
+      name: 'Multi-Tiered Flared Crimson Comic Shoulder Pauldrons & Pop-Up Munition Pods',
       category: 'Shoulder Pauldrons',
       isOuter: true,
       explodeOffset: [-0.22, 0.68, 0],
-      desc: 'Classic Bob Layton & Adi Granov flared rounded-bell Marvel Comics Crimson shoulder pauldrons edged in gleaming Comic Gold. Each pauldron is a true concave hollow dome cup (~12 mm thick) arching over the human deltoid joint, with a pop-up Stark micro-munition rack tucked into the upper ridge.',
+      desc: 'Classic Bob Layton & Adi Granov flared rounded-bell Marvel Comics Crimson shoulder pauldrons edged in brushed 22K Champagne Gold. Each pauldron is a two-tiered hollow concave dome (~13 mm wall thickness) mounted on titanium rotary clevis bearings over the human deltoid, topped with a hinged 6-tube brass micro-munition pod.',
       funFact: 'Unlike the gold shoulders used in later movie suits, classic and Extremis Marvel Comics Iron Man armors feature bold flared Crimson shoulder bells that create his unmistakable heroic comic silhouette!',
       build(g) {
         const b = new MeshBatch();
         for (const side of [-1, 1]) {
           const S = SHOULDER(side);
           const pauldronSpec = {
-            origin: [S[0], S[1] - 0.085, S[2] - side * 0.025],
-            axis: [0, 0.195, side * 0.028],
+            origin: [S[0], S[1] - 0.088, S[2] - side * 0.026],
+            axis: [0, 0.200, side * 0.028],
             up: [0, 0, side],
             stations: [
-              { t: 0.00, r1: 0.118, r1n: 0.048, r2: 0.116, n: 2.3, c1: 0.018 }, // Flared comic lower bell skirt!
-              { t: 0.35, r1: 0.112, r1n: 0.052, r2: 0.112, n: 2.4, c1: 0.016 },
-              { t: 0.72, r1: 0.096, r1n: 0.056, r2: 0.098, n: 2.4, c1: 0.008 },
-              { t: 1.00, r1: 0.058, r1n: 0.042, r2: 0.068, n: 2.2, c1: -0.006 },
+              { t: 0.00, r1: 0.122, r1n: 0.050, r2: 0.120, n: 2.3, c1: 0.018 }, // Flared comic lower bell skirt!
+              { t: 0.35, r1: 0.115, r1n: 0.054, r2: 0.114, n: 2.4, c1: 0.016 },
+              { t: 0.72, r1: 0.098, r1n: 0.058, r2: 0.100, n: 2.4, c1: 0.008 },
+              { t: 1.00, r1: 0.060, r1n: 0.044, r2: 0.070, n: 2.2, c1: -0.006 },
             ],
           };
 
-          // True Concave Hollow Cup Dome Clamshell!
+          // Primary Concave Hollow Crimson Bell Clamshell!
           addThickClamshell(
             b,
             {
@@ -987,39 +1503,60 @@ export function buildIronManModel() {
               aTo: 0.58 * Math.PI,
               tFrom: 0.0,
               tTo: 1.0,
-              ns: 16,
-              nt: 22,
-              wallThick: 0.012,
+              ns: 18,
+              nt: 24,
+              wallThick: 0.013,
             },
             comicCrimson,
             innerLiner,
             rimGold,
           );
 
-          // Gleaming Comic Gold Flared Lower Rim Trim Band
+          // Overlapping Upper Deltoid Armor Tier (creates crisp recessed mechanical step!)
           b.add(
             axialPatch({
               ...pauldronSpec,
-              aFrom: -0.56 * Math.PI,
-              aTo: 0.56 * Math.PI,
+              aFrom: -0.48 * Math.PI,
+              aTo: 0.48 * Math.PI,
+              tFrom: 0.38,
+              tTo: 0.94,
+              ns: 10,
+              nt: 18,
+              offset: 0.009,
+            }),
+            deepCrimson,
+          );
+
+          // Gleaming 22K Champagne Gold Flared Lower Rim Molding
+          b.add(
+            axialPatch({
+              ...pauldronSpec,
+              aFrom: -0.57 * Math.PI,
+              aTo: 0.57 * Math.PI,
               tFrom: 0.0,
               tTo: 0.13,
-              ns: 4,
-              nt: 20,
-              offset: 0.0075,
+              ns: 5,
+              nt: 22,
+              offset: 0.0082,
             }),
             comicGold,
           );
 
-          // Compact Pop-Up Stark Micro-Munition / Anti-Personnel Dart Pod on upper ridge
-          const px = S[0] - 0.008;
-          const py = S[1] + 0.092;
+          // Internal Titanium Rotary Shoulder Clevis Bearing (tucked under pauldron arch, outside arm bore)
+          b.torus(0.068, 0.007, gunmetal, [S[0], S[1] + 0.010, S[2] - side * 0.018], [0, Math.PI / 2, 0.35 * side]);
+
+          // Pop-Up 6-Tube Brass/Gunmetal Stark Micro-Munition Pod + Hinged Crimson Bay Door
+          const px = S[0] - 0.006;
+          const py = S[1] + 0.096;
           const pz = S[2] + side * 0.028;
-          b.rbox(0.068, 0.024, 0.052, 0.005, gunmetal, [px, py, pz], [side * 0.22, 0, -0.08]);
-          b.rbox(0.070, 0.007, 0.054, 0.002, deepCrimson, [px - 0.004, py + 0.015, pz], [side * 0.22, 0, -0.08]);
-          for (const dx of [-0.018, 0, 0.018]) {
-            for (const dz of [-0.011, 0.011]) {
-              b.cyl(0.0042, 0.0042, 0.014, 10, comicGold, [px + dx + 0.026, py + 0.002, pz + dz], [0, 0, Math.PI / 2]);
+          const podRot = [side * 0.22, 0, -0.08];
+          b.rbox(0.072, 0.026, 0.056, 0.005, gunmetal, [px, py, pz], podRot);
+          b.rbox(0.074, 0.0075, 0.058, 0.002, comicCrimson, [px - 0.006, py + 0.017, pz], [side * 0.22, 0, 0.14]);
+          b.rbox(0.066, 0.004, 0.048, 0.0015, comicGold, [px - 0.006, py + 0.014, pz], [side * 0.22, 0, 0.14]);
+          for (const dy of [-0.005, 0.005]) {
+            for (const dz of [-0.016, 0, 0.016]) {
+              b.cyl(0.0045, 0.0045, 0.016, 12, rimTitanium, [px + 0.032, py + dy, pz + dz], [0, 0, Math.PI / 2]);
+              b.sphere(0.0038, 10, 8, comicGold, [px + 0.040, py + dy, pz + dz]);
             }
           }
         }
@@ -1028,15 +1565,16 @@ export function buildIronManModel() {
     },
 
     // ========================================================================
-    // 5. POLARIZED GOLD BICEPS & FLARED CRIMSON REPULSOR GAUNTLETS
+    // 5. POLARIZED GOLD BICEPS, HYDRAULIC ELBOWS & 5-FINGERED REPULSOR GAUNTLETS
     // ========================================================================
     {
       id: 'repulsor-gauntlets-arms',
-      name: 'Polarized Gold Micro-Mesh Biceps, Flared Crimson Gauntlets & Palm Repulsors',
+      i18n: {"es-419":{"name":"Bíceps Polarizados de Oro de 22K, Codos Hidráulicos y Guanteletes Repulsores","desc":"Mangas de bíceps huecas tejidas con micromalla cristalina de titanio y oro de 22K polarizado magnéticamente, codos con tambores hidráulicos rotativos y guanteletes carmesí acampanados con 5 dedos articulados y lentes repulsoras de zafiro en cada palma.","funFact":"¡Según el manual técnico de Marvel Comics, las mangas doradas están formadas por miles de microescamas metálicas flexibles que se vuelven tan rígidas como el acero blindado al recibir carga magnética!"},"es":{"name":"Bíceps Polarizados de Oro de 22K, Codos Hidráulicos y Guanteletes Repulsores","desc":"Mangas de bíceps huecas con micromalla polarizada de oro de 22K, articulaciones hidráulicas en los codos y guanteletes carmesí acampanados con 5 dedos articulados y lentes repulsoras de zafiro en las palmas.","funFact":"¡En los cómics de Marvel, las mangas doradas utilizan una micromalla cristalina que pasa de ser flexible como la tela a rígida como el titanio al polarizarse magnéticamente!"}},
+      name: 'Polarized 22K Gold Biceps, Hydraulic Elbows, Flared Crimson Gauntlets & 5-Fingered Repulsors',
       category: 'Arms & Repulsors',
       isOuter: true,
       explodeOffset: [0.88, 0.08, 0],
-      desc: 'Canonical Marvel Comics arm assembly built as open-ended hollow sleeves (~11 mm wall thickness) so human arms slide right through: 100% gleaming Comic Gold polarized micro-mesh upper-arm sleeves, Crimson forearm gauntlets with the iconic flared comic elbow V-cuff, wrist laser/force-field bezel, and glowing Palm Repulsor lenses.',
+      desc: 'Canonical Marvel Comics arm assembly built as open-ended hollow sleeves (~11 mm wall thickness) so human arms slide right through: sculpted 22K Titanium-Gold polarized micro-mesh bicep/tricep sleeves, hollow rotary elbow bearings with twin hydraulic dampers, flared-cuff Crimson gauntlets with wrist laser pods, and 5-fingered multi-phalange articulated hands framing sapphire-lensed Palm Repulsors.',
       funFact: 'In Marvel Comics, Iron Man’s golden arm and leg sleeves are woven from magnetically polarized micro-chainmail that stays flexible like cloth until energized into tank-proof armor in microseconds!',
       build(g) {
         const b = new MeshBatch();
@@ -1045,51 +1583,69 @@ export function buildIronManModel() {
           const E = ELBOW(side);
           const W = WRIST(side);
 
-          // 1. Open-Ended Hollow 100% Comic Gold Bicep/Tricep Sleeve
+          // 1. Open-Ended Hollow Sculpted 22K Polarized Titanium-Gold Bicep/Tricep Sleeve
           const upperDir = [E[0] - S[0], E[1] - S[1], E[2] - S[2]];
           const upperSpec = {
             origin: S,
             axis: upperDir,
             up: [1, 0, 0],
-            N: 40,
-            steps: 16,
+            N: 44,
+            steps: 18,
             wallRatio: 0.84,
             openStart: true,
             openEnd: true,
             stations: [
-              { t: 0.00, r1: 0.068, r1n: 0.066, r2: 0.068, n: 2.3 },
-              { t: 0.38, r1: 0.080, r1n: 0.074, r2: 0.076, n: 2.5, c1: 0.006 }, // Heroic bicep peak!
-              { t: 0.75, r1: 0.072, r1n: 0.068, r2: 0.068, n: 2.4, c1: 0.003 },
+              { t: 0.00, r1: 0.069, r1n: 0.067, r2: 0.069, n: 2.3 },
+              { t: 0.36, r1: 0.084, r1n: 0.078, r2: 0.078, n: 2.5, c1: 0.007 }, // Sculpted biceps brachii peak!
+              { t: 0.72, r1: 0.074, r1n: 0.070, r2: 0.070, n: 2.4, c1: 0.003 },
               { t: 1.00, r1: 0.062, r1n: 0.060, r2: 0.062, n: 2.3 },
             ],
+            radial: (t, a) => {
+              const aa = Math.abs(a);
+              const bicepPeak = 0.048 * gauss(t, 0.42, 0.18) * gauss(aa, 0.0, 0.38);
+              const tricepHead = 0.036 * gauss(t, 0.36, 0.16) * gauss(aa, Math.PI * 0.85, 0.35);
+              return 1 + bicepPeak + tricepHead;
+            },
           };
-          addHollowTube(b, upperSpec, comicGold, innerLiner, rimGold);
+          addHollowTube(b, upperSpec, polarizedGoldMesh, innerLiner, rimGold);
 
-          // Subtle comic micro-mail articulation rings along bicep
-          for (const tf of [0.26, 0.52, 0.78]) {
+          // Precision brushed-gold bicep cuff & torque amplifier bands
+          for (const tf of [0.10, 0.88]) {
             b.add(
-              axialPatch({
+              axialBand({
                 ...upperSpec,
-                aFrom: -Math.PI,
-                aTo: Math.PI,
-                tFrom: tf - 0.02,
-                tTo: tf + 0.02,
-                ns: 3,
-                nt: 24,
-                offset: 0.002,
+                tFrom: tf - 0.03,
+                tTo: tf + 0.03,
+                N: 44,
+                steps: 3,
+                scaleMul: 1.032,
               }),
-              richGold,
+              comicGold,
             );
           }
 
-          // Hollow Articulated Gold/Gunmetal Elbow Ring
+          // 2. Open-Bore Mechanical Rotary Elbow Joint (Caliper Bearings + Twin Hydraulic Damper Struts!)
           const elbowRot = eulerAlong(upperDir);
           b.torus(0.058, 0.009, gunmetal, E, [elbowRot[0] + Math.PI / 2, elbowRot[1], elbowRot[2]]);
+          for (const calSide of [-1, 1]) {
+            const cz = E[2] + calSide * 0.064;
+            b.cyl(0.020, 0.020, 0.012, 18, rimTitanium, [E[0], E[1], cz], [Math.PI / 2, 0, 0]);
+            b.cyl(0.010, 0.010, 0.016, 14, comicGold, [E[0], E[1], cz + calSide * 0.002], [Math.PI / 2, 0, 0]);
+          }
+          addHydraulicStrut(
+            b,
+            [E[0] - 0.058, E[1] + 0.068, E[2] + side * 0.042],
+            [E[0] - 0.052, E[1] - 0.042, E[2] + side * 0.048],
+            0.0055,
+            gunmetal,
+            silver,
+            richGold,
+          );
 
-          // 2. Open-Ended Hollow Crimson Forearm Gauntlet with Iconic Flared Marvel Comics Elbow Cuff!
+          // 3. Open-Ended Hollow Crimson Forearm Gauntlet with Flared Marvel Comics Elbow Cuff!
           const foreStart = [
-            E[0] - 0.015 * (W[0] - E[0]),
-            E[1] + 0.028,
+            E[0] - 0.012 * (W[0] - E[0]),
+            E[1] + 0.030,
             E[2] - side * 0.004,
           ];
           const foreDir = [W[0] - foreStart[0], W[1] - foreStart[1], W[2] - foreStart[2]];
@@ -1097,219 +1653,360 @@ export function buildIronManModel() {
             origin: foreStart,
             axis: foreDir,
             up: [1, 0, 0],
-            N: 42,
-            steps: 20,
+            N: 44,
+            steps: 22,
             wallRatio: 0.83,
             openStart: true,
             openEnd: true,
             stations: [
-              { t: 0.00, r1: 0.092, r1n: 0.090, r2: 0.094, n: 2.6, c1: -0.004 }, // Dramatic flared Marvel Comics gauntlet cuff!
-              { t: 0.16, r1: 0.078, r1n: 0.076, r2: 0.080, n: 2.6 },
-              { t: 0.36, r1: 0.072, r1n: 0.068, r2: 0.072, n: 2.7, c1: 0.003 },
-              { t: 0.72, r1: 0.062, r1n: 0.058, r2: 0.062, n: 2.7 },
+              { t: 0.00, r1: 0.095, r1n: 0.092, r2: 0.096, n: 2.6, c1: -0.004 }, // Dramatic flared Marvel Comics gauntlet cuff!
+              { t: 0.16, r1: 0.080, r1n: 0.078, r2: 0.082, n: 2.6 },
+              { t: 0.36, r1: 0.075, r1n: 0.070, r2: 0.076, n: 2.7, c1: 0.004 }, // Brachioradialis forearm swell
+              { t: 0.72, r1: 0.063, r1n: 0.059, r2: 0.064, n: 2.7 },
               { t: 1.00, r1: 0.056, r1n: 0.052, r2: 0.058, n: 2.8 },
             ],
             radial: (t, a) => {
-              // Classic comic V-point flare at outer/dorsal elbow cuff
-              const cuffPoint = 0.12 * (1 - smoothstep(0.0, 0.22, t)) * gauss(Math.abs(a), Math.PI * 0.65, 0.35);
+              const cuffPoint = 0.14 * (1 - smoothstep(0.0, 0.22, t)) * gauss(Math.abs(a), Math.PI * 0.65, 0.34);
               return 1 + cuffPoint;
             },
           };
           addHollowTube(b, foreSpec, comicCrimson, innerLiner, rimGold);
 
-          // Gold Flared Gauntlet Cuff Lip + Wrist Micro-Laser Bezel
+          // Overlapping Dorsal Gauntlet Armor Plate + Wrist Laser Projector Pod + Gold Cuff Moldings
           b.add(
             axialPatch({
               ...foreSpec,
-              aFrom: -Math.PI,
-              aTo: Math.PI,
-              tFrom: 0.0,
-              tTo: 0.07,
-              ns: 3,
-              nt: 28,
-              offset: 0.0035,
+              aFrom: side > 0 ? 0.18 * Math.PI : -0.82 * Math.PI,
+              aTo: side > 0 ? 0.82 * Math.PI : -0.18 * Math.PI,
+              tFrom: 0.22,
+              tTo: 0.86,
+              ns: 10,
+              nt: 14,
+              offset: 0.0055,
             }),
+            deepCrimson,
+          );
+          b.add(
+            axialBand({ ...foreSpec, tFrom: 0.0, tTo: 0.07, N: 44, steps: 3, scaleMul: 1.036 }),
             comicGold,
           );
           b.add(
-            axialPatch({
-              ...foreSpec,
-              aFrom: -Math.PI,
-              aTo: Math.PI,
-              tFrom: 0.90,
-              tTo: 1.0,
-              ns: 4,
-              nt: 24,
-              offset: 0.0035,
-            }),
+            axialBand({ ...foreSpec, tFrom: 0.90, tTo: 1.0, N: 44, steps: 4, scaleMul: 1.040 }),
             comicGold,
           );
 
-          // 3. Hollow Armored Crimson Glove Carapace + Concave Glowing Palm Repulsor Lens
+          // Dorsal Wrist Micro-Laser / Anti-Tank Emitter Pod
           const fRot = eulerAlong(foreDir);
-          const hx = W[0] + 0.022;
+          b.rbox(0.026, 0.052, 0.022, 0.004, gunmetal, [W[0] - 0.010, W[1] + 0.058, W[2] + side * 0.060], fRot);
+          b.cyl(0.005, 0.005, 0.012, 12, repulsorGold, [W[0] + 0.004, W[1] + 0.032, W[2] + side * 0.064], fRot);
+
+          // 4. Realistic 5-Fingered Multi-Phalange Articulated Hand + Sapphire-Lensed Palm Repulsor!
+          const hx = W[0] + 0.024;
           const hy = W[1] - 0.048;
-          const hz = W[2] + side * 0.008;
-          // Open-wrist hollow crimson dorsal hand shell
-          b.rbox(0.072, 0.082, 0.026, 0.008, comicCrimson, [hx + 0.006, hy, hz + side * 0.012], fRot);
-          b.rbox(0.060, 0.074, 0.016, 0.005, innerLiner, [hx + 0.002, hy, hz - side * 0.002], fRot);
+          const hz = W[2] + side * 0.006;
 
-          // Concave Palm Repulsor Ray Projector Lens (facing inward/forward on palm)
-          const px = hx + 0.004;
+          // Hollow Crimson dorsal hand metacarpal carapace + sculpted gold knuckle bar + inner palm pad
+          b.rbox(0.076, 0.084, 0.024, 0.008, comicCrimson, [hx + 0.004, hy, hz + side * 0.014], fRot);
+          b.rbox(0.078, 0.016, 0.012, 0.003, comicGold, [hx + 0.008, hy - 0.038, hz + side * 0.022], fRot);
+          b.rbox(0.064, 0.076, 0.014, 0.005, innerLiner, [hx + 0.002, hy, hz - side * 0.002], fRot);
+
+          // Recessed Multi-Lens Sapphire Palm Repulsor (facing inward/downward on palm)
+          const px = hx + 0.002;
           const py = hy - 0.004;
-          const pz = hz - side * 0.012;
-          b.torus(0.022, 0.0045, silver, [px, py, pz], [0, Math.PI / 2, 0]);
-          b.cyl(0.019, 0.019, 0.006, 22, unibeamCyan, [px, py, pz], [Math.PI / 2, 0, 0]);
-          b.cyl(0.011, 0.011, 0.008, 18, unibeamWhite, [px, py, pz - side * 0.002], [Math.PI / 2, 0, 0]);
+          const pz = hz - side * 0.010;
+          b.torus(0.024, 0.0045, rimTitanium, [px, py, pz], [0, Math.PI / 2, 0]);
+          b.cyl(0.020, 0.020, 0.006, 24, unibeamCore, [px, py, pz], [Math.PI / 2, 0, 0]);
+          b.sphere(0.021, 18, 12, sapphireLens, [px, py, pz - side * 0.003], [0, 0, 0], [1.0, 1.0, 0.35]);
 
-          // 4 Articulated Crimson Fingers + Thumb
-          for (let fi = 0; fi < 4; fi++) {
-            const fxOff = (fi - 1.5) * 0.015;
-            b.rbox(0.013, 0.036, 0.015, 0.004, comicCrimson, [hx + fxOff, hy - 0.056, hz + side * 0.008], [side * 0.20, 0, 0]);
-            b.rbox(0.011, 0.026, 0.013, 0.003, deepCrimson, [hx + fxOff, hy - 0.082, hz - side * 0.002], [side * 0.42, 0, 0]);
+          // 4 Graduated 3-Phalange Articulated Fingers (Index, Middle, Ring, Pinky)
+          const fingerSpecs = [
+            { xOff: 0.025, lenScale: 0.96 },  // Index
+            { xOff: 0.009, lenScale: 1.05 },  // Middle
+            { xOff: -0.008, lenScale: 0.98 }, // Ring
+            { xOff: -0.024, lenScale: 0.84 }, // Pinky
+          ];
+          for (const fg of fingerSpecs) {
+            const fx = hx + fg.xOff;
+            const L1 = 0.032 * fg.lenScale;
+            const L2 = 0.024 * fg.lenScale;
+            const L3 = 0.018 * fg.lenScale;
+            // Knuckle pin
+            b.cyl(0.0055, 0.0055, 0.013, 10, gunmetal, [fx, hy - 0.044, hz + side * 0.012], [0, 0, Math.PI / 2]);
+            // Proximal phalange (Crimson)
+            b.rbox(0.0135, L1, 0.015, 0.0035, comicCrimson, [fx, hy - 0.058, hz + side * 0.010], [side * 0.22, 0, 0]);
+            // Middle phalange (Deep Crimson + gunmetal joint)
+            b.cyl(0.0045, 0.0045, 0.012, 8, gunmetal, [fx, hy - 0.073, hz + side * 0.005], [0, 0, Math.PI / 2]);
+            b.rbox(0.012, L2, 0.0135, 0.003, deepCrimson, [fx, hy - 0.084, hz + side * 0.001], [side * 0.48, 0, 0]);
+            // Distal fingertip (Crimson + Gold tip pad)
+            b.rbox(0.0108, L3, 0.012, 0.003, comicCrimson, [fx, hy - 0.100, hz - side * 0.010], [side * 0.72, 0, 0]);
           }
-          b.rbox(0.015, 0.038, 0.016, 0.004, comicCrimson, [hx + 0.038, hy - 0.024, hz - side * 0.008], [side * 0.25, 0, -0.42]);
+
+          // 3-Segment Opposable Armored Thumb
+          b.sphere(0.011, 10, 8, gunmetal, [hx + 0.034, hy - 0.012, hz + side * 0.004]);
+          b.rbox(0.016, 0.030, 0.016, 0.004, comicCrimson, [hx + 0.042, hy - 0.026, hz - side * 0.004], [side * 0.22, 0, -0.45]);
+          b.rbox(0.014, 0.024, 0.014, 0.0035, deepCrimson, [hx + 0.048, hy - 0.048, hz - side * 0.012], [side * 0.45, 0, -0.18]);
         }
         b.flush(g);
       },
     },
 
     // ========================================================================
-    // 6. CRIMSON RIBBED ABDOMINAL GIRDLE & CLASSIC COMIC V-BELT TRUNK SHELL
+    // 6. OVERLAPPING CRIMSON RIB GIRDLE & CLASSIC COMIC V-BELT TRUNK ARMOR
     // ========================================================================
     {
       id: 'abdominal-pelvis-armor',
-      name: 'Hollow Crimson Ribbed Abdominal Girdle & Classic Marvel Comics V-Belt Trunks',
+      i18n: {"es-419":{"name":"Faja Abdominal Articulada Carmesí, Trusa Blindada y Cinturón en V de Oro","desc":"Sección media hueca de doble pared compuesta por láminas costales carmesí superpuestas que permiten inclinar y girar el torso, coronada por el icónico cinturón en punta en V de oro de 22K y la clásica trusa pélvica carmesí de Marvel Comics con faldones articulados de cadera.","funFact":"¡Dividir el abdomen en placas superpuestas independientes con amortiguadores internos le permite a Iron Man doblar el torso como un acróbata aun dentro de una coraza metálica!"},"es":{"name":"Faja Abdominal Articulada Carmesí, Calzón Blindado y Cinturón en V de Oro","desc":"Sección media hueca de doble pared formada por láminas costales carmesí superpuestas, cinturón en punta en V de oro de 22K y protección pélvica carmesí clásica de Marvel Comics.","funFact":"¡Las placas abdominales superpuestas permiten a Iron Man flexionar y girar el torso con total libertad pese a vestir blindaje pesado!"}},
+      name: 'Hollow Overlapping Crimson Rib Girdle & Marvel Comics Gold V-Belt Trunks',
       category: 'Abdomen & Trunk Girdle',
       isOuter: true,
       explodeOffset: [0.78, -0.32, 0],
-      desc: 'True open-top, open-bottom hollow double-walled Crimson waist & pelvic girdle (~13 mm wall thickness, zero solid plugs): articulated 4-lame Marvel Comics Crimson abdominal rib bands above the classic pointed V-belt and Crimson superhero trunk armor.',
-      funFact: 'Classic Marvel Comics Iron Man suits use overlapping Crimson abdominal lames and a V-shaped pelvic girdle so Tony Stark can twist and crouch freely without exposing a single millimeter of unarmored gap!',
+      desc: 'True open-top, open-bottom hollow double-walled waist & pelvic girdle (~13 mm wall thickness, zero solid plugs): 4 overlapping Marvel Comics Crimson abdominal rib lames and serratus side plates mounted over dark ballistic flex-channels, paired with a machined 22K Gold V-belt and articulated Crimson pelvic trunk armor.',
+      funFact: 'Classic Marvel Comics Iron Man suits use overlapping Crimson abdominal lames and hinged pelvic hip-tassets so Tony Stark can twist and crouch freely without exposing a single millimeter of unarmored gap!',
       build(g) {
         const b = new MeshBatch();
 
-        // 1. Open-Ended Double-Walled Hollow Crimson Abdominal & Trunk Girdle (y = 0.07 .. 0.52)
+        // 1A. 100% Candy-Apple Crimson Marvel Comics Pelvic Trunks (y = 0.078 .. 0.268, open double-walled hollow!)
         addHollowTube(
           b,
           {
             ...TORSO,
-            tFrom: T_AT(0.08),
-            tTo: T_AT(0.52),
-            N: 52,
-            steps: 22,
+            tFrom: T_AT(0.078),
+            tTo: T_AT(0.268),
+            N: 56,
+            steps: 14,
             wallRatio: 0.86,
             openStart: true,
             openEnd: true,
           },
           comicCrimson,
           innerLiner,
-          rimTitanium,
+          rimGold,
         );
 
-        // 2. Sculpted 4-Tier Marvel Comics Articulated Crimson Abdominal Rib Lames
-        for (let i = 0; i < 4; i++) {
-          const yLo = 0.30 + i * 0.052;
-          const yHi = yLo + 0.040;
-          b.add(
-            axialPatch({
-              ...TORSO,
-              aFrom: -0.46 * Math.PI,
-              aTo: 0.46 * Math.PI,
-              tFrom: T_AT(yLo),
-              tTo: T_AT(yHi),
-              ns: 5,
-              nt: 24,
-              offset: 0.006,
-              radial: (t, a) => torsoRadial(t, a) + 0.022 * gauss(Math.abs(a), 0.0, 0.22),
-            }),
-            i % 2 === 0 ? comicCrimson : deepCrimson,
-          );
-        }
-
-        // 3. Classic Marvel Comics Pointed V-Belt & Sculpted Pelvic Trunk Arch (hollow saddle!)
+        // Sculpted anterior & gluteal Crimson trunk armor plates for crisp multi-piece comic relief
         b.add(
           axialPatch({
             ...TORSO,
-            aFrom: -Math.PI,
-            aTo: Math.PI,
-            tFrom: T_AT(0.24),
-            tTo: T_AT(0.295),
-            ns: 6,
-            nt: 36,
-            offset: 0.0085,
-            radial: (t, a) => torsoRadial(t, a) + 0.026 * gauss(Math.abs(a), 0.0, 0.18),
+            aFrom: -0.34 * Math.PI,
+            aTo: 0.34 * Math.PI,
+            tFrom: T_AT(0.092),
+            tTo: T_AT(0.248),
+            ns: 8,
+            nt: 20,
+            offset: 0.0055,
+          }),
+          deepCrimson,
+        );
+        b.add(
+          axialPatch({
+            ...TORSO,
+            aFrom: 0.68 * Math.PI,
+            aTo: 1.32 * Math.PI,
+            tFrom: T_AT(0.095),
+            tTo: T_AT(0.248),
+            ns: 8,
+            nt: 18,
+            offset: 0.005,
+          }),
+          deepCrimson,
+        );
+
+        // 1B. Upper Ribbed Waist Ballistic Flex-Girdle (y = 0.268 .. 0.520, dark gunmetal under Crimson lames!)
+        addHollowTube(
+          b,
+          {
+            ...TORSO,
+            tFrom: T_AT(0.268),
+            tTo: T_AT(0.520),
+            N: 56,
+            steps: 14,
+            wallRatio: 0.86,
+            openStart: false,
+            openEnd: true,
+          },
+          gunmetal,
+          innerLiner,
+          rimTitanium,
+        );
+
+        // 2. Overlapping 4-Tier Marvel Comics Crimson Abdominal Rib Lames (leaving crisp dark gunmetal flex gaps!)
+        for (let i = 0; i < 4; i++) {
+          const yLo = 0.300 + i * 0.052;
+          const yHi = yLo + 0.043;
+          b.add(
+            axialPatch({
+              ...TORSO,
+              aFrom: -0.44 * Math.PI,
+              aTo: 0.44 * Math.PI,
+              tFrom: T_AT(yLo),
+              tTo: T_AT(yHi),
+              ns: 6,
+              nt: 26,
+              offset: 0.0072,
+              radial: (t, a) => torsoRadial(t, a) + 0.024 * gauss(Math.abs(a), 0.0, 0.22),
+            }),
+            i % 2 === 0 ? comicCrimson : deepCrimson,
+          );
+          // Rear lumbar Crimson armor lames
+          b.add(
+            axialPatch({
+              ...TORSO,
+              aFrom: 0.56 * Math.PI,
+              aTo: 1.44 * Math.PI,
+              tFrom: T_AT(yLo),
+              tTo: T_AT(yHi),
+              ns: 5,
+              nt: 22,
+              offset: 0.0065,
+            }),
+            i % 2 === 0 ? deepCrimson : comicCrimson,
+          );
+        }
+
+        // Lateral Oblique / Serratus Hinged Crimson Plates with Titanium Hex Fasteners
+        for (const side of [-1, 1]) {
+          b.add(
+            axialPatch({
+              ...TORSO,
+              aFrom: side > 0 ? 0.36 * Math.PI : -0.64 * Math.PI,
+              aTo: side > 0 ? 0.64 * Math.PI : -0.36 * Math.PI,
+              tFrom: T_AT(0.30),
+              tTo: T_AT(0.50),
+              ns: 8,
+              nt: 12,
+              offset: 0.0085,
+            }),
+            deepCrimson,
+          );
+          // Hinged pelvic hip-skirt tassets with gold trim
+          b.rbox(0.115, 0.088, 0.014, 0.004, comicCrimson, [0.012, 0.165, side * 0.186], [side * 0.12, 0, 0]);
+          b.rbox(0.117, 0.014, 0.016, 0.002, comicGold, [0.012, 0.124, side * 0.191], [side * 0.12, 0, 0]);
+        }
+
+        // 3. Machined 22K Champagne Gold Marvel Comics Pointed V-Belt & Central Stark Buckle (360° outward!)
+        b.add(
+          axialBand({
+            ...TORSO,
+            tFrom: T_AT(0.244),
+            tTo: T_AT(0.298),
+            N: 56,
+            steps: 6,
+            scaleMul: 1.055,
+            radial: (t, a) => torsoRadial(t, a) + 0.032 * gauss(Math.abs(a), 0.0, 0.18),
           }),
           comicGold,
         );
-        // Crimson center V-buckle medallion + hollow lower pelvic codpiece arch
-        b.rbox(0.020, 0.058, 0.072, 0.006, comicCrimson, [0.144, 0.255, 0], [0, 0, -0.06]);
-        b.rbox(0.195, 0.046, 0.086, 0.016, comicCrimson, [0.006, 0.062, 0]);
-        b.rbox(0.175, 0.022, 0.072, 0.006, innerLiner, [0.006, 0.082, 0]);
+        // Segmented belt utility link blocks + Central Crimson/Gold V-Buckle Medallion
+        for (const side of [-1, 1]) {
+          for (const az of [0.35, 0.68, 2.45]) {
+            const a = side * az;
+            const st = torsoSample(T_AT(0.271));
+            const rp = ringPoint(axisFrame(TORSO.origin, TORSO.axis, TORSO.up), TORSO_H, T_AT(0.271), a, st, (torsoRadial(T_AT(0.271), a) + 0.04) * 1.04);
+            b.rbox(0.018, 0.046, 0.034, 0.003, richGold, rp, [0, -a, 0]);
+          }
+        }
+        // Classic Marvel Comics pointed V-buckle chevron
+        b.rbox(0.022, 0.068, 0.082, 0.006, comicGold, [0.150, 0.258, 0], [0, 0, -0.06]);
+        b.rbox(0.025, 0.046, 0.056, 0.004, comicCrimson, [0.154, 0.258, 0], [0, 0, -0.06]);
+        b.cone(0.032, 0.044, 4, comicGold, [0.152, 0.218, 0], [0, Math.PI / 4, Math.PI]);
+
+        // Hollow lower pelvic codpiece saddle arch
+        b.rbox(0.198, 0.046, 0.088, 0.016, comicCrimson, [0.006, 0.062, 0]);
+        b.rbox(0.176, 0.022, 0.072, 0.006, innerLiner, [0.006, 0.082, 0]);
 
         b.flush(g);
       },
     },
 
     // ========================================================================
-    // 7. TWIN MARVEL COMICS CIRCULAR HIP POWER PODS & COUNTERMEASURE DISCS
+    // 7. MACHINED TWIN MARVEL COMICS CIRCULAR HIP POWER PODS & SOLAR COILS
     // ========================================================================
     {
       id: 'comic-hip-power-pods',
-      name: 'Twin Circular Marvel Comics Hip Power Pods, Solar Converters & Flare Discs',
+      i18n: {"es-419":{"name":"Cápsulas Circulares de Energía de Cadera, Bobinas de Cobre y Lanzabengalas","desc":"Los inconfundibles discos circulares gemelos de cadera de Marvel Comics mecanizados en oro cepillado de 22K: la cápsula derecha muestra una celda solar-termoeléctrica con embobinado de cobre puro, mientras que la izquierda aloja un tambor rotativo de 8 bengalas infrarrojas defensivas.","funFact":"¡Esos discos redondos en las caderas de Iron Man en los cómics clásicos son baterías auxiliares recargables por energía solar y dispensadores rotativos de contramedidas térmicas!"},"es":{"name":"Cápsulas Circulares de Energía de Cadera, Bobinas de Cobre y Lanzabengalas","desc":"Discos circulares gemelos de cadera mecanizados en oro cepillado de 22K: el derecho integra una batería auxiliar con bobinas de cobre visto y el izquierdo un dispensador rotativo de 8 bengalas defensivas.","funFact":"¡Los característicos discos redondos en las caderas del Iron Man clásico funcionan como acumuladores solares auxiliares y lanzadores de contramedidas!"}},
+      name: 'Machined Twin Circular Marvel Comics Hip Power Pods, Copper Coils & Flare Discs',
       category: 'Waist Power & Countermeasures',
       isOuter: false,
       explodeOffset: [-0.88, -0.14, 0],
-      desc: 'Iron Man’s #1 unmistakable Marvel Comics waist detail from Tales of Suspense through Extremis: twin circular Crimson-and-Gold Hip Power Pods mounted outside the pelvic shell, housing auxiliary solar/thermocouple battery coils, magnetic grapple reels, and rotary IR flare/EMP countermeasure ports.',
+      desc: 'Iron Man’s #1 unmistakable Marvel Comics waist signature from Tales of Suspense through Extremis: CNC-machined circular Crimson-and-Gold Hip Power Pods with 8 hex bolts, exposed radial copper solar/thermocouple converter coils beneath a sapphire ring window, and 6 peripheral rotary flare/EMP dispenser tubes.',
       funFact: 'In Eliot R. Brown’s Official Handbook of the Marvel Universe schematics, Iron Man’s circular hip pods double as high-density auxiliary battery packs and emergency solar-energy converters!',
       build(g) {
         const b = new MeshBatch();
         for (const side of [-1, 1]) {
           const px = 0.012;
           const py = 0.238;
-          const pz = side * 0.198;
+          const pz = side * 0.202;
           const rotZ = -side * 0.08;
 
-          // Outer Crimson armored circular pod housing
-          b.cyl(0.068, 0.072, 0.036, 32, comicCrimson, [px, py, pz], [Math.PI / 2 + rotZ, 0, 0]);
-          b.torus(0.066, 0.0065, comicGold, [px, py, pz + side * 0.016], [0, Math.PI / 2, 0]);
+          // Outer Crimson armored circular pod drum + knurled 22K Gold bezel
+          b.cyl(0.070, 0.074, 0.038, 36, comicCrimson, [px, py, pz], [Math.PI / 2 + rotZ, 0, 0]);
+          b.torus(0.068, 0.007, comicGold, [px, py, pz + side * 0.017], [0, Math.PI / 2, 0]);
+          b.cyl(0.054, 0.056, 0.012, 32, darkSlot, [px, py, pz + side * 0.018], [Math.PI / 2 + rotZ, 0, 0]);
 
-          // Domed Gleaming Comic Gold Solar/Thermocouple Converter Cap on exterior face
-          b.cyl(0.048, 0.056, 0.014, 28, comicGold, [px, py, pz + side * 0.020], [Math.PI / 2 + rotZ, 0, 0]);
-          b.torus(0.032, 0.004, richGold, [px, py, pz + side * 0.026], [0, Math.PI / 2, 0]);
-          b.cyl(0.016, 0.016, 0.016, 20, repulsorGold, [px, py, pz + side * 0.022], [Math.PI / 2 + rotZ, 0, 0]);
+          // 10 Exposed Radial Copper Solar/Thermocouple Coils + 8 Titanium Hex Bolts!
+          for (let k = 0; k < 10; k++) {
+            const ang = (k / 10) * TAU;
+            b.rbox(
+              0.012,
+              0.008,
+              0.008,
+              0.002,
+              copperCoil,
+              [px + Math.cos(ang) * 0.040, py + Math.sin(ang) * 0.040, pz + side * 0.023],
+              [0, 0, ang],
+            );
+          }
+          for (let k = 0; k < 8; k++) {
+            const ang = (k / 8) * TAU + Math.PI / 8;
+            b.cyl(
+              0.0028,
+              0.0028,
+              0.008,
+              6,
+              silver,
+              [px + Math.cos(ang) * 0.064, py + Math.sin(ang) * 0.064, pz + side * 0.021],
+              [Math.PI / 2, 0, 0],
+            );
+          }
+
+          // Central 22K Gold Cap + Amber Charge Core + Sapphire Ring Cover
+          b.cyl(0.028, 0.032, 0.016, 24, comicGold, [px, py, pz + side * 0.022], [Math.PI / 2 + rotZ, 0, 0]);
+          b.cyl(0.014, 0.014, 0.019, 20, repulsorGold, [px, py, pz + side * 0.024], [Math.PI / 2 + rotZ, 0, 0]);
+          b.cyl(0.052, 0.052, 0.003, 28, sapphireLens, [px, py, pz + side * 0.026], [Math.PI / 2 + rotZ, 0, 0]);
 
           // 6 Peripheral Rotary Flare / Chaff Countermeasure Micro-Tubes
           for (let k = 0; k < 6; k++) {
             const ang = (k / 6) * TAU;
             b.cyl(
-              0.0055,
-              0.0055,
-              0.012,
+              0.0052,
+              0.0052,
+              0.014,
               10,
               gunmetal,
-              [px + Math.cos(ang) * 0.056, py + Math.sin(ang) * 0.056, pz + side * 0.018],
+              [px + Math.cos(ang) * 0.057, py + Math.sin(ang) * 0.057, pz + side * 0.019],
               [Math.PI / 2, 0, 0],
             );
           }
 
-          // Inner-side exposed toroidal capacitor ring & magnetic latch mount (sits outside hip wall!)
-          b.torus(0.046, 0.008, rimTitanium, [px, py, pz - side * 0.016], [0, Math.PI / 2, 0]);
-          b.torus(0.032, 0.005, bioScanCyan, [px, py, pz - side * 0.017], [0, Math.PI / 2, 0]);
+          // Inner-side titanium bayonet mount & blue toroidal capacitor ring
+          b.torus(0.048, 0.008, rimTitanium, [px, py, pz - side * 0.017], [0, Math.PI / 2, 0]);
+          b.torus(0.034, 0.0045, bioScanCyan, [px, py, pz - side * 0.018], [0, Math.PI / 2, 0]);
         }
         b.flush(g);
       },
     },
 
     // ========================================================================
-    // 8. POLARIZED GOLD QUADRICEPS THIGH SLEEVES & ARTICULATED KNEE COPS
+    // 8. POLARIZED 22K GOLD QUADRICEPS SLEEVES & ARTICULATED KNEE COPS
     // ========================================================================
     {
       id: 'thigh-exo-thrusters',
-      name: 'Hollow Polarized Gold Thigh Armor Sleeves & Articulated Comic Knee Cops',
+      i18n: {"es-419":{"name":"Musleras Polarizadas de Oro de 22K y Rodilleras Articuladas Carmesí y Oro","desc":"Cilindros femorales huecos de doble pared recubiertos con micromalla polarizada de oro de 22K, tendones hidráulicos lineales que multiplican la fuerza de levantamiento y rodilleras poligonales articuladas en carmesí y oro con tambores de torsión.","funFact":"¡Al activar el campo magnético de alta densidad en las musleras doradas, el exoesqueleto multiplica la fuerza de las piernas lo suficiente para levantar decenas de toneladas!"},"es":{"name":"Musleras Polarizadas de Oro de 22K y Rodilleras Articuladas Carmesí y Oro","desc":"Cilindros femorales huecos de doble pared con micromalla polarizada de oro de 22K, actuadores lineales de fuerza y rodilleras poligonales articuladas en carmesí y oro.","funFact":"¡Cuando se polarizan magnéticamente las musleras doradas, los actuadores femorales permiten a la armadura soportar cargas de decenas de toneladas!"}},
+      name: 'Hollow Polarized 22K Gold Quadriceps Sleeves & Articulated Crimson/Gold Knee Cops',
       category: 'Upper Leg Armor',
       isOuter: true,
       explodeOffset: [-0.62, -0.42, 0],
-      desc: '100% gleaming Marvel Comics Gold quadriceps & hamstring thigh sleeves engineered as wide-open double-walled hollow cylinders (~13 mm wall thickness, zero solid plugs) with dark padded titanium interiors so a human pilot’s legs fit comfortably inside.',
+      desc: '100% gleaming Marvel Comics 22K Titanium-Gold quadriceps & hamstring thigh sleeves engineered as wide-open double-walled hollow cylinders (~13 mm wall thickness, zero solid plugs) with anatomical vastus lateralis & teardrop quad contours, lateral vernier strips, rotary knee bearings, and sculpted Crimson-and-Gold patella knee shields.',
       funFact: 'Linear magnetic-field amplifiers woven into the walls of Iron Man’s golden thigh sleeves multiply Tony Stark’s leg strength enough to leap stories high or brace against 80-ton impacts!',
       build(g) {
         const b = new MeshBatch();
@@ -1321,74 +2018,89 @@ export function buildIronManModel() {
             origin: H,
             axis: thighDir,
             up: [1, 0, 0],
-            N: 44,
-            steps: 20,
+            N: 48,
+            steps: 22,
             wallRatio: 0.85,
             openStart: true,
             openEnd: true,
             stations: [
-              { t: 0.00, r1: 0.104, r1n: 0.102, r2: 0.100, n: 2.4, c1: 0.004 }, // Wide open hip cuff!
-              { t: 0.28, r1: 0.118, r1n: 0.110, r2: 0.112, n: 2.5, c1: 0.010 }, // Athletic comic quad sweep!
-              { t: 0.62, r1: 0.106, r1n: 0.098, r2: 0.098, n: 2.5, c1: 0.006 },
-              { t: 1.00, r1: 0.084, r1n: 0.080, r2: 0.082, n: 2.4 }, // Open knee cuff!
+              { t: 0.00, r1: 0.106, r1n: 0.104, r2: 0.102, n: 2.4, c1: 0.004 }, // Wide open hip cuff!
+              { t: 0.30, r1: 0.122, r1n: 0.114, r2: 0.116, n: 2.5, c1: 0.011 }, // Powerful athletic quad sweep!
+              { t: 0.64, r1: 0.110, r1n: 0.100, r2: 0.102, n: 2.5, c1: 0.007 },
+              { t: 1.00, r1: 0.085, r1n: 0.081, r2: 0.084, n: 2.4 }, // Open knee cuff!
             ],
             radial: (t, a) => {
-              const quad = 0.048 * gauss(t, 0.38, 0.22) * gauss(Math.abs(a), 0.18, 0.32);
-              return 1 + quad;
+              // Anatomical rectus femoris, vastus lateralis sweep & inner vastus medialis teardrop!
+              const rectus = 0.048 * gauss(t, 0.38, 0.20) * gauss(Math.abs(a), 0.12, 0.26);
+              const lateralis = 0.042 * gauss(t, 0.44, 0.22) * gauss(a, side * 1.15, 0.34);
+              const medialis = 0.038 * gauss(t, 0.74, 0.12) * gauss(a, -side * 0.62, 0.26);
+              const hamstring = 0.032 * gauss(t, 0.40, 0.20) * gauss(Math.abs(a), Math.PI * 0.88, 0.32);
+              return 1 + rectus + lateralis + medialis + hamstring;
             },
           };
 
-          // 100% Gleaming Marvel Comics Gold Double-Walled Hollow Thigh Cylinder!
-          addHollowTube(b, thighSpec, comicGold, innerLiner, rimGold);
+          // 100% Gleaming Polarized 22K Titanium-Gold Double-Walled Hollow Thigh Cylinder!
+          addHollowTube(b, thighSpec, polarizedGoldMesh, innerLiner, rimGold);
 
-          // Sculpted Gold Quadriceps Ridge & Micro-Mesh Seam Flutes
+          // Rigid Brushed 22K Gold Anterior Quadriceps Armor Plate & Lateral Vernier Strip
           b.add(
             axialPatch({
               ...thighSpec,
-              aFrom: -0.34 * Math.PI,
-              aTo: 0.34 * Math.PI,
+              aFrom: -0.28 * Math.PI,
+              aTo: 0.28 * Math.PI,
               tFrom: 0.14,
               tTo: 0.84,
-              ns: 12,
-              nt: 16,
-              offset: 0.004,
+              ns: 14,
+              nt: 18,
+              offset: 0.0045,
             }),
             comicGold,
           );
-          for (const tf of [0.30, 0.56, 0.80]) {
-            b.add(
-              axialPatch({
-                ...thighSpec,
-                aFrom: -Math.PI,
-                aTo: Math.PI,
-                tFrom: tf - 0.015,
-                tTo: tf + 0.015,
-                ns: 3,
-                nt: 26,
-                offset: 0.0025,
-              }),
-              richGold,
-            );
-          }
+          const tRot = eulerAlong(thighDir);
+          b.rbox(
+            0.032,
+            0.225,
+            0.014,
+            0.003,
+            gunmetal,
+            [(H[0] + K[0]) * 0.5 + 0.006, (H[1] + K[1]) * 0.5 + 0.02, (H[2] + K[2]) * 0.5 + side * 0.112],
+            tRot,
+          );
+          b.rbox(
+            0.018,
+            0.195,
+            0.016,
+            0.002,
+            comicGold,
+            [(H[0] + K[0]) * 0.5 + 0.006, (H[1] + K[1]) * 0.5 + 0.02, (H[2] + K[2]) * 0.5 + side * 0.114],
+            tRot,
+          );
 
-          // Hollow Articulated Patella Knee Cop (front shield only — rear stays open for knee bend!)
-          b.rbox(0.026, 0.082, 0.084, 0.010, comicGold, [K[0] + 0.082, K[1] + 0.008, K[2]]);
-          b.rbox(0.016, 0.068, 0.072, 0.006, innerLiner, [K[0] + 0.068, K[1] + 0.008, K[2]]);
+          // Open-Bore Rotary Knee Caliper Bearings + Sculpted Crimson & Gold Patella Shield!
+          for (const calSide of [-1, 1]) {
+            const kz = K[2] + calSide * 0.086;
+            b.cyl(0.024, 0.024, 0.014, 20, gunmetal, [K[0], K[1], kz], [Math.PI / 2, 0, 0]);
+            b.cyl(0.013, 0.013, 0.018, 16, rimTitanium, [K[0], K[1], kz + calSide * 0.002], [Math.PI / 2, 0, 0]);
+          }
+          b.rbox(0.026, 0.090, 0.088, 0.010, comicGold, [K[0] + 0.086, K[1] + 0.010, K[2]]);
+          b.rbox(0.018, 0.068, 0.066, 0.006, comicCrimson, [K[0] + 0.094, K[1] + 0.010, K[2]]);
+          b.rbox(0.016, 0.074, 0.076, 0.006, innerLiner, [K[0] + 0.072, K[1] + 0.010, K[2]]);
         }
         b.flush(g);
       },
     },
 
     // ========================================================================
-    // 9. FLARED CRIMSON CUFFED JET BOOTS, CALF RAM-INTAKES & SOLE TURBINES
+    // 9. FLARED CRIMSON JET BOOTS, CALF AIR-INTAKES, ACHILLES HYDRAULICS & TURBINES
     // ========================================================================
     {
       id: 'calf-boot-jet-thrusters',
-      name: 'Hollow Flared Crimson Cuffed Jet Boots, Calf Air-Intakes & Sole Turbines',
+      i18n: {"es-419":{"name":"Botas a Reacción Carmesí, Tomas de Aire y Turbinas Vectoriales en las Suelas","desc":"Botas supersónicas huecas de puño acampanado con tomas de aire dinámicas en las pantorrillas, amortiguadores hidráulicos gemelos en los tobillos para aterrizajes pesados y cámaras de poscombustión duales con toberas vectoriales bajo el talón y la planta del pie.","funFact":"¡Las botas a reacción de Iron Man comprimen aire atmosférico mediante turbinas en vuelos normales y cambian a propelente líquido sellado cuando sale al espacio exterior!"},"es":{"name":"Botas a Reacción Carmesí, Tomas de Aire y Turbinas Vectoriales en las Suelas","desc":"Botas supersónicas huecas de puño acampanado con tomas dinámicas en las pantorrillas, amortiguadores hidráulicos en los tobillos y toberas vectoriales bajo el talón y la suela.","funFact":"¡Las botas a reacción de Iron Man aspiran aire atmosférico durante el vuelo terrestre y conmutan a circuito cerrado al salir a órbita!"}},
+      name: 'Hollow Flared Crimson Jet Boots, Calf Ram-Intakes, Ankle Hydraulics & Gimbaled Turbines',
       category: 'Jet Boots & Propulsion',
       isOuter: true,
       explodeOffset: [0.32, -0.92, 0],
-      desc: 'Iconic Marvel Comics Crimson cuffed jet boots featuring the sweeping V-flared comic knee collar, Eliot R. Brown calf ram-air compressor louvers, a true open-top hollow shin & foot interior, and dual-mode air-breathing/plasma jet thrusters built into the heavy insulated soles.',
+      desc: 'Iconic Marvel Comics Crimson cuffed jet boots sculpted with gastrocnemius calf musculature, sweeping V-flared comic knee collars trimmed in 22K Gold, Eliot R. Brown calf ram-air intake louvers, exposed Achilles hydraulic dampers, articulated multi-plate foot armor, and gimbaled 12-vane sole turbo-jet nozzles.',
       funFact: 'According to Marvel’s Official Handbook schematics, Iron Man’s calves scoop in outside air through louvered intakes, compress it with miniature electric turbines, and blast superheated exhaust out of his boot soles!',
       build(g) {
         const b = new MeshBatch();
@@ -1398,69 +2110,96 @@ export function buildIronManModel() {
           const shinStart = [K[0] - 0.004, K[1] + 0.028, K[2]];
           const shinDir = [A[0] - shinStart[0], A[1] - shinStart[1], A[2] - shinStart[2]];
 
-          // 1. Open-Top Hollow Crimson Shin Greave with Sweeping Flared Marvel Comics Boot Collar!
+          // 1. Open-Top Hollow Crimson Shin/Calf Greave with Sweeping Flared Marvel Comics Boot Collar!
           const shinSpec = {
             origin: shinStart,
             axis: shinDir,
             up: [1, 0, 0],
-            N: 44,
-            steps: 22,
+            N: 48,
+            steps: 24,
             wallRatio: 0.84,
             openStart: true,
             openEnd: true,
             stations: [
-              { t: 0.00, r1: 0.106, r1n: 0.098, r2: 0.104, n: 2.6, c1: 0.008 }, // Sweeping flared comic boot-cuff collar!
-              { t: 0.16, r1: 0.088, r1n: 0.088, r2: 0.088, n: 2.5 },
-              { t: 0.36, r1: 0.088, r1n: 0.104, r2: 0.094, n: 2.5, c1: -0.008 }, // Heroic gastrocnemius calf flare!
-              { t: 0.72, r1: 0.074, r1n: 0.076, r2: 0.074, n: 2.6 },
-              { t: 1.00, r1: 0.070, r1n: 0.072, r2: 0.070, n: 2.7 },
+              { t: 0.00, r1: 0.110, r1n: 0.100, r2: 0.106, n: 2.6, c1: 0.008 }, // Sweeping flared comic boot-cuff collar!
+              { t: 0.16, r1: 0.090, r1n: 0.090, r2: 0.090, n: 2.5 },
+              { t: 0.36, r1: 0.090, r1n: 0.108, r2: 0.098, n: 2.5, c1: -0.009 }, // Muscular gastrocnemius calf flare!
+              { t: 0.72, r1: 0.075, r1n: 0.077, r2: 0.075, n: 2.6 },
+              { t: 1.00, r1: 0.070, r1n: 0.072, r2: 0.071, n: 2.7 },
             ],
             radial: (t, a) => {
-              // Dramatic comic V-point crest at front of flared boot cuff!
-              const frontCrest = 0.16 * (1 - smoothstep(0.0, 0.22, t)) * gauss(Math.abs(a), 0.0, 0.34);
-              const shinRidge = 0.042 * smoothstep(0.15, 0.35, t) * gauss(Math.abs(a), 0.0, 0.16);
-              return 1 + frontCrest + shinRidge;
+              const frontCrest = 0.17 * (1 - smoothstep(0.0, 0.22, t)) * gauss(Math.abs(a), 0.0, 0.34);
+              const shinRidge = 0.048 * smoothstep(0.14, 0.34, t) * gauss(Math.abs(a), 0.0, 0.15);
+              const calfHeads = 0.036 * gauss(t, 0.38, 0.16) * gauss(Math.abs(a), Math.PI * 0.82, 0.28);
+              return 1 + frontCrest + shinRidge + calfHeads;
             },
           };
           addHollowTube(b, shinSpec, comicCrimson, innerLiner, rimGold);
 
-          // Gleaming Comic Gold Flared Boot-Cuff Rim Trim!
+          // Overlapping Anterior Shin Guard Plate + Gleaming 22K Gold Flared Boot-Cuff Trim!
           b.add(
             axialPatch({
               ...shinSpec,
-              aFrom: -Math.PI,
-              aTo: Math.PI,
+              aFrom: -0.26 * Math.PI,
+              aTo: 0.26 * Math.PI,
+              tFrom: 0.12,
+              tTo: 0.88,
+              ns: 12,
+              nt: 16,
+              offset: 0.0048,
+            }),
+            deepCrimson,
+          );
+          b.add(
+            axialBand({
+              ...shinSpec,
               tFrom: 0.0,
-              tTo: 0.065,
-              ns: 4,
-              nt: 30,
-              offset: 0.004,
+              tTo: 0.07,
+              N: 48,
+              steps: 4,
+              scaleMul: 1.042,
             }),
             comicGold,
           );
 
-          // Eliot R. Brown OHOTMU Calf Ram-Air Compressor Intake Louvers (outer & rear calf!)
-          const cx = (K[0] + A[0]) * 0.5 - 0.068;
-          const cy = (K[1] + A[1]) * 0.5 + 0.055;
-          const cz = (K[2] + A[2]) * 0.5 + side * 0.052;
-          b.rbox(0.046, 0.098, 0.028, 0.005, gunmetal, [cx, cy, cz], [0, side * 0.45, 0.08]);
-          for (let li = -2; li <= 2; li++) {
-            b.rbox(0.036, 0.006, 0.030, 0.001, silver, [cx - 0.004, cy + li * 0.016, cz + side * 0.004], [0, side * 0.45, 0.25]);
+          // Eliot R. Brown OHOTMU Calf Ram-Air Compressor Intake Scoops & 6 Titanium Louver Blades!
+          const cx = (K[0] + A[0]) * 0.5 - 0.072;
+          const cy = (K[1] + A[1]) * 0.5 + 0.058;
+          const cz = (K[2] + A[2]) * 0.5 + side * 0.054;
+          b.rbox(0.050, 0.112, 0.032, 0.005, gunmetal, [cx, cy, cz], [0, side * 0.45, 0.08]);
+          b.rbox(0.032, 0.088, 0.016, 0.002, unibeamCyan, [cx + 0.006, cy, cz], [0, side * 0.45, 0.08]);
+          for (let li = -2.5; li <= 2.5; li += 1) {
+            b.rbox(0.040, 0.0055, 0.034, 0.001, rimTitanium, [cx - 0.005, cy + li * 0.015, cz + side * 0.004], [0, side * 0.45, 0.28]);
           }
 
-          // 2. Hollow Armored Crimson Boot Foot Carapace (open ankle entrance + arched hollow foot dome!)
+          // Exposed Achilles Twin Hydraulic Shock-Absorber Struts & Malleolus Ankle Bearings!
+          for (const ankSide of [-1, 1]) {
+            const az = A[2] + ankSide * 0.072;
+            b.cyl(0.022, 0.022, 0.012, 18, gunmetal, [A[0], A[1] - 0.015, az], [Math.PI / 2, 0, 0]);
+            b.cyl(0.012, 0.012, 0.016, 14, comicGold, [A[0], A[1] - 0.015, az + ankSide * 0.002], [Math.PI / 2, 0, 0]);
+            addHydraulicStrut(
+              b,
+              [A[0] - 0.068, A[1] + 0.125, A[2] + ankSide * 0.028],
+              [A[0] - 0.076, A[1] - 0.048, A[2] + ankSide * 0.032],
+              0.0055,
+              gunmetal,
+              silver,
+              richGold,
+            );
+          }
+
+          // 2. Hollow Multi-Plate Armored Crimson Boot Foot Carapace (leaves hollow dome for human foot!)
           const bootSpec = {
-            origin: [A[0] - 0.075, -0.945, A[2]],
-            axis: [0.275, -0.010, -side * 0.022],
+            origin: [A[0] - 0.078, -0.945, A[2]],
+            axis: [0.282, -0.010, -side * 0.022],
             up: [0, 1, 0],
             stations: [
-              { t: 0.00, r1: 0.072, r1n: 0.042, r2: 0.068, n: 2.6, c1: 0.018 }, // Heel counter
-              { t: 0.35, r1: 0.082, r1n: 0.042, r2: 0.074, n: 2.7, c1: 0.016 }, // Instep arch (hollow inside!)
-              { t: 0.72, r1: 0.058, r1n: 0.040, r2: 0.072, n: 2.8, c1: -0.002 }, // Forefoot
-              { t: 1.00, r1: 0.032, r1n: 0.032, r2: 0.052, n: 2.9, c1: -0.014 }, // Armored toe cap
+              { t: 0.00, r1: 0.074, r1n: 0.042, r2: 0.070, n: 2.6, c1: 0.018 }, // Heel counter
+              { t: 0.35, r1: 0.084, r1n: 0.042, r2: 0.076, n: 2.7, c1: 0.016 }, // Instep arch (hollow inside!)
+              { t: 0.72, r1: 0.060, r1n: 0.040, r2: 0.074, n: 2.8, c1: -0.002 }, // Forefoot
+              { t: 1.00, r1: 0.034, r1n: 0.032, r2: 0.054, n: 2.9, c1: -0.014 }, // Armored toe cap
             ],
           };
-          // Upper boot dome clamshell (leaves hollow space for the human foot!)
           addThickClamshell(
             b,
             {
@@ -1469,27 +2208,64 @@ export function buildIronManModel() {
               aTo: 0.58 * Math.PI,
               tFrom: 0.0,
               tTo: 1.0,
-              ns: 14,
-              nt: 20,
-              wallThick: 0.011,
+              ns: 16,
+              nt: 22,
+              wallThick: 0.0115,
             },
             comicCrimson,
             innerLiner,
             rimTitanium,
           );
+          // Overlapping Instep Tongue Shield & Gold Toe Trim
+          b.add(
+            axialPatch({
+              ...bootSpec,
+              aFrom: -0.36 * Math.PI,
+              aTo: 0.36 * Math.PI,
+              tFrom: 0.24,
+              tTo: 0.68,
+              ns: 8,
+              nt: 14,
+              offset: 0.0085,
+            }),
+            deepCrimson,
+          );
+          b.add(
+            axialPatch({
+              ...bootSpec,
+              aFrom: -0.45 * Math.PI,
+              aTo: 0.45 * Math.PI,
+              tFrom: 0.82,
+              tTo: 0.98,
+              ns: 4,
+              nt: 14,
+              offset: 0.007,
+            }),
+            comicGold,
+          );
 
-          // 3. Heavy Insulated Gunmetal Thrust Sole + Dual Sole Jet Nozzles (Heel Main + Toe Attitude)
+          // 3. Heavy Thermal-Tile Thrust Sole + Gimbaled 12-Vane Sole Turbo-Jet Nozzles!
           const soleX = A[0] + 0.058;
           const soleZ = A[2] - side * 0.008;
-          b.rbox(0.285, 0.022, 0.142, 0.006, gunmetal, [soleX, -0.988, soleZ], [0, side * 0.08, 0]);
-          b.rbox(0.265, 0.008, 0.124, 0.003, innerLiner, [soleX, -0.974, soleZ], [0, side * 0.08, 0]);
+          b.rbox(0.292, 0.024, 0.146, 0.006, gunmetal, [soleX, -0.986, soleZ], [0, side * 0.08, 0]);
+          b.rbox(0.270, 0.008, 0.126, 0.003, innerLiner, [soleX, -0.972, soleZ], [0, side * 0.08, 0]);
 
-          // Main Heel Jet Turbine Ring + Forefoot Stabilizer Nozzle
-          for (const [nxOff, nr] of [[-0.048, 0.044], [0.062, 0.032]]) {
+          for (const [nxOff, nr] of [[-0.048, 0.046], [0.064, 0.034]]) {
             const nx = soleX + nxOff;
-            b.torus(nr, 0.007, silver, [nx, -0.996, soleZ], [Math.PI / 2, 0, 0]);
-            b.cyl(nr * 0.86, nr * 0.86, 0.006, 24, unibeamCyan, [nx, -0.998, soleZ]);
-            b.cyl(nr * 0.48, nr * 0.48, 0.008, 18, unibeamWhite, [nx, -0.999, soleZ]);
+            b.torus(nr, 0.007, rimTitanium, [nx, -0.996, soleZ], [Math.PI / 2, 0, 0]);
+            b.torus(nr * 0.80, 0.004, copperCoil, [nx, -0.997, soleZ], [Math.PI / 2, 0, 0]);
+            for (let v = 0; v < 12; v++) {
+              const va = (v / 12) * TAU;
+              b.box(
+                0.003,
+                0.008,
+                nr * 0.36,
+                silver,
+                [nx + Math.cos(va) * nr * 0.82, -0.997, soleZ + Math.sin(va) * nr * 0.82],
+                [0, -va, 0],
+              );
+            }
+            b.cyl(nr * 0.72, nr * 0.72, 0.006, 24, unibeamCore, [nx, -0.998, soleZ]);
           }
         }
         b.flush(g);
@@ -1501,20 +2277,18 @@ export function buildIronManModel() {
     // ========================================================================
     {
       id: 'internal-nanotech-endoskeleton',
+      i18n: {"es-419":{"name":"Cavidad Interior Hueca para el Piloto, Forro Térmico Nomex y Aviónica","desc":"Arquitectura verdaderamente hueca y vestible a escala humana: al activar Rayos X o ¡Desarmar!, todas las corazas externas se abren para revelar la cavidad anatómica donde entra Tony Stark, tapizada con forro acolchado térmico de Kevlar/Nomex, anillos de escaneo biométrico y conductos de energía montados en las paredes internas.","funFact":"¡A diferencia de los robots macizos, cada pieza de esta armadura tiene espesor real de doble pared y espacio libre en el centro para que un piloto humano quepa cómodamente adentro!"},"es":{"name":"Cavidad Interior Hueca para el Piloto, Forro Térmico Nomex y Aviónica","desc":"Arquitectura verdaderamente hueca y vestible a escala humana: en vista de Rayos X o ¡Despiezar!, las placas exteriores muestran la cavidad anatómica para el piloto humano con forro acolchado de Kevlar/Nomex y conductos de aviónica perimetrales.","funFact":"¡Cada placa de esta armadura tiene doble pared real y una cavidad interior despejada diseñada a medida para albergar un cuerpo humano en su interior!"}},
       name: 'Hollow Human Pilot Cavity, Thermocouple Undersuit Sheath & Cybernetic Avionics',
       category: 'Wearable Pilot Interior',
       isOuter: false,
       explodeOffset: [0, 0, 0],
-      desc: 'Wearable interior of the Marvel Comics Iron Man suit—proving there is hollow room for a real person inside! Features the open-necked dark navy ballistic/thermocouple undersuit sheath with cutaway rib windows, translucent human pilot ergonomic clearance volume, helmet neuro-transponder headband, flush sternum RT Unibeam generator, and footbed turbine impellers.',
+      desc: 'Wearable interior of the Marvel Comics Iron Man suit—proving there is hollow room for a real person inside! Features the open-necked dark navy quilted Kevlar/thermocouple undersuit sheath with cutaway rib windows, translucent human pilot ergonomic clearance volume, helmet neuro-transponder headband, flush sternum RT Unibeam coupling, and footbed turbine impellers.',
       funFact: 'Before clamping his red-and-gold plates shut, comic-book Tony Stark wears a padded ballistic-and-thermocouple inner bodysuit (upgraded in Extremis into a gold-piped bio-sheath) that insulates him from -200°F stratospheric cold and 2,000°F re-entry heat!',
       build(g) {
         const b = new MeshBatch();
 
         // 1. Cutaway Hollow Navy-and-Gold Extremis / Ballistic Undersuit Sheath
-        //    Built as thin open-ended cutaway panels (~5 mm wall) around the perimeter so the
-        //    hollow interior cavity is 100% unobstructed and visible!
         for (const side of [-1, 1]) {
-          // Lateral rib/waist undersuit liner panels (leaving a wide-open front & back cutaway window!)
           addThickClamshell(
             b,
             {
@@ -1533,7 +2307,6 @@ export function buildIronManModel() {
             rimGold,
           );
 
-          // Gold Extremis bio-telemetry & liquid-cooling capillary ribs hugging the INNER WALL perimeter
           for (const yRib of [0.34, 0.48, 0.62, 0.76, 0.88]) {
             b.add(
               axialPatch({
@@ -1555,8 +2328,6 @@ export function buildIronManModel() {
         b.torus(0.082, 0.007, comicGold, [0.005, 0.965, 0], [Math.PI / 2, 0, 0], [0.92, 1.0, 1]);
 
         // 2. Translucent Holographic Human Pilot Ergonomic Clearance Silhouette (Tony Stark Fit Volume!)
-        //    Sized cleanly INSIDE the hollow armor walls (~22–30 mm clearance all around) so X-Ray &
-        //    Explode modes unmistakably demonstrate room for a human person inside!
         const addHoloLimb = (p0, p1, rStart, rMid, rEnd) => {
           b.add(
             axialLoft({
@@ -1622,29 +2393,23 @@ export function buildIronManModel() {
           addHoloLimb(ELBOW(side), WRIST(side), 0.040, 0.042, 0.032);
           addHoloLimb(HIP(side), KNEE(side), 0.068, 0.072, 0.054);
           addHoloLimb(KNEE(side), ANKLE(side), 0.052, 0.056, 0.042);
-          // Human foot silhouette inside the hollow boot dome
           b.rbox(0.185, 0.044, 0.074, 0.018, pilotHolo, [ANKLE(side)[0] + 0.048, -0.925, ANKLE(side)[2] - side * 0.006]);
         }
 
         // 3. Wall-Mounted Marvel Comics Internal Avionics (wrapping AROUND the pilot, never blocking center!)
-        // 3a. Helmet Inner Cybernetic Neuro-Transponder Rim, Curved HUD Visor & Collapsible Oxygen Breather
         b.torus(0.088, 0.0045, comicGold, [0.010, 1.215, 0], [Math.PI / 2 - 0.08, 0, 0], [1.06, 0.90, 1]);
         for (const side of [-1, 1]) {
-          // Temple neuro-transponder pick-up nodes
           b.cyl(0.014, 0.014, 0.008, 16, bioScanCyan, [0.020, 1.210, side * 0.082], [Math.PI / 2, 0, 0]);
         }
-        // Curved inner HUD holographic visor strip behind eyes + chin emergency oxygen breather
         b.torus(0.095, 0.005, bioScanCyan, [0.032, 1.196, 0], [Math.PI / 2, 0, -Math.PI * 0.25], [1, 0.85, 1]);
         b.rbox(0.022, 0.020, 0.052, 0.005, gunmetal, [0.108, 1.100, 0]);
 
-        // 3b. Flush Sternum-Wall Repulsor Tech (RT) Unibeam Thermoelectric Core (visible in X-Ray & Explode!)
-        const rtx = 0.178;
+        // Flush Sternum-Wall Repulsor Tech (RT) Unibeam Thermoelectric Core
+        const rtx = 0.180;
         const rty = 0.758;
         b.torus(0.048, 0.007, comicGold, [rtx, rty, 0], [0, Math.PI / 2, -0.10]);
-        b.cyl(0.040, 0.040, 0.012, 28, unibeamCyan, [rtx + 0.004, rty, 0], [0, 0, Math.PI / 2 - 0.10]);
-        b.cyl(0.022, 0.022, 0.016, 20, unibeamWhite, [rtx + 0.006, rty, 0], [0, 0, Math.PI / 2 - 0.10]);
+        b.cyl(0.040, 0.040, 0.012, 28, unibeamCore, [rtx + 0.004, rty, 0], [0, 0, Math.PI / 2 - 0.10]);
 
-        // Perimeter flexible power bus ribbons hugging inner rib/hip sheath (tucked cleanly inside outer armor!)
         for (const side of [-1, 1]) {
           b.tube(
             [
@@ -1666,7 +2431,6 @@ export function buildIronManModel() {
             bioScanCyan,
             18,
           );
-          // Boot-sole internal micro-turbine compressor impellers seated BELOW the pilot's feet
           const sx = ANKLE(side)[0] + 0.010;
           const sz = ANKLE(side)[2] - side * 0.008;
           b.torus(0.036, 0.006, comicGold, [sx, -0.964, sz], [Math.PI / 2, 0, 0]);
@@ -1682,14 +2446,14 @@ export function buildIronManModel() {
     id: 'iron-man-mark-85',
     name: 'Marvel Comics Iron Man Powered Armor',
     brand: 'Stark Industries (Marvel Comics)',
-    badge: 'Mach 3+ • Unibeam RT • Hollow Wearable Clamshell',
-    desc: 'Canonical Marvel Comics Iron Man Powered Exoskeleton inspired by Eliot R. Brown’s Official Handbook schematics, Bob Layton’s Classic Model 4, and Adi Granov’s Extremis armor: gleaming Comic Gold faceplate with rectangular eye & mouth slits, flared Crimson shoulder pauldrons, circular Chest Unibeam, twin circular Hip Power Pods, 100% Gold bicep & thigh sleeves, flared-cuff Crimson gauntlets & jet boots, and a genuinely hollow double-walled interior built for a human pilot inside.',
-    cameraPos: [3.15, 1.12, 3.05],
+    badge: 'Mach 3+ • 12-Coil Unibeam • Hollow Wearable Diecast Armor',
+    desc: 'Collector-grade 1:1 photorealistic Marvel Comics Iron Man Powered Exoskeleton inspired by Eliot R. Brown’s Official Handbook schematics, Bob Layton’s Classic Model 4, and Adi Granov’s Extremis armor: brushed 22K Champagne Gold faceplate with sapphire HUD eye slits, deep Candy-Apple Clearcoat Crimson multi-plate armor, 12-coil Chest Unibeam, machined twin circular Hip Power Pods, polarized 22K Gold micro-weave bicep & thigh sleeves, hydraulic rotary joints, 5-fingered articulated repulsor gauntlets, and a genuinely hollow double-walled interior built for a human pilot inside.',
+    cameraPos: [3.10, 1.12, 3.00],
     cameraTarget: [0, 0.16, 0],
     parts,
     quiz: [
       {
-        q: 'Which multi-spectrum chest projector in Iron Man’s Crimson front clamshell fires searchlights, tractor beams, lasers, and concussive blasts?',
+        q: 'Which multi-spectrum 12-coil chest projector in Iron Man’s Crimson front clamshell fires searchlights, tractor beams, lasers, and concussive blasts?',
         correctId: 'arc-reactor-chestplate',
         distractors: ['mark85-helmet-hud', 'pauldron-missile-pods', 'thigh-exo-thrusters'],
       },
@@ -1699,7 +2463,7 @@ export function buildIronManModel() {
         distractors: ['dorsal-airbrake-array', 'calf-boot-jet-thrusters', 'abdominal-pelvis-armor'],
       },
       {
-        q: 'Which flared-cuff Crimson arm components house Iron Man’s palm-mounted magnetic flight stabilizers and concussive repulsor rays?',
+        q: 'Which flared-cuff Crimson arm components house Iron Man’s 5-fingered sapphire-lensed palm flight stabilizers and concussive repulsor rays?',
         correctId: 'repulsor-gauntlets-arms',
         distractors: ['internal-nanotech-endoskeleton', 'mark85-helmet-hud', 'thigh-exo-thrusters'],
       },
@@ -1718,4 +2482,3 @@ export function buildIronManModel() {
 }
 
 export { buildIronManModel as buildIronManMark85Model };
-

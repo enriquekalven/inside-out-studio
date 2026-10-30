@@ -1,5 +1,5 @@
-// Pre-synthesizes Studio Google Cloud Chirp 3 HD (Aoede) MP3 narrations across all 12 languages
-// (`en`, `zh-CN`, `zh-HK`, `es`, `fr`, `de`, `nl`, `pt`, `it`, `ja`, `ko`, `ar`) for Inside Out Studio,
+// Pre-synthesizes Studio Google Cloud Chirp 3 HD (Aoede) MP3 narrations across all 13 languages
+// (`en`, `zh-CN`, `zh-HK`, `es`, `es-419`, `fr`, `de`, `nl`, `pt`, `it`, `ja`, `ko`, `ar`) for Inside Out Studio,
 // saving MP3 assets to `app/assets/audio/chirp/<lang>/<key>.mp3` and generating `app/js/audio_manifest.js`.
 
 import fs from 'node:fs';
@@ -13,6 +13,8 @@ const ctxStub = new Proxy(
   {
     createLinearGradient: () => ({ addColorStop: () => {} }),
     createRadialGradient: () => ({ addColorStop: () => {} }),
+    createImageData: (w = 64, h = 64) => ({ data: new Uint8ClampedArray(w * h * 4) }),
+    getImageData: (_x, _y, w = 64, h = 64) => ({ data: new Uint8ClampedArray(w * h * 4) }),
   },
   { get: (target, prop) => (prop in target ? target[prop] : () => {}) },
 );

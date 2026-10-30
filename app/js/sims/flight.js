@@ -341,7 +341,7 @@ export class FlightSim extends BaseSim {
     const bootPlumes = [];
     for (const s of [-1, 1]) {
       const pWrap = new THREE.Group();
-      pWrap.position.set(0.045, -1.00, s * 0.186);
+      pWrap.position.set(0.052, -1.00, s * 0.190);
 
       const outerMat = new THREE.MeshBasicMaterial({
         color: 0x38bdf8,
@@ -391,7 +391,7 @@ export class FlightSim extends BaseSim {
     const palmPlumes = [];
     for (const s of [-1, 1]) {
       const palmWrap = new THREE.Group();
-      palmWrap.position.set(0.118, 0.132, s * 0.415);
+      palmWrap.position.set(0.138, 0.140, s * 0.408);
 
       const halo = makeGlowQuad(0x7dd3fc, 0.22, 0.88, true);
       palmWrap.add(halo);
@@ -416,7 +416,7 @@ export class FlightSim extends BaseSim {
 
     // 3. Multi-Spectrum Chest Unibeam Projector Blast (+X from sternum RT core)
     const unibeamGroup = new THREE.Group();
-    unibeamGroup.position.set(0.226, 0.758, 0);
+    unibeamGroup.position.set(0.232, 0.758, 0);
     unibeamGroup.visible = false;
 
     const uniFlash = makeGlowQuad(0xfef08a, 0.56, 0.98, true);

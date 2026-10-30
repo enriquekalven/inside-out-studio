@@ -434,6 +434,7 @@ const UNIT_SPOKEN_MAP = {
   'zh-CN': { degC: ' 摄氏度', degF: ' 华氏度', deg: ' 度', kmh: ' 公里每小时', mph: ' 英里每小时', rpm: ' 转每分钟' },
   'zh-HK': { degC: ' 攝氏度', degF: ' 華氏度', deg: ' 度', kmh: ' 公里每小時', mph: ' 英里每小時', rpm: ' 轉每分鐘' },
   es: { degC: ' grados Celsius', degF: ' grados Fahrenheit', deg: ' grados', kmh: ' kilómetros por hora', mph: ' millas por hora', rpm: ' revoluciones por minuto' },
+  'es-419': { degC: ' grados Celsius', degF: ' grados Fahrenheit', deg: ' grados', kmh: ' kilómetros por hora', mph: ' millas por hora', rpm: ' revoluciones por minuto' },
   fr: { degC: ' degrés Celsius', degF: ' degrés Fahrenheit', deg: ' degrés', kmh: ' kilomètres par heure', mph: ' miles par heure', rpm: ' tours par minute' },
   de: { degC: ' Grad Celsius', degF: ' Grad Fahrenheit', deg: ' Grad', kmh: ' Kilometer pro Stunde', mph: ' Meilen pro Stunde', rpm: ' Umdrehungen pro Minute' },
   nl: { degC: ' graden Celsius', degF: ' graden Fahrenheit', deg: ' graden', kmh: ' kilometer per uur', mph: ' mijl per uur', rpm: ' toeren per minuut' },
@@ -452,7 +453,8 @@ const PREFERRED_VOICE_NAMES = {
   en: /\b(Samantha|Ava|Allison|Alex|Victoria|Daniel|Karen|Moira|Serena)\b/i,
   'zh-CN': /\b(Tingting|Ting-Ting|Xiaoxiao|Yunxi|Yu-shu|Meijia)\b/i,
   'zh-HK': /\b(Sinji|Sin-ji|Sin-Ji|HiuMaan|HiuGaai|WanLung)\b/i,
-  es: /\b(Mónica|Monica|Paulina|Marisol|Jorge|Sabina|Elena)\b/i,
+  es: /\b(Mónica|Monica|Marisol|Jorge|Elena|Paulina)\b/i,
+  'es-419': /\b(Paulina|Sabina|Dalia|Juan|Paloma|Alonso|Angelica|Francisca|Mónica|Monica)\b/i,
   fr: /\b(Thomas|Amélie|Amelie|Audrey|Aurélie|Aurelie|Jacques|Denise)\b/i,
   de: /\b(Anna|Helena|Petra|Martin|Yannick|Katja)\b/i,
   nl: /\b(Xander|Ellen|Claire|Colette|Fenna|Maarten)\b/i,
@@ -600,7 +602,9 @@ export function pickBestVoice(langCode = 'en', speechLang = 'en-US', voicesInput
     if (/natural|online|neural|chirp|studio|wavenet|journey/i.test(name)) score += 130;
     if (/google/i.test(name)) score += 105;
     if (v.localService && !isNovelty) score += 25;
-    if (exactLocaleRe.test(vLang)) score += 40;
+    if (exactLocaleRe.test(vLang)) score += 45;
+    else if (langCode === 'es-419' && /^es-(MX|419|US|CO|AR|CL|PE)/i.test(vLang)) score += 42;
+    else if (langCode === 'es' && /^es-ES/i.test(vLang)) score += 42;
     else if (langCode === 'zh-HK' && /^(zh-HK|yue)/i.test(vLang)) score += 45;
     else if (langCode === 'ar' && /^ar-(SA|001|XA|EG|AE)/i.test(vLang)) score += 38;
     else if (langCode === 'nl' && /^nl-(NL|BE)/i.test(vLang)) score += 38;

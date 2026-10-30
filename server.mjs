@@ -28,12 +28,13 @@ function parsePort(value, fallback) {
   return n;
 }
 
-// Strict allow-list of all 12 supported languages -> Google Cloud Chirp 3 HD voices
+// Strict allow-list of all 13 supported languages -> Google Cloud Chirp 3 HD voices
 const CHIRP_VOICE_MAP = Object.freeze({
   en: { languageCode: 'en-US', name: 'en-US-Chirp3-HD-Aoede' },
   'zh-CN': { languageCode: 'cmn-CN', name: 'cmn-CN-Chirp3-HD-Aoede' },
   'zh-HK': { languageCode: 'yue-HK', name: 'yue-HK-Chirp3-HD-Aoede' },
   es: { languageCode: 'es-ES', name: 'es-ES-Chirp3-HD-Aoede' },
+  'es-419': { languageCode: 'es-US', name: 'es-US-Chirp3-HD-Aoede' },
   fr: { languageCode: 'fr-FR', name: 'fr-FR-Chirp3-HD-Aoede' },
   de: { languageCode: 'de-DE', name: 'de-DE-Chirp3-HD-Aoede' },
   nl: { languageCode: 'nl-NL', name: 'nl-NL-Chirp3-HD-Aoede' },
