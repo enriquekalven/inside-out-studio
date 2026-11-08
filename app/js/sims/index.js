@@ -20,6 +20,14 @@ import {
   ExcavatorCraneSim,
   RoboticsSim,
 } from './tech_sims.js';
+import {
+  DysonVacuumSim,
+  FridgeHeatPumpSim,
+  EscalatorSim,
+  GamingConsoleSim,
+  SpatialAudioXrSim,
+  CameraOpticsSim,
+} from './everyday_consumer_sims.js';
 
 const SIM_BY_CATEGORY = {
   car: DriveSim,
@@ -58,6 +66,15 @@ const SIM_BY_CATEGORY = {
   bike: DriveSim,
   bikes: DriveSim,
   everyday: ToiletFlushSim,
+  gaming: GamingConsoleSim,
+  console: GamingConsoleSim,
+  ps5: GamingConsoleSim,
+  'audio-xr': SpatialAudioXrSim,
+  vision: SpatialAudioXrSim,
+  headphones: SpatialAudioXrSim,
+  airpods: SpatialAudioXrSim,
+  cameras: CameraOpticsSim,
+  camera: CameraOpticsSim,
 };
 
 export function createActionSim(categoryId, modelId, ctx) {
@@ -65,6 +82,9 @@ export function createActionSim(categoryId, modelId, ctx) {
   const key = String(categoryId || 'car').toLowerCase();
   const mid = typeof modelId === 'string' ? modelId.toLowerCase() : '';
   if (key === 'everyday') {
+    if (mid.includes('dyson') || mid.includes('vacuum')) return new DysonVacuumSim(viewer);
+    if (mid.includes('fridge') || mid.includes('refrigerator')) return new FridgeHeatPumpSim(viewer);
+    if (mid.includes('escalator')) return new EscalatorSim(viewer);
     if (mid.includes('espresso') || mid.includes('coffee')) return new EspressoBrewSim(viewer);
     if (mid.includes('elevator')) return new ElevatorSim(viewer);
     if (mid.includes('lock')) return new LockSim(viewer);

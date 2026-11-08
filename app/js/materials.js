@@ -28,6 +28,7 @@ function getCachedTexture(key, width, height, drawFn, opts = {}) {
     tex.wrapT = THREE.RepeatWrapping;
     tex.repeat.set(opts.repeat[0], opts.repeat[1]);
   }
+  tex.userData = { ...(tex.userData || {}), shared: true };
   tex.needsUpdate = true;
   textureCache.set(key, tex);
   return tex;

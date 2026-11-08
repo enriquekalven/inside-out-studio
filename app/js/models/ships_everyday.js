@@ -5,6 +5,7 @@ import {
   box, rbox, cyl, sphere, torus, cone, tube, lathe, extrudeProfile, buildCoilSpring,
 } from '../materials.js';
 import { populateEngineCad, populateGearboxCad } from '../cad_loader.js';
+import { EVERYDAY_APPLIANCE_MODELS } from './everyday_appliances.js';
 
 function makeSmoothHullWaterline(hl, hb, {
   lenScale = 1.0,
@@ -1578,6 +1579,7 @@ export const EVERYDAY_MODELS = [
       { q: 'Which ball-jointed nozzle injects pressurized dry steam to whip cold milk into silky microfoam?', correctId: 'articulated-steam-wand-gauges', distractors: ['rotary-vane-9bar-pump', 'drip-tray-reservoir-tank', 'portafilter-58mm-basket'] },
     ],
   }),
+  ...EVERYDAY_APPLIANCE_MODELS,
 ];
 
 export const SHIPS_CATEGORY = {
@@ -1586,7 +1588,7 @@ export const SHIPS_CATEGORY = {
   models: SHIP_MODELS,
 };
 export const EVERYDAY_CATEGORY = {
-  id: 'everyday', name: 'Everyday Machines', fullName: 'Toilets, Elevators, Locks & Espresso Machines', emoji: '⚙️', icon: '⚙️',
-  tagline: 'Gravity Siphon Flush Toilet • High-Rise Gearless Traction Elevator • Brass Pin-Tumbler Lock • 9-Bar Espresso Machine',
+  id: 'everyday', name: 'Everyday Machines', fullName: 'Dyson Cyclones, Refrigerators, Escalators, Elevators & Home Tech', emoji: '⚙️', icon: '⚙️',
+  tagline: 'Dyson V15 Cyclone Vacuum • French-Door Refrigerator • Commercial Escalator • Traction Elevator • Siphon Toilet • Pin-Tumbler Lock • 9-Bar Espresso',
   models: EVERYDAY_MODELS,
 };

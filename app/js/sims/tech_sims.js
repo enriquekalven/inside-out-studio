@@ -1,10 +1,9 @@
 // 📱 Power It On! • 💻 Boot It Up! • 🏡 Move In! • 📺 Turn It On! • 🚄 Take It for a Ride! • 🛰️ Take It to Orbit!
 import * as THREE from '../../vendor/three.module.js';
 import { BaseSim, clamp, approach, makeCanvasTexture, makeGlowQuad } from './base.js';
-import { playPop, playSnap, playHorn } from '../sound.js';
 
 export class PhoneSim extends BaseSim {
-  constructor(viewer) { super(viewer, { engineSound: false }); this.st = { battery: 96, cpu: 33, load: 22, boot: 0, buzz: 0, flash: false, shutter: 0 }; }
+  constructor(viewer) { super(viewer, { engineSound: true }); this.st = { battery: 96, cpu: 33, load: 22, boot: 0, buzz: 0, flash: false, shutter: 0 }; }
   onEnter() {
     const box = new THREE.Box3().setFromObject(this.viewer.rootGroup), sz = box.getSize(new THREE.Vector3()), ctr = box.getCenter(new THREE.Vector3());
     this.scrTex = makeCanvasTexture(128, 256, (c, w, h) => { c.fillStyle = '#0ea5e9'; c.fillRect(0, 0, w, h); });
@@ -17,9 +16,9 @@ export class PhoneSim extends BaseSim {
   }
   onExit() { this.viewer.rootGroup.position.set(0, 0, 0); }
   trigger(name) {
-    if (name === 'haptic') { this.st.buzz = 0.45; playPop(190); this.check('haptic'); return true; }
-    if (name === 'flashlight') { this.st.flash = !this.st.flash; this.flashGlow.visible = this.st.flash; return this.st.flash; }
-    if (name === 'camera') { this.st.shutter = 1; playSnap(); this.st.flash = true; this.flashGlow.visible = true; this.check('photo'); return true; }
+    if (name === 'haptic') { this.st.buzz = 0.45; this.playTrigger('haptic'); this.check('haptic'); return true; }
+    if (name === 'flashlight') { this.st.flash = !this.st.flash; this.flashGlow.visible = this.st.flash; this.playTrigger('flashlight'); return this.st.flash; }
+    if (name === 'camera') { this.st.shutter = 1; this.playTrigger('camera'); this.st.flash = true; this.flashGlow.visible = true; this.check('photo'); return true; }
     return false;
   }
   onUpdate(dt) {
@@ -37,7 +36,7 @@ export class PhoneSim extends BaseSim {
     ctx.fillStyle = '#38bdf8'; ctx.fillRect(20, 180, (st.load / 100) * 88, 12);
     this.scrTex.needsUpdate = true;
     this.viewer.rootGroup.position.x = st.buzz > 0 ? Math.sin(this.elapsed * 190) * 0.03 : 0;
-    Object.assign(this.telemetry, { battery: Math.round(st.battery), cpu: `${Math.round(st.cpu)}°C`, signal: '5G UW', load: `${Math.round(st.load)}%`, loadBar: st.load });
+    Object.assign(this.telemetry, { battery: Math.round(st.battery), cpu: `${Math.round(st.cpu)}°C`, signal: '5G UW', load: `${Math.round(st.load)}%`, loadBar: st.load, soundThrottle: st.load / 100 });
   }
 }
 
@@ -52,7 +51,7 @@ export class LaptopSim extends BaseSim {
     for (const g of this.lids) g.rotation.set(0, 0, 0);
     for (const m of this.glows) if (m.userData.origEm !== undefined) m.material.emissive.setHex(m.userData.origEm);
   }
-  trigger(name) { if (name === 'keypress') { this.st.typing = 0.4; playPop(720); return true; } return false; }
+  trigger(name) { if (name === 'keypress') { this.st.typing = 0.4; this.playTrigger('keypress'); return true; } return false; }
   onUpdate(dt) {
     const st = this.st, inp = this.inputs;
     if ((st.lid = approach(st.lid, 0, dt * 2.2)) < 0.05) this.check('boot');
@@ -72,7 +71,7 @@ export class LaptopSim extends BaseSim {
 }
 
 export class HouseSim extends BaseSim {
-  constructor(viewer) { super(viewer, { engineSound: false }); this.st = { kwh: 1.2, temp: 22.0, power: 58, night: false, rooms: 1, hvac: true }; }
+  constructor(viewer) { super(viewer, { engineSound: true }); this.st = { kwh: 1.2, temp: 22.0, power: 58, night: false, rooms: 1, hvac: true }; }
   onEnter() {
     this.sun = makeGlowQuad(0xfacc15, 2.2, 0.95, true); this.sun.position.set(2.4, 2.5, -1.8);
     this.roomLights = [-0.65, 0, 0.65].map((x) => { const g = makeGlowQuad(0xfef08a, 1.1, 0.75, true); g.position.set(x, 0.05, 0.25); this.env.add(g); return g; });
@@ -80,9 +79,9 @@ export class HouseSim extends BaseSim {
     this.env.add(this.sun, this.hvacOrb);
   }
   trigger(name) {
-    if (name === 'daynight') { this.st.night = !this.st.night; if (this.st.night) this.check('night'); return this.st.night; }
-    if (name === 'lights') { this.st.rooms = (this.st.rooms % 3) + 1; if (this.st.rooms >= 3) this.check('lights'); playPop(580); return true; }
-    if (name === 'hvac') { this.st.hvac = !this.st.hvac; playPop(480); return this.st.hvac; }
+    if (name === 'daynight') { this.st.night = !this.st.night; if (this.st.night) this.check('night'); this.playTrigger('daynight'); return this.st.night; }
+    if (name === 'lights') { this.st.rooms = (this.st.rooms % 3) + 1; if (this.st.rooms >= 3) this.check('lights'); this.playTrigger('lights'); return true; }
+    if (name === 'hvac') { this.st.hvac = !this.st.hvac; this.playTrigger('hvac'); return this.st.hvac; }
     return false;
   }
   onUpdate(dt) {
@@ -94,12 +93,12 @@ export class HouseSim extends BaseSim {
     this.sun.scale.setScalar(inp.up ? 1.35 : st.night ? 0.65 : 1.0);
     this.roomLights.forEach((l, i) => { l.visible = i < st.rooms; l.lookAt(this.viewer.camera.position); });
     this.hvacOrb.visible = st.hvac; this.hvacOrb.position.y = 0.1 + Math.sin(this.elapsed * 3) * 0.25; this.hvacOrb.lookAt(this.viewer.camera.position);
-    Object.assign(this.telemetry, { kwh: st.kwh.toFixed(1), temp: `${st.temp.toFixed(1)}°C`, time: st.night ? '22:30 🌙' : inp.up ? '12:00 ☀️' : '15:00 ⛅', power: `${Math.round(st.power)}%`, powerBar: st.power });
+    Object.assign(this.telemetry, { kwh: st.kwh.toFixed(1), temp: `${st.temp.toFixed(1)}°C`, time: st.night ? '22:30 🌙' : inp.up ? '12:00 ☀️' : '15:00 ⛅', power: `${Math.round(st.power)}%`, powerBar: st.power, soundThrottle: st.hvac ? st.power / 100 : 0, soundExtra: { active: st.hvac } });
   }
 }
 
 export class TvSim extends BaseSim {
-  constructor(viewer) { super(viewer, { engineSound: false }); this.st = { nits: 650, vol: 45, idx: 0, seen: new Set([0]) }; }
+  constructor(viewer) { super(viewer, { engineSound: true }); this.st = { nits: 650, vol: 45, idx: 0, seen: new Set([0]) }; }
   onEnter() {
     this.tex = makeCanvasTexture(160, 90, (c, w, h) => { c.fillStyle = '#0284c7'; c.fillRect(0, 0, w, h); });
     this.pic = new THREE.Mesh(new THREE.PlaneGeometry(3.1, 1.72), new THREE.MeshBasicMaterial({ map: this.tex, transparent: true, opacity: 0.9 }));
@@ -110,7 +109,7 @@ export class TvSim extends BaseSim {
   }
   onExit() { for (const s of this.speakers) s.scale.setScalar(1); }
   trigger(name) {
-    if (name === 'input') { this.st.idx = (this.st.idx + 1) % 3; this.st.seen.add(this.st.idx); if (this.st.seen.size >= 3) this.check('input'); playPop(640); return true; }
+    if (name === 'input') { this.st.idx = (this.st.idx + 1) % 3; this.st.seen.add(this.st.idx); if (this.st.seen.size >= 3) this.check('input'); this.playTrigger('input'); return true; }
     return false;
   }
   onUpdate(dt) {
@@ -131,7 +130,7 @@ export class TvSim extends BaseSim {
     this.ambi.material.color.setHex(cols[2]); this.ambi.material.opacity = 0.25 + (st.nits / 2000) * 0.65;
     const bass = 1 + Math.sin(this.elapsed * 28) * (st.vol / 100) * 0.06;
     for (const s of this.speakers) s.scale.setScalar(bass);
-    Object.assign(this.telemetry, { nits: Math.round(st.nits), hz: [120, 24, 144][st.idx], input: ['HDMI 1 • 8K', 'Cinema HDR', 'Game 144Hz'][st.idx], volume: `${Math.round(st.vol)}%`, volumeBar: st.vol });
+    Object.assign(this.telemetry, { nits: Math.round(st.nits), hz: [120, 24, 144][st.idx], input: ['HDMI 1 • 8K', 'Cinema HDR', 'Game 144Hz'][st.idx], volume: `${Math.round(st.vol)}%`, volumeBar: st.vol, soundThrottle: st.vol / 100, soundExtra: { idx: st.idx } });
   }
 }
 
@@ -140,7 +139,7 @@ export class TrainSim extends BaseSim {
   onEnter() {
     const box = new THREE.Box3().setFromObject(this.viewer.rootGroup);
     const y = this.viewer.stageFloorGroup.position.y;
-    this.isMaglev = /maglev/i.test(this.viewer.currentModel?.id || '');
+    this.isMaglev = /maglev/i.test(this.viewer.currentObject?.activeModelId || this.viewer.currentModel?.id || '');
     const pantoParts = this.parts(/panto|catenary/);
     this.pantoGroups = pantoParts;
     const pantoBox = pantoParts.length ? new THREE.Box3().setFromObject(pantoParts[0]) : null;
@@ -200,8 +199,8 @@ export class TrainSim extends BaseSim {
     this.viewer.rootGroup.position.y = 0;
   }
   trigger(name) {
-    if (name === 'pantograph') { this.st.pantoUp = !this.st.pantoUp; if (this.st.pantoUp) this.check('depart'); return this.st.pantoUp; }
-    if (name === 'horn') { playHorn(); return true; }
+    if (name === 'pantograph') { this.st.pantoUp = !this.st.pantoUp; if (this.st.pantoUp) this.check('depart'); this.playTrigger('pantograph'); return this.st.pantoUp; }
+    if (name === 'horn') { this.playTrigger('horn'); return true; }
     return false;
   }
   onUpdate(dt) {
@@ -233,12 +232,12 @@ export class TrainSim extends BaseSim {
     this.spark.visible = !this.isMaglev && st.pantoUp && st.speed > 70 && Math.sin(this.elapsed * 55) > 0.25;
     this.spark.lookAt(this.viewer.camera.position);
     for (const q of this.noseLights) q.lookAt(this.viewer.camera.position);
-    Object.assign(this.telemetry, { speed: Math.round(st.speed), notch: inp.down ? 'REGEN' : inp.boost ? 'MAG' : `P${Math.min(8, Math.ceil(st.speed / 45))}`, kv: this.isMaglev ? 'SCM L0' : (st.pantoUp ? '25 kV' : '0 kV'), power: `${st.power.toFixed(1)} MW`, powerBar: (st.power / 18) * 100, soundRpm: 900 + st.speed * 14, soundThrottle: st.speed / 500 });
+    Object.assign(this.telemetry, { speed: Math.round(st.speed), notch: inp.down ? 'REGEN' : inp.boost ? 'MAG' : `P${Math.min(8, Math.ceil(st.speed / 45))}`, kv: this.isMaglev ? 'SCM L0' : (st.pantoUp ? '25 kV' : '0 kV'), power: `${st.power.toFixed(1)} MW`, powerBar: (st.power / 18) * 100, soundRpm: 900 + st.speed * 14, soundThrottle: st.speed / 500, soundExtra: { speed: st.speed } });
   }
 }
 
 export class SpaceSim extends BaseSim {
-  constructor(viewer) { super(viewer, { engineSound: false }); this.hideFloor = true; this.st = { vel: 7.66, alt: 408, pitch: 0, yaw: 0, sunTrack: true, rcs: 0, kw: 88 }; }
+  constructor(viewer) { super(viewer, { engineSound: true }); this.hideFloor = true; this.st = { vel: 7.66, alt: 408, pitch: 0, yaw: 0, sunTrack: true, rcs: 0, kw: 88 }; }
   onEnter() {
     this.earth = new THREE.Mesh(new THREE.SphereGeometry(12, 32, 24), new THREE.MeshStandardMaterial({ color: 0x0284c7, emissive: 0x0369a1, emissiveIntensity: 0.35, roughness: 0.6 }));
     this.earth.position.set(0, -13.3, 0);
@@ -251,8 +250,8 @@ export class SpaceSim extends BaseSim {
   }
   onExit() { for (const a of this.arrays) a.rotation.set(0, 0, 0); }
   trigger(name) {
-    if (name === 'rcs') { this.st.rcs = 0.45; playPop(420); this.check('rcs'); return true; }
-    if (name === 'solar') { this.st.sunTrack = !this.st.sunTrack; if (this.st.sunTrack) this.check('solar'); return this.st.sunTrack; }
+    if (name === 'rcs') { this.st.rcs = 0.45; this.playTrigger('rcs'); this.check('rcs'); return true; }
+    if (name === 'solar') { this.st.sunTrack = !this.st.sunTrack; if (this.st.sunTrack) this.check('solar'); this.playTrigger('solar'); return this.st.sunTrack; }
     return false;
   }
   onUpdate(dt) {
@@ -269,14 +268,14 @@ export class SpaceSim extends BaseSim {
     this.earth.rotation.z -= dt * 0.08;
     this.puff.visible = st.rcs > 0; this.puff.lookAt(this.viewer.camera.position);
     this.viewer.rootGroup.rotation.set(0, st.yaw, st.pitch);
-    Object.assign(this.telemetry, { velocity: st.vel.toFixed(2), altitude: `${Math.round(st.alt)} km`, attitude: `${Math.round(st.pitch * 57)}°/${Math.round(st.yaw * 57)}°`, solar: `${Math.round(st.kw)} kW`, solarBar: (st.kw / 120) * 100 });
+    Object.assign(this.telemetry, { velocity: st.vel.toFixed(2), altitude: `${Math.round(st.alt)} km`, attitude: `${Math.round(st.pitch * 57)}°/${Math.round(st.yaw * 57)}°`, solar: `${Math.round(st.kw)} kW`, solarBar: (st.kw / 120) * 100, soundThrottle: st.rcs > 0 ? 0.85 : 0.25, soundExtra: { active: true } });
   }
 }
 
 // 🚽 Siphon-Flush Toilet Sim — Flapper lifts, cistern water drops, 3D swirling blue water vortex & droplets go DOWN the bowl into the S-trap drain, then refills!
 export class ToiletFlushSim extends BaseSim {
   constructor(viewer) {
-    super(viewer, { engineSound: false });
+    super(viewer, { engineSound: true });
     this.st = {
       phase: 'flushing', // 'flushing' | 'siphon' | 'refill' | 'ready'
       timer: 0,
@@ -376,13 +375,13 @@ export class ToiletFlushSim extends BaseSim {
       this.st.phase = 'flushing';
       this.st.timer = 0;
       if (this.st.cisternLevel < 45) this.st.cisternLevel = 100;
-      playPop(340);
+      this.playTrigger('flush');
       this.check('flush');
       return true;
     }
     if (name === 'lid') {
       this.st.lidOpen = !this.st.lidOpen;
-      playPop(520);
+      this.playTrigger('lid');
       return this.st.lidOpen;
     }
     return false;
@@ -508,6 +507,8 @@ export class ToiletFlushSim extends BaseSim {
       trap: st.phase === 'siphon' ? 'PULLING VACUUM' : 'SEALED 50mm',
       level: `${Math.round(st.cisternLevel)}%`,
       levelBar: st.cisternLevel,
+      soundThrottle: st.flowGpm / 28,
+      soundExtra: { phase: st.phase },
     });
   }
 }
@@ -515,7 +516,7 @@ export class ToiletFlushSim extends BaseSim {
 // ☕ Italian Espresso Machine Sim — Rotary pump hits 9.0 BAR, twin dark espresso streams pour down into a porcelain cup with rising golden crema, and steam wand billows microfoam!
 export class EspressoBrewSim extends BaseSim {
   constructor(viewer) {
-    super(viewer, { engineSound: false });
+    super(viewer, { engineSound: true });
     this.st = {
       pressure: 9.0,
       brewTemp: 93.2,
@@ -606,14 +607,14 @@ export class EspressoBrewSim extends BaseSim {
     if (name === 'shot') {
       this.st.pouring = true;
       if (this.st.shotMl >= 58) this.st.shotMl = 4;
-      playPop(440);
+      this.playTrigger('shot');
       this.check('pressure');
       this.check('shot');
       return true;
     }
     if (name === 'steam') {
       this.st.steaming = !this.st.steaming;
-      playPop(620);
+      this.playTrigger('steam');
       this.check('steam');
       return this.st.steaming;
     }
@@ -685,6 +686,8 @@ export class EspressoBrewSim extends BaseSim {
       shot: `${Math.round(st.shotMl)} ml`,
       crema: `${Math.round(fillFrac * 100)}%`,
       cremaBar: fillFrac * 100,
+      soundThrottle: st.pressure / 9.0,
+      soundExtra: { steaming: st.steaming, pressure: st.pressure },
     });
   }
 }
@@ -692,7 +695,7 @@ export class EspressoBrewSim extends BaseSim {
 // 🛗 Traction Passenger Elevator Sim — Hoists glass cab up/down steel rails while counterweight moves oppositely & sheave spins!
 export class ElevatorSim extends BaseSim {
   constructor(viewer) {
-    super(viewer, { engineSound: false });
+    super(viewer, { engineSound: true });
     this.st = { height: 0.25, dir: 1, speed: 4.5, doorsOpen: false, doorTimer: 0 };
   }
   onEnter() {
@@ -708,14 +711,14 @@ export class ElevatorSim extends BaseSim {
   trigger(name) {
     if (name === 'doors') {
       this.st.doorsOpen = !this.st.doorsOpen;
-      playPop(480);
+      this.playTrigger('doors');
       this.check('doors');
       return this.st.doorsOpen;
     }
     if (name === 'express') {
       this.st.dir = this.st.height > 0.6 ? -1 : 1;
       this.st.doorsOpen = false;
-      playPop(660);
+      this.playTrigger('express');
       return true;
     }
     return false;
@@ -762,6 +765,8 @@ export class ElevatorSim extends BaseSim {
       cwt: `${Math.round((1 - st.height) * 100)}% LVL`,
       cable: `${Math.round(st.height * 100)}%`,
       cableBar: st.height * 100,
+      soundRpm: 700 + Math.abs(v) * 180,
+      soundThrottle: Math.abs(v) / 10,
     });
   }
 }
@@ -769,7 +774,7 @@ export class ElevatorSim extends BaseSim {
 // 🔑 Pin-Tumbler Lock Sim — Slides notched brass key in, aligns all 5 key/driver pins at the shear line, and rotates plug & deadbolt cam!
 export class LockSim extends BaseSim {
   constructor(viewer) {
-    super(viewer, { engineSound: false });
+    super(viewer, { engineSound: true });
     this.st = { keyIn: 1, plugDeg: 0, dir: 1, auto: true };
   }
   onEnter() {
@@ -791,13 +796,13 @@ export class LockSim extends BaseSim {
   trigger(name) {
     if (name === 'key') {
       this.st.keyIn = this.st.keyIn > 0.5 ? 0 : 1;
-      playSnap();
+      this.playTrigger('key');
       this.check('insert');
       return this.st.keyIn > 0.5;
     }
     if (name === 'bolt') {
       this.st.plugDeg = this.st.plugDeg > 45 ? 0 : 90;
-      playSnap();
+      this.playTrigger('bolt');
       this.check('turn');
       this.check('unlock');
       return true;
@@ -854,6 +859,7 @@ export class LockSim extends BaseSim {
       state: aligned === 5 ? 'SHEAR ALIGNED' : 'LOCKED',
       bolt: `${Math.round((st.plugDeg / 90) * 100)}%`,
       boltBar: (st.plugDeg / 90) * 100,
+      soundExtra: { aligned, unlocked: st.plugDeg > 75 },
     });
   }
 }
@@ -861,7 +867,7 @@ export class LockSim extends BaseSim {
 // ⌚ Horology Sim — Winds mainspring/weights, oscillates balance wheel at 28,800 BPH or swings grandfather pendulum, sweeps hands & chimes!
 export class HorologySim extends BaseSim {
   constructor(viewer) {
-    super(viewer, { engineSound: false });
+    super(viewer, { engineSound: true });
     this.st = { reserve: 78, chronoRun: true, chronoSec: 0, chimeGlow: 0 };
   }
   onEnter() {
@@ -884,13 +890,13 @@ export class HorologySim extends BaseSim {
   trigger(name) {
     if (name === 'chrono') {
       this.st.chronoRun = !this.st.chronoRun;
-      playSnap();
+      this.playTrigger('chrono');
       this.check('chrono');
       return this.st.chronoRun;
     }
     if (name === 'chime') {
       this.st.chimeGlow = 1.0;
-      playPop(520);
+      this.playTrigger('chime');
       this.check('chime');
       return true;
     }
@@ -931,6 +937,7 @@ export class HorologySim extends BaseSim {
       escapement: this.isClock ? 'DEADBEAT ANCHOR' : 'SWISS LEVER',
       reserve: `${Math.round(st.reserve)}%`,
       reserveBar: st.reserve,
+      soundExtra: { running: st.chronoRun, speedMult },
     });
   }
 }
@@ -1007,13 +1014,14 @@ export class SurfaceShipSim extends BaseSim {
   }
   trigger(name) {
     if (name === 'horn') {
-      playHorn();
+      this.playTrigger('horn');
       this.check('horn');
       return true;
     }
     if (name === 'lights') {
       this.st.lights = !this.st.lights;
       this.viewer.headlightGroup.visible = this.st.lights;
+      this.playTrigger('lights');
       this.check('horn');
       return this.st.lights;
     }
@@ -1103,12 +1111,13 @@ export class ExcavatorCraneSim extends BaseSim {
   trigger(name) {
     if (name === 'bucket') {
       this.st.autoDig = !this.st.autoDig;
-      playPop(380);
+      this.playTrigger('bucket');
       this.check('dig');
       return this.st.autoDig;
     }
     if (name === 'lights') {
       this.viewer.headlightGroup.visible = !this.viewer.headlightGroup.visible;
+      this.playTrigger('lights');
       return this.viewer.headlightGroup.visible;
     }
     return false;
@@ -1244,13 +1253,14 @@ export class RoboticsSim extends BaseSim {
   trigger(name) {
     if (name === 'tool') {
       this.st.toolPulse = 1.1;
-      playPop(660);
+      this.playTrigger('tool');
       this.check('tool');
       return true;
     }
     if (name === 'lights') {
       this.st.lights = !this.st.lights;
       this.viewer.headlightGroup.visible = this.st.lights && !this.isArm;
+      this.playTrigger('lights');
       return this.st.lights;
     }
     return false;
@@ -1270,7 +1280,7 @@ export class RoboticsSim extends BaseSim {
       if (Math.abs(st.slewDeg) > 18) this.check('slew');
     }
 
-    if (inp.space) this.trigger('tool');
+    if (inp.space && st.toolPulse <= 0.2) this.trigger('tool');
     st.toolPulse = Math.max(0, st.toolPulse - dt);
     st.battery = clamp(st.battery - dt * 0.04, 18, 100);
     this.spinFans(dt, 7.5 * Math.abs(speedMult));

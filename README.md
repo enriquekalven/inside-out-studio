@@ -4,17 +4,19 @@
 >
 > 🌐 **Live Web App**: [https://inside-out-explorer.web.app](https://inside-out-explorer.web.app)
 
-**Inside Out Studio** is an offline-first, hyper-realistic 3D engineering & deconstruction studio designed for kids and curious minds to blow apart **61 iconic real-world machines, helicopters, high-speed bullet trains, spacecraft, vehicles, aircraft, submarines, smartphones, and buildings** across **18 categories** into their real internal components, discover what every piece does, and play hands-on engineering simulations and games.
+**Inside Out Studio** is an offline-first, hyper-realistic 3D engineering & deconstruction studio designed for kids and curious minds to blow apart **79 iconic real-world machines, gaming consoles, spatial XR headsets, cameras, appliances, helicopters, high-speed bullet trains, spacecraft, vehicles, aircraft, submarines, smartphones, and buildings** across **21 categories** into their real internal components, discover what every piece does, and play hands-on engineering simulations and games.
 
 ---
 
 ## ✨ Features
 
-### 1. Studio PBR Lighting & Procedural Material Engine (`app/js/viewer.js` & `app/js/materials.js`)
+### 1. Studio PBR Lighting, Blueprint Dark Mode & Discovery UX (`app/js/viewer.js`, `app/js/materials.js`, `app/styles.css`)
 - **Studio HDR Environment & Tone Mapping**: Uses `THREE.ACESFilmicToneMapping`, `THREE.PCFSoftShadowMap`, and `PMREMGenerator` + `RoomEnvironment` image-based lighting (`scene.environment`) so metallic clearcoats, glass canopies, brushed titanium, and chrome parts reflect crisp studio highlights.
+- **Blueprint Dark Mode & Stitch HUD**: Toggle between warm drafting-paper light mode and **Blueprint Dark Mode (`[data-theme="dark"]`)** with >=4.5:1 WCAG AA contrast, crisp SVG HUD tool icons, URL hash deep-linking (`#<category>/<model>/<mode>`), and keyboard 3D stage orbit/zoom.
+- **Instant Catalog Search & Domain Filters**: Filter all **21 categories** and **79 models** in real time by name, component, or engineering domain (**Vehicles**, **Air & Space**, **Consumer Tech**, **Everyday & Infra**), with one-click quick-jump model pills.
 - **Procedural Canvas Textures & PBR Shaders**: Automotive clearcoat paint (`carPaint`), carbon-fiber twill weave (`carbonFiberMat`), brushed titanium/aluminum (`brushedMetal`), optical glass (`glassMat`), perforated brake discs, radial tire treads, gold-trace PCBs (`pcbMat`), OLED displays (`screenMat`), and solar grids—100% procedural and offline-first.
 
-### 2. Eight Categories & 31 Hyper-Detailed 3D Models (330+ Total Parts, 155 Quiz Questions)
+### 2. Twenty-One Categories & 79 Hyper-Detailed 3D Models (774+ Total Parts, 395 Quiz Questions, 315 Max Stars)
 Switch seamlessly between multiple iconic real-world models inside every category using the **Model Variant Selector Bar**:
 
 1. **🏎️ Cars & Trucks (7 Models — 12 Parts Each)**:
@@ -67,12 +69,34 @@ Switch seamlessly between multiple iconic real-world models inside every categor
    - **China Railway CR400AF Fuxing Hao (`cr400af-fuxing`)**: 4-car 350–400 km/h Chinese bullet trainset with sculpted 12-meter aero-streamlined nose cone, crimson/silver "Flying Dragon" wraparound ribbon livery & 复兴号 markings, roof aerodynamic shroud, CW350 high-speed bogies, and ballastless slab track.
    - **JR Central L0 Series SCMaglev (`scmaglev-l0`)**: 4-car 603 km/h world-record Japanese superconducting magnetic levitation trainset with 15-meter aero-wedge nose, cryogenic liquid-helium NbTi superconducting bogie magnets, and U-shaped concrete guideway lined with figure-8 levitation & linear-motor propulsion coils.
 
+11. **☕ Everyday Engineering & Appliances (7 Models — 10 Parts Each)**:
+   - **Dyson V15 Detect Cordless Cyclone Vacuum (`dyson-v15-vacuum`)**: 14 scrolled root-cyclone cones (`100,000 G`), `125,000 RPM` Hyperdymium brushless motor, green `532 nm` laser dust-reveal cleanerhead, acoustic piezo particle sensor, and PTFE HEPA filter.
+   - **Stainless French-Door Heat-Pump Refrigerator (`french-door-refrigerator`)**: Variable-speed inverter `R-600a` hermetic compressor, serpentine condenser + capillary expansion valve + finned evaporator coils, Vacuum Insulation Panels (VIP), and through-the-door crushed-ice auger.
+   - **Heavy-Duty Commercial Escalator (`commercial-escalator`)**: Structural 30° steel Warren truss, worm-gear machine bay, 16 cleated aluminum steps riding dual endless chains along flat landing transitions, synchronized handrails, and safety comb-plate limit switches.
+   - Plus **Siphon-Flush Toilet**, **Skyscraper Gearless Traction Elevator**, **5-Pin Brass Tumbler Lock**, and **9-Bar Dual-Boiler Italian Espresso Machine**.
+
+12. **🎮 Gaming Consoles & Controllers (3 Models — 10 Parts Each)**:
+   - **PlayStation 5 Pro Console (`ps5-pro-console`)**: Liquid-metal TIM custom RDNA SoC, copper vapor-chamber fin array, `120 mm` dual-intake centrifugal blower, detachable Ultra-HD Blu-ray drive, and M.2 PCIe Gen4 expansion bay.
+   - **DualSense Wireless Adaptive Controller (`dualsense-controller`)**: Worm-gear motorized adaptive `L2`/`R2` triggers, dual voice-coil haptic actuators, potentiometer/Hall thumbstick gimbals, and 6-axis MEMS IMU mainboard.
+   - **Handheld Hybrid OLED Console (`handheld-hybrid-console`)**: Laminated `7.4"` vivid OLED touchscreen, snap-rail neon left/right wireless controllers with NFC & IR camera, flattened copper heatpipe + micro-blower, magnesium kickstand, and HDMI 2.1 TV dock.
+
+13. **🎧 Spatial XR & Audio (3 Models — 10 Parts Each)**:
+   - **Apple Vision Pro Spatial Computer (`apple-vision-pro`)**: 3D laminated glass + lenticular EyeSight OLED, CNC curved aluminum frame, dual `23M`-pixel micro-OLED + 3-element pancake optics, dual `M2` + `R1` (`12 ms`) spatial silicon, LiDAR + 12-camera array, and Spatial Audio pods.
+   - **AirPods Pro 2 & MagSafe Case (`airpods-pro-2`)**: Custom high-excursion neodymium drivers, Apple `H2` SiP (`48,000 Hz` ANC), optical skin-detect sensors, `U1` Ultra-Wideband Find My case PCB, Qi/MagSafe copper coil, and lanyard antenna loop.
+   - **Flagship Over-Ear ANC Headphones (`anc-over-ear-headphones`)**: `40 mm` carbon-fiber-composite dome drivers, 8-mic hybrid feedforward/feedback ANC array, viscoelastic memory-foam cushions, right-cup capacitive touch grid, and balanced left-cup battery.
+
+14. **📷 Cameras & Optics (3 Models — 10 Parts Each)**:
+   - **Full-Frame Mirrorless Camera & f/2.8 Zoom (`mirrorless-fullframe-camera`)**: `45 MP` stacked CMOS sensor on 5-axis IBIS stage, `1/8000s` carbon-blade focal-plane shutter, multi-element `24-70mm f/2.8` optical glass + 9-blade iris, and `9.44M`-dot OLED EVF.
+   - **Retro Instant Film Camera (`instant-film-camera`)**: Rainbow step shell, `45°` reflex mirror, integral 8-shot reagent-pod cassette, precision stainless steel developer rollers, and `330V` Xenon flash capacitor.
+   - **IMAX 70mm 15-Perf Cinema Camera (`imax-70mm-cinema-camera`)**: Twin coaxial `1,000-ft` magnesium `65mm` film magazines, horizontal 15-perforation Kodak loop (`336 ft/min`), patented Rolling-Loop vacuum gate, `45°` spinning butterfly mirror shutter, and Panavision `T2.0` cinema prime + carbon matte box.
+
+15. **🛰️ Spacecraft**, **🚀 Orbital Rockets**, **🤖 Robotics & Iron Man Mk 85**, **🏗️ Heavy Construction & Agriculture**, **⌚ Mechanical Horology**, **🏍️ Bikes & Superbikes**, and **🚢 Ocean Liners & Naval Ships** complete the **21-category** engineering atlas!
+
 ---
 
 ## 🚀 Quick Start
 
 ```bash
-cd /Users/enriq/.gemini/jetski/scratch/inside-out-studio
 npm start
 ```
 Then open **http://127.0.0.1:8137** in your browser.
@@ -82,4 +106,4 @@ Then open **http://127.0.0.1:8137** in your browser.
 ```bash
 npm test
 ```
-Runs `tests/e2e.mjs` against headless Chrome over raw CDP, verifying all **8 categories**, all **31 3D models**, all **4 game modes**, desktop (`1440x900`) and mobile (`393x852`) layouts, and asserting **0 console errors, 0 page exceptions, and 0 CSP violations**.
+Runs `tests/e2e.mjs` against headless Chrome over raw CDP, verifying all **21 categories**, all **79 3D models**, all **5 interactive modes**, Blueprint Dark Mode, live catalog search & domain filters, **13 languages** + Chirp 3 HD Read Aloud, desktop (`1440x900`) and mobile (`393x852`) layouts, and asserting **0 console errors, 0 page exceptions, and 0 CSP violations**.

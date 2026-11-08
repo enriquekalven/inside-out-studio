@@ -5,7 +5,7 @@ import * as THREE from '../vendor/three.module.js';
 import { RoomEnvironment } from '../vendor/RoomEnvironment.js';
 import { el, clear, prefersReducedMotion } from './ui.js';
 import { onCadReady } from './cad_loader.js';
-import { stopEngineSound } from './sound.js';
+import { stopEngineSound, playSimTriggerSound } from './sound.js';
 import { createActionSim } from './sims/index.js';
 import { tPart } from './i18n.js';
 
@@ -282,11 +282,20 @@ export class StageViewer {
       this.scene.environmentIntensity = 0.95;
       roomEnv.dispose();
 
+      this.renderer.domElement.setAttribute('aria-hidden', 'true');
       this.canvasHost.appendChild(this.renderer.domElement);
       this.canvasHost.classList.add('is-grab');
     } catch {
       return false;
     }
+
+    this._dirtyFrames = 12;
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden) {
+        this.clock.getDelta();
+        this._dirtyFrames = 8;
+      }
+    });
 
     this._bindEvents();
     this.resize();
@@ -418,6 +427,7 @@ export class StageViewer {
     this.camera.aspect = w / h;
     this.camera.updateProjectionMatrix();
     this.renderer.setSize(w, h, false);
+    this._dirtyFrames = Math.max(this._dirtyFrames || 0, 8);
   }
 
   loadObject(objDef) {
@@ -433,16 +443,27 @@ export class StageViewer {
     this.explodeTarget = 0;
     this.explodeCurrent = 0;
 
-    // Dispose old geometries/materials (protect shared CAD BufferGeometries!)
+    // Dispose old geometries/materials/unshared textures (protect shared CAD BufferGeometries & cached textures!)
+    const disposeMat = (mt) => {
+      if (!mt) return;
+      for (const texKey of ['map', 'emissiveMap', 'roughnessMap', 'metalnessMap', 'normalMap', 'alphaMap']) {
+        const tex = mt[texKey];
+        if (tex && !tex.userData?.shared && typeof tex.dispose === 'function') {
+          tex.dispose();
+        }
+      }
+      mt.dispose();
+    };
     for (const rec of this.partRecords.values()) {
       for (const m of rec.meshes) {
         if (m.geometry && !m.geometry.userData?.sharedCad) {
           m.geometry.dispose();
         }
-        if (Array.isArray(m.material)) m.material.forEach((mt) => mt.dispose());
-        else if (m.material) m.material.dispose();
+        if (Array.isArray(m.material)) m.material.forEach(disposeMat);
+        else if (m.material) disposeMat(m.material);
       }
     }
+    this._dirtyFrames = 15;
     this.partRecords.clear();
     this.rootGroup.clear();
     this.rootGroup.add(this.headlightGroup);
@@ -793,6 +814,7 @@ export class StageViewer {
 
   triggerAction(name) {
     if (name === 'reset' && this.driveMode) {
+      playSimTriggerSound('reset', this.currentObject?.id, this.currentObject?.activeModelId);
       this.setDriveMode(true);
       return true;
     }
@@ -903,12 +925,14 @@ export class StageViewer {
 
   setShowLabels(show) {
     this.showLabels = Boolean(show);
+    this._dirtyFrames = Math.max(this._dirtyFrames || 0, 6);
     this._updateLabels();
   }
 
   setXrayMode(enabled) {
     this.xrayMode = Boolean(enabled);
     this._applyXray();
+    this._dirtyFrames = Math.max(this._dirtyFrames || 0, 8);
     return this.xrayMode;
   }
 
@@ -935,6 +959,20 @@ export class StageViewer {
     }
   }
 
+  orbitBy(dTheta = 0, dPhi = 0) {
+    this.desiredSpherical.theta += dTheta;
+    this.desiredSpherical.phi = Math.max(0.22, Math.min(Math.PI * 0.49, this.desiredSpherical.phi + dPhi));
+    this._dirtyFrames = Math.max(this._dirtyFrames || 0, 12);
+  }
+
+  zoomBy(factor = 1) {
+    this.desiredSpherical.radius = Math.max(
+      1.8,
+      Math.min(this.maxRadius || 12.0, this.desiredSpherical.radius * factor),
+    );
+    this._dirtyFrames = Math.max(this._dirtyFrames || 0, 12);
+  }
+
   resetView() {
     this.desiredSpherical.copy(this.defaultSpherical);
     const extra = this.explodeExtraRadius || 1.35;
@@ -944,6 +982,7 @@ export class StageViewer {
       this.desiredSpherical.radius = this.defaultSpherical.radius + extra * 0.9;
     }
     this.desiredTarget.copy(this._getExplodedBaseTarget());
+    this._dirtyFrames = Math.max(this._dirtyFrames || 0, 15);
   }
 
   _applyXray() {
@@ -971,6 +1010,7 @@ export class StageViewer {
   }
 
   _refreshHighlights() {
+    this._dirtyFrames = Math.max(this._dirtyFrames || 0, 6);
     const allowSelectedGlow = this.explodeTarget >= 0.15 || this.perPartMode;
     for (const [id, rec] of this.partRecords.entries()) {
       const isSelected = allowSelectedGlow && id === this.selectedPartId;
@@ -1096,12 +1136,19 @@ export class StageViewer {
 
   _loop() {
     this.animFrame = requestAnimationFrame(() => this._loop());
+    if (document.hidden) return;
     const dt = Math.min(0.05, this.clock.getDelta());
     const lerpSpeed = prefersReducedMotion() ? 1 : Math.min(1, dt * 9);
 
     if (this.autoRotate && this.activePointers.size === 0 && !prefersReducedMotion()) {
       this.desiredSpherical.theta += dt * 0.45;
     }
+
+    const camDelta =
+      Math.abs(this.desiredSpherical.radius - this.spherical.radius) +
+      Math.abs(this.desiredSpherical.phi - this.spherical.phi) +
+      Math.abs(this.desiredSpherical.theta - this.spherical.theta) +
+      this.target.distanceTo(this.desiredTarget);
 
     this.spherical.radius += (this.desiredSpherical.radius - this.spherical.radius) * lerpSpeed;
     this.spherical.phi += (this.desiredSpherical.phi - this.spherical.phi) * lerpSpeed;
@@ -1112,15 +1159,20 @@ export class StageViewer {
     this.camera.position.copy(this.target).add(camOffset);
     this.camera.lookAt(this.target);
 
+    let explodeDelta = Math.abs(this.explodeTarget - this.explodeCurrent);
     this.explodeCurrent += (this.explodeTarget - this.explodeCurrent) * lerpSpeed;
     for (const rec of this.partRecords.values()) {
+      explodeDelta += Math.abs(rec.targetExplode - rec.currentExplode);
       rec.currentExplode += (rec.targetExplode - rec.currentExplode) * lerpSpeed;
     }
     this._updatePartPositions();
     this._updateDriveSimulation(dt);
 
     const allowSelectedGlow = this.explodeCurrent >= 0.15 || this.perPartMode;
-    if (allowSelectedGlow && this.selectedPartId && this.partRecords.has(this.selectedPartId) && !prefersReducedMotion()) {
+    const hasPulse = Boolean(
+      allowSelectedGlow && this.selectedPartId && this.partRecords.has(this.selectedPartId) && !prefersReducedMotion(),
+    );
+    if (hasPulse) {
       const rec = this.partRecords.get(this.selectedPartId);
       const pulse = 0.42 + 0.25 * Math.sin(this.clock.elapsedTime * 5.5);
       for (const m of rec.meshes) {
@@ -1131,9 +1183,20 @@ export class StageViewer {
       }
     }
 
-    if (this.renderer) {
+    const isMoving =
+      camDelta > 1e-4 ||
+      explodeDelta > 1e-4 ||
+      this.driveMode ||
+      this.autoRotate ||
+      hasPulse ||
+      this.activePointers.size > 0 ||
+      (this._dirtyFrames || 0) > 0;
+
+    if ((this._dirtyFrames || 0) > 0) this._dirtyFrames -= 1;
+
+    if (isMoving && this.renderer) {
       this.renderer.render(this.scene, this.camera);
+      this._updateLabels();
     }
-    this._updateLabels();
   }
 }

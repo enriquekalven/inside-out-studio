@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval' https://www.googletagmanager.com; style-src 'self'; img-src 'self' data: blob: https://www.google-analytics.com https://*.google-analytics.com https://www.googletagmanager.com; font-src 'self'; connect-src 'self' blob: data: https://www.google-analytics.com https://*.google-analytics.com https://analytics.google.com https://*.analytics.google.com https://www.googletagmanager.com https://firebaseinstallations.googleapis.com; media-src 'self' data: blob:; object-src 'none'; worker-src 'self' blob:; manifest-src 'self'; base-uri 'none'; form-action 'none'">
   <meta name="referrer" content="strict-origin-when-cross-origin">
-  <meta name="color-scheme" content="light">
+  <meta name="color-scheme" content="light dark">
   <meta name="theme-color" content="#fff7e8">
   <meta name="description" content="Inside Out Studio — Explode &amp; explore how the world works from the inside out!">
   <title>Inside Out Studio — Explode &amp; explore how the world works from the inside out</title>
@@ -21,7 +21,7 @@
     <button id="home-btn" class="btn btn-ghost btn-home" type="button" hidden>
       <span aria-hidden="true">🏠</span> <span id="home-btn-text">Home</span>
     </button>
-    <p class="brand"><span class="brand-icon" aria-hidden="true">🔧</span> <span id="brand-title">Inside Out Studio</span></p>
+    <button type="button" class="brand" id="brand-btn"><span class="brand-icon" aria-hidden="true">🔧</span> <span id="brand-title">Inside Out Studio</span></button>
     <div class="topbar-right">
       <label class="lang-picker" for="lang-select">
         <span class="lang-globe" aria-hidden="true">🌐</span>
@@ -43,9 +43,12 @@
       </label>
       <p class="star-total" id="star-total" aria-live="polite">
         <span aria-hidden="true">⭐</span>
-        <span id="star-count">0</span><span class="star-max" id="star-max">/216</span>
+        <span id="star-count">0</span><span class="star-max" id="star-max">/315</span>
         <span class="visually-hidden" id="stars-earned-sr">stars earned</span>
       </p>
+      <button id="theme-btn" class="btn btn-icon" type="button" aria-pressed="false" title="Toggle Blueprint Dark Mode">
+        <span id="theme-icon" aria-hidden="true">🌙</span><span class="visually-hidden" id="theme-sr">Dark mode</span>
+      </button>
       <button id="sound-btn" class="btn btn-icon" type="button" aria-pressed="true">
         <span id="sound-icon" aria-hidden="true">🔊</span><span class="visually-hidden" id="sound-sr">Sound</span>
       </button>
@@ -56,8 +59,24 @@
     <section id="home-screen" class="screen home" aria-labelledby="home-title">
       <div class="home-intro">
         <h1 id="home-title">Explode &amp; explore how the world works from the inside out!</h1>
-        <p class="lead" id="home-lead">Pick any real-world supercar, airliner, submarine, smartphone, rocket engine, laptop, or building—switch between 67 iconic models, blow them apart in 3D, and earn stars!</p>
+        <p class="lead" id="home-lead">Pick any real-world supercar, airliner, submarine, gaming console, Vision Pro, camera, or home machine—switch between 79 iconic models, blow them apart in 3D, and earn stars!</p>
       </div>
+      <div class="catalog-toolbar" role="search" aria-label="Filter 3D engineering catalog">
+        <div class="catalog-search-wrap">
+          <span class="catalog-search-icon" id="catalog-search-icon" aria-hidden="true">🔍</span>
+          <input id="catalog-search" class="catalog-search" type="search" placeholder="Search 79 models, categories, or parts (e.g. Dyson, PS5, Vision Pro, IMAX)…" autocomplete="off" aria-label="Search models, categories, or parts">
+          <button id="catalog-search-clear" class="catalog-search-clear" type="button" hidden aria-label="Clear search">✕</button>
+        </div>
+        <div class="domain-filters" id="domain-filters" role="group" aria-label="Filter by engineering domain">
+          <button type="button" class="domain-pill" data-domain="all" aria-pressed="true">All</button>
+          <button type="button" class="domain-pill" data-domain="vehicles" aria-pressed="false">🏎️ Vehicles &amp; Sea</button>
+          <button type="button" class="domain-pill" data-domain="aerospace" aria-pressed="false">🚀 Flight &amp; Space</button>
+          <button type="button" class="domain-pill" data-domain="tech" aria-pressed="false">🎮 Consumer Tech</button>
+          <button type="button" class="domain-pill" data-domain="machines" aria-pressed="false">⚙️ Home &amp; Machines</button>
+        </div>
+      </div>
+      <div id="search-model-hits" class="search-model-hits" hidden aria-live="polite"></div>
+      <p id="catalog-empty" class="catalog-empty" hidden role="status">No matching 3D models found. Try another keyword or click All.</p>
       <ul id="object-grid" class="object-grid"></ul>
       <div class="home-footer">
         <p class="small-print" id="home-footer-text">Inside Out Studio • Interactive 3D engineering lab with 12-language Chirp 3 HD voice narration.</p>
@@ -82,7 +101,7 @@
       <div id="model-selector" class="model-selector" role="region" aria-label="Select 3D Model Variant"></div>
       <div class="lab-body">
         <div class="stage" id="stage" data-mode="explore">
-          <div class="stage-canvas" id="stage-canvas" role="img" aria-label="3D model. Use the parts list to explore it with a keyboard."></div>
+          <div class="stage-canvas" id="stage-canvas" tabindex="0" role="img" aria-label="3D model. Use Arrow keys to spin, Plus/Minus to zoom, or the parts list to explore."></div>
           <div class="labels" id="labels"></div>
           <div class="pointer-hint" id="pointer-hint" hidden aria-hidden="true">👆</div>
           <p class="stage-msg" id="stage-msg" role="status" aria-live="polite"></p>

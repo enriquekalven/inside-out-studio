@@ -5,7 +5,7 @@ import { OBJECTS, getObjectById, setCategoryModel } from './catalog.js';
 import { getAction } from './actions.js';
 import { StageViewer } from './viewer.js';
 import { onCadReady } from './cad_loader.js';
-import { el, clear, $, $$, shuffle, starsNode, prefersReducedMotion } from './ui.js';
+import { el, clear, $, $$, shuffle, starsNode, svgIcon, prefersReducedMotion } from './ui.js';
 import {
   getLang,
   getLangDir,
@@ -50,7 +50,8 @@ if (typeof window !== 'undefined') {
 }
 
 const STORAGE_KEY = 'inside_out_studio_progress_v1';
-const CORE_MODES = ['explore', 'find', 'build', 'quiz'];
+const THEME_KEY = 'inside_out_studio_theme_v1';
+const CORE_MODES = ['explore', 'find', 'build', 'quiz', 'drive'];
 const MODES = ['explore', 'find', 'build', 'quiz', 'drive'];
 const MAX_STARS = OBJECTS.length * CORE_MODES.length * 3;
 const TOTAL_MODELS = OBJECTS.reduce(
@@ -58,11 +59,20 @@ const TOTAL_MODELS = OBJECTS.reduce(
   0,
 );
 
+const CATEGORY_DOMAINS = {
+  vehicles: new Set(['car', 'train', 'bikes', 'ships', 'submarine', 'construction']),
+  aerospace: new Set(['airplane', 'helicopters', 'jet', 'rockets', 'space']),
+  tech: new Set(['iphone', 'laptop', 'tv', 'gaming', 'audio-xr', 'cameras', 'watches', 'robots']),
+  machines: new Set(['house', 'everyday']),
+};
+
 const state = {
   screen: 'home', // 'home' | 'lab'
   activeObjectId: 'car',
   mode: 'explore', // 'explore' | 'find' | 'build' | 'quiz' | 'drive'
   selectedPartId: null,
+  domainFilter: 'all',
+  searchQuery: '',
   progress: loadProgress(),
   findSession: null,
   buildSession: null,
@@ -70,6 +80,114 @@ const state = {
 };
 
 let viewer = null;
+let isSyncingHash = false;
+
+function applyTheme(dark, persist = true) {
+  const isDark = Boolean(dark);
+  if (isDark) {
+    document.documentElement.setAttribute('data-theme', 'dark');
+  } else {
+    document.documentElement.removeAttribute('data-theme');
+  }
+  const metaTheme = $('meta[name="theme-color"]');
+  if (metaTheme) metaTheme.setAttribute('content', isDark ? '#0b1120' : '#fff7e8');
+  const themeBtn = $('#theme-btn');
+  const themeIcon = $('#theme-icon');
+  if (themeBtn) themeBtn.setAttribute('aria-pressed', String(isDark));
+  if (themeIcon) {
+    clear(themeIcon);
+    themeIcon.appendChild(svgIcon(isDark ? 'sun' : 'moon', 18));
+  }
+  if (persist) {
+    try {
+      localStorage.setItem(THEME_KEY, isDark ? 'dark' : 'light');
+    } catch {
+      // ignore storage errors
+    }
+  }
+}
+
+function initThemeAndIcons() {
+  let saved = null;
+  try {
+    saved = localStorage.getItem(THEME_KEY);
+  } catch {
+    saved = null;
+  }
+  applyTheme(saved === 'dark', false);
+
+  const searchIconHost = $('#catalog-search-icon');
+  if (searchIconHost) {
+    clear(searchIconHost);
+    searchIconHost.appendChild(svgIcon('search', 17));
+  }
+  const hudIconMap = [
+    ['#xray-btn', 'xray'],
+    ['#spin-btn', 'spin'],
+    ['#labels-btn', 'labels'],
+    ['#view-btn', 'camera-reset'],
+  ];
+  for (const [sel, iconName] of hudIconMap) {
+    const btn = $(sel);
+    const firstSpan = btn ? $('span[aria-hidden="true"]', btn) : null;
+    if (firstSpan) {
+      clear(firstSpan);
+      firstSpan.appendChild(svgIcon(iconName, 18));
+    }
+  }
+}
+
+function syncUrlHash(push = false) {
+  if (isSyncingHash || typeof window === 'undefined' || !window.history) return;
+  try {
+    let targetHash = '';
+    if (state.screen === 'lab') {
+      const obj = getObjectById(state.activeObjectId);
+      const modelId = obj.activeModelId || obj.models?.[0]?.id || obj.id;
+      targetHash = `#${encodeURIComponent(obj.id)}/${encodeURIComponent(modelId)}/${encodeURIComponent(state.mode)}`;
+    }
+    const nextUrl = `${window.location.pathname}${window.location.search}${targetHash}`;
+    if (`${window.location.pathname}${window.location.search}${window.location.hash}` === nextUrl) return;
+    isSyncingHash = true;
+    if (push) window.history.pushState(null, '', nextUrl);
+    else window.history.replaceState(null, '', nextUrl);
+  } catch {
+    // ignore history errors
+  } finally {
+    isSyncingHash = false;
+  }
+}
+
+function applyUrlHash() {
+  if (isSyncingHash || typeof window === 'undefined') return false;
+  const raw = (window.location.hash || '').replace(/^#\/?/, '').trim();
+  if (!raw) {
+    if (state.screen !== 'home') showHome(false);
+    return false;
+  }
+  const [catSeg, modelSeg, modeSeg] = raw.split('/').map((s) => {
+    try {
+      return decodeURIComponent(s || '');
+    } catch {
+      return s || '';
+    }
+  });
+  if (!catSeg) return false;
+  const exists = OBJECTS.some((o) => o.id === catSeg) || getObjectById(catSeg)?.id === catSeg;
+  const obj = getObjectById(catSeg);
+  if (!exists && catSeg !== obj.id) return false;
+  if (modelSeg && Array.isArray(obj.models) && obj.models.some((m) => m.id === modelSeg)) {
+    setCategoryModel(obj.id, modelSeg);
+  }
+  const targetMode = MODES.includes(modeSeg) ? modeSeg : 'explore';
+  isSyncingHash = true;
+  try {
+    openObjectLab(obj.id, targetMode, false);
+  } finally {
+    isSyncingHash = false;
+  }
+  return true;
+}
 
 function activeAction() {
   const obj = getObjectById(state.activeObjectId);
@@ -154,14 +272,25 @@ function totalStars() {
   let sum = 0;
   for (const obj of OBJECTS) {
     const st = getObjProgress(obj.id).stars;
-    sum += (st.explore || 0) + (st.find || 0) + (st.build || 0) + (st.quiz || 0);
+    sum +=
+      (st.explore || 0) +
+      (st.find || 0) +
+      (st.build || 0) +
+      (st.quiz || 0) +
+      (st.drive || 0);
   }
   return sum;
 }
 
 function objectStars(objId) {
   const st = getObjProgress(objId).stars;
-  return (st.explore || 0) + (st.find || 0) + (st.build || 0) + (st.quiz || 0);
+  return (
+    (st.explore || 0) +
+    (st.find || 0) +
+    (st.build || 0) +
+    (st.quiz || 0) +
+    (st.drive || 0)
+  );
 }
 
 function awardModeStars(objId, mode, earned) {
@@ -250,15 +379,100 @@ function syncStaticChromeI18n() {
   setTxt('#labels-sr', t('labelsTitle'));
   setAttr('#view-btn', 'title', t('resetViewTitle'));
   setTxt('#view-sr', t('resetViewTitle'));
+  const searchInput = $('#catalog-search');
+  if (searchInput) {
+    searchInput.placeholder = `Search ${TOTAL_MODELS} models, categories, or parts…`;
+  }
 }
 
 // ============================================================================
-// Home Screen
+// Home Screen & Instant Discovery Filter
 // ============================================================================
+function matchesDomain(objId) {
+  if (!state.domainFilter || state.domainFilter === 'all') return true;
+  const set = CATEGORY_DOMAINS[state.domainFilter];
+  return set ? set.has(objId) : true;
+}
+
+function getSearchMatches() {
+  const q = (state.searchQuery || '').trim().toLowerCase();
+  const matchedCats = [];
+  const modelHits = [];
+
+  for (const obj of OBJECTS) {
+    if (!matchesDomain(obj.id)) continue;
+    if (!q) {
+      matchedCats.push(obj);
+      continue;
+    }
+    const locObj = tCategory(obj);
+    const catHay = `${obj.id} ${obj.name} ${obj.fullName} ${obj.tagline} ${locObj.name} ${locObj.fullName} ${locObj.tagline}`.toLowerCase();
+    let catMatched = catHay.includes(q);
+
+    for (const m of obj.models || []) {
+      const locM = tModel(m);
+      const mHay = `${m.id} ${m.name} ${m.brand || ''} ${m.badge || ''} ${m.desc || ''} ${locM.name} ${locM.badge || ''}`.toLowerCase();
+      let partMatched = false;
+      if (!mHay.includes(q)) {
+        for (const p of m.parts || []) {
+          const locP = tPart(p);
+          if (`${p.name} ${p.category} ${locP.name} ${locP.category}`.toLowerCase().includes(q)) {
+            partMatched = true;
+            break;
+          }
+        }
+      }
+      if (mHay.includes(q) || partMatched) {
+        catMatched = true;
+        modelHits.push({ obj, model: m, locName: locM.name });
+      }
+    }
+    if (catMatched) matchedCats.push(obj);
+  }
+  return { matchedCats, modelHits, hasQuery: q.length > 0 };
+}
+
 function renderHomeGrid() {
   const grid = $('#object-grid');
+  const hitsHost = $('#search-model-hits');
+  const emptyEl = $('#catalog-empty');
   clear(grid);
-  for (const obj of OBJECTS) {
+
+  const { matchedCats, modelHits, hasQuery } = getSearchMatches();
+
+  if (hitsHost) {
+    clear(hitsHost);
+    if (hasQuery && modelHits.length > 0) {
+      hitsHost.hidden = false;
+      for (const hit of modelHits.slice(0, 12)) {
+        const pill = el(
+          'button',
+          {
+            type: 'button',
+            class: 'search-hit-pill',
+            'data-hit-category': hit.obj.id,
+            'data-hit-model': hit.model.id,
+          },
+          el('span', { 'aria-hidden': 'true' }, hit.obj.emoji),
+          el('span', {}, hit.locName),
+        );
+        pill.addEventListener('click', () => {
+          playPop(600);
+          setCategoryModel(hit.obj.id, hit.model.id);
+          openObjectLab(hit.obj.id);
+        });
+        hitsHost.appendChild(pill);
+      }
+    } else {
+      hitsHost.hidden = true;
+    }
+  }
+
+  if (emptyEl) {
+    emptyEl.hidden = matchedCats.length > 0;
+  }
+
+  for (const obj of matchedCats) {
     const locObj = tCategory(obj);
     const stars = objectStars(obj.id);
     const maxObjStars = CORE_MODES.length * 3;
@@ -294,12 +508,13 @@ function renderHomeGrid() {
   }
 }
 
-function showHome() {
+function showHome(pushHistory = true) {
   stopSpeaking();
   stopEngineSound();
   if (viewer && viewer.driveMode) {
     toggleDriveMode(false);
   }
+  const wasLab = state.screen === 'lab';
   state.screen = 'home';
   $('#home-screen').hidden = false;
   $('#lab-screen').hidden = true;
@@ -307,6 +522,7 @@ function showHome() {
   syncStaticChromeI18n();
   updateStarHeader();
   renderHomeGrid();
+  if (pushHistory) syncUrlHash(wasLab);
 }
 
 // ============================================================================
@@ -423,6 +639,8 @@ function syncActionUi() {
         title: c.title || c.label,
         'data-ctrl-id': c.id,
       };
+      if (c.input) attrs['data-hold'] = c.input;
+      if (c.trigger) attrs['data-action'] = c.trigger;
       if (legacyIdMap[c.id]) attrs.id = legacyIdMap[c.id];
       const btn = el('button', attrs, c.label);
       if (c.input) {
@@ -441,8 +659,6 @@ function syncActionUi() {
       } else if (c.trigger) {
         btn.addEventListener('click', () => {
           if (!viewer) return;
-          if (c.trigger === 'horn') playHorn();
-          else playPop(580);
           const res = viewer.triggerAction(c.trigger);
           if (typeof res === 'boolean') {
             btn.setAttribute('aria-pressed', String(res));
@@ -464,7 +680,6 @@ function syncActionUi() {
     );
     resetBtn.addEventListener('click', () => {
       if (!viewer) return;
-      playPop(520);
       viewer.triggerAction('reset');
     });
     ctrlsHost.appendChild(resetBtn);
@@ -505,7 +720,12 @@ function updateDriveHud(st = {}) {
       if (chip) chip.classList.toggle('is-found', done);
     }
     if (doneCount > 0) {
+      const prevDriveStars = getObjProgress(state.activeObjectId).stars.drive || 0;
       awardModeStars(state.activeObjectId, 'drive', doneCount);
+      if (doneCount >= 3 && prevDriveStars < 3) {
+        playCorrect();
+        setStageMessage(`${tPraise()} ★★★ ${act.verb}`, 'is-good');
+      }
     }
   }
 }
@@ -527,6 +747,7 @@ function toggleDriveMode(forceState) {
         btn.setAttribute('aria-pressed', String(btn.dataset.mode === 'drive'));
       }
       renderDrivePanel();
+      syncUrlHash(false);
     }
   } else if (state.mode === 'drive') {
     setMode('explore');
@@ -662,9 +883,11 @@ function selectModelVariant(modelId) {
   }
   syncActionUi();
   setMode(state.mode);
+  syncUrlHash(false);
 }
 
-function openObjectLab(objId, initialMode = 'explore') {
+function openObjectLab(objId, initialMode = 'explore', pushHistory = true) {
+  const wasHome = state.screen === 'home';
   const obj = getObjectById(objId);
   trackCategorySelect(obj.id);
   state.screen = 'lab';
@@ -703,10 +926,11 @@ function openObjectLab(objId, initialMode = 'explore') {
 
   updateStarHeader();
   updateModeTabStars();
-  setMode(initialMode);
+  setMode(initialMode, false);
+  if (pushHistory) syncUrlHash(wasHome);
 }
 
-function setMode(mode) {
+function setMode(mode, updateHash = true) {
   stopSpeaking();
   if (!MODES.includes(mode)) mode = 'explore';
   if (mode !== 'drive' && viewer && viewer.driveMode) {
@@ -743,6 +967,7 @@ function setMode(mode) {
     if (!viewer.driveMode) toggleDriveMode(true);
     renderDrivePanel();
   }
+  if (updateHash && state.screen === 'lab') syncUrlHash(false);
 }
 
 function syncExplodeControls(fraction) {
@@ -908,10 +1133,22 @@ function renderFindPanel() {
   const dots = el('ul', { class: 'dots', 'aria-label': t('modeFind') });
   sess.results.forEach((status, i) => {
     let cls = 'dot';
-    if (i === sess.index) cls += ' is-now';
-    else if (status === 'right') cls += ' is-right';
-    else if (status === 'wrong') cls += ' is-wrong';
-    dots.appendChild(el('li', { class: cls }));
+    let sym = '';
+    let sr = `Round ${i + 1}: pending`;
+    if (i === sess.index) {
+      cls += ' is-now';
+      sym = '•';
+      sr = `Round ${i + 1}: current`;
+    } else if (status === 'right') {
+      cls += ' is-right';
+      sym = '✓';
+      sr = `Round ${i + 1}: correct`;
+    } else if (status === 'wrong') {
+      cls += ' is-wrong';
+      sym = '✗';
+      sr = `Round ${i + 1}: missed`;
+    }
+    dots.appendChild(el('li', { class: cls, 'aria-label': sr }, sym));
   });
 
   const hintBtn = el(
@@ -1115,7 +1352,7 @@ function snapBuildPart(partId) {
     return;
   }
 
-  playSnap();
+  playSnap(state.activeObjectId);
   sess.placedIds.add(partId);
 
   // Advance index to next unplaced part
@@ -1200,10 +1437,22 @@ function renderQuizPanel() {
   const dots = el('ul', { class: 'dots', 'aria-label': t('modeQuiz') });
   sess.results.forEach((status, i) => {
     let cls = 'dot';
-    if (i === sess.index && status === 'pending') cls += ' is-now';
-    else if (status === 'right') cls += ' is-right';
-    else if (status === 'wrong') cls += ' is-wrong';
-    dots.appendChild(el('li', { class: cls }));
+    let sym = '';
+    let sr = `Question ${i + 1}: pending`;
+    if (i === sess.index && status === 'pending') {
+      cls += ' is-now';
+      sym = '•';
+      sr = `Question ${i + 1}: current`;
+    } else if (status === 'right') {
+      cls += ' is-right';
+      sym = '✓';
+      sr = `Question ${i + 1}: correct`;
+    } else if (status === 'wrong') {
+      cls += ' is-wrong';
+      sym = '✗';
+      sr = `Question ${i + 1}: incorrect`;
+    }
+    dots.appendChild(el('li', { class: cls, 'aria-label': sr }, sym));
   });
 
   const optsWrap = el('div', { class: 'options', id: 'quiz-options' });
@@ -1472,7 +1721,50 @@ function initEvents() {
   $('.brand').addEventListener('click', () => {
     if (state.screen !== 'home') showHome();
   });
-  $('.brand').style.cursor = 'pointer';
+
+  const themeBtn = $('#theme-btn');
+  if (themeBtn) {
+    themeBtn.addEventListener('click', () => {
+      playPop(540);
+      const nextDark = document.documentElement.getAttribute('data-theme') !== 'dark';
+      applyTheme(nextDark, true);
+    });
+  }
+
+  const searchInput = $('#catalog-search');
+  const searchClearBtn = $('#catalog-search-clear');
+  if (searchInput) {
+    searchInput.addEventListener('input', () => {
+      state.searchQuery = searchInput.value || '';
+      if (searchClearBtn) searchClearBtn.hidden = !state.searchQuery;
+      renderHomeGrid();
+    });
+  }
+  if (searchClearBtn && searchInput) {
+    searchClearBtn.addEventListener('click', () => {
+      playPop(500);
+      searchInput.value = '';
+      state.searchQuery = '';
+      searchClearBtn.hidden = true;
+      renderHomeGrid();
+      searchInput.focus();
+    });
+  }
+
+  for (const pill of $$('#domain-filters .domain-pill')) {
+    pill.addEventListener('click', () => {
+      playPop(540);
+      state.domainFilter = pill.dataset.domain || 'all';
+      for (const p of $$('#domain-filters .domain-pill')) {
+        p.setAttribute('aria-pressed', String(p === pill));
+      }
+      renderHomeGrid();
+    });
+  }
+
+  window.addEventListener('hashchange', () => {
+    applyUrlHash();
+  });
 
   $('#sound-btn').addEventListener('click', () => {
     const nowMuted = toggleMuted();
@@ -1518,15 +1810,57 @@ function initEvents() {
   };
 
   window.addEventListener('keydown', (e) => {
-    if (!viewer || !viewer.driveMode || state.screen !== 'lab') return;
+    if (state.screen !== 'lab' || !viewer) return;
     if (e.target && /input|textarea|select/i.test(e.target.tagName)) return;
+
+    if (!viewer.driveMode) {
+      if (e.key === '+' || e.key === '=') {
+        e.preventDefault();
+        viewer.zoomBy(0.88);
+        return;
+      }
+      if (e.key === '-' || e.key === '_') {
+        e.preventDefault();
+        viewer.zoomBy(1.14);
+        return;
+      }
+      if (document.activeElement === $('#stage-canvas')) {
+        if (e.key === 'ArrowLeft') {
+          e.preventDefault();
+          viewer.orbitBy(-0.14, 0);
+          return;
+        }
+        if (e.key === 'ArrowRight') {
+          e.preventDefault();
+          viewer.orbitBy(0.14, 0);
+          return;
+        }
+        if (e.key === 'ArrowUp') {
+          e.preventDefault();
+          viewer.orbitBy(0, -0.1);
+          return;
+        }
+        if (e.key === 'ArrowDown') {
+          e.preventDefault();
+          viewer.orbitBy(0, 0.1);
+          return;
+        }
+      }
+      return;
+    }
+
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      setMode('explore');
+      return;
+    }
+
     const act = activeAction();
     const k = e.key.toLowerCase();
 
     const tapAction = (act.taps && (act.taps[e.key] || act.taps[k])) || (k === 'r' ? 'reset' : null);
     if (tapAction) {
       e.preventDefault();
-      if (tapAction === 'horn') playHorn();
       const res = viewer.triggerAction(tapAction);
       const tapBtn = $(`#drive-controls [data-action="${tapAction}"]`);
       if (tapBtn && typeof res === 'boolean') {
@@ -1640,10 +1974,13 @@ function initEvents() {
   });
 }
 
-// Initialize GA4 telemetry & UI on module evaluation
+// Initialize GA4 telemetry, theme/icons & UI on module evaluation
 initAnalytics();
+initThemeAndIcons();
 initEvents();
-showHome();
+if (!applyUrlHash()) {
+  showHome(false);
+}
 
 onCadReady(() => {
   if (state.screen === 'lab' && viewer) {

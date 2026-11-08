@@ -139,6 +139,7 @@ export class EngineSim extends BaseSim {
       fuelBar: clamp((fuel / (this.maxThrust * (this.isRocket ? 0.3 : 0.028) * 1.6)) * 100, 0, 100),
       soundRpm: 900 + (st.n1 / 100) * 8000,
       soundThrottle: st.throttle * 0.8 + st.burner * 0.2,
+      soundExtra: { burner: st.burner },
     });
   }
 }
@@ -463,6 +464,7 @@ export class RocketLaunchSim extends BaseSim {
       fuelBar: clamp((st.n1 / 100) * 100, 0, 100),
       soundRpm: 1100 + (st.n1 / 100) * 7500,
       soundThrottle: clamp(st.throttle * 0.85 + st.burner * 0.15, 0, 1),
+      soundExtra: { burner: st.burner },
     });
   }
 }

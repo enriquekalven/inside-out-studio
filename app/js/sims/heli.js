@@ -542,6 +542,7 @@ export class HeliSim extends BaseSim {
   trigger(name) {
     if (name === 'lights') {
       this.st.lightsOn = !this.st.lightsOn;
+      this.playTrigger('lights');
       return this.st.lightsOn;
     }
     return false;
@@ -969,6 +970,7 @@ export class HeliSim extends BaseSim {
       collectiveBar: st.collective * 100,
       soundRpm: 800 + st.nr * (p.electric ? 6600 : 5200) + st.collective * (p.electric ? 1400 : 2000) + (boost ? 500 : 0),
       soundThrottle: clamp((0.12 + st.collective * 0.75 + (boost ? 0.15 : 0) + chop) * st.nr, 0, 1),
+      soundExtra: { nr: st.nr, collective: st.collective },
     });
   }
 

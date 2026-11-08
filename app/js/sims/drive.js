@@ -1,6 +1,5 @@
 // 🏎️ Drive It! — Cars: dyno/road test-drive (ported from the original viewer drive loop).
 import { BaseSim, clamp } from './base.js';
-import { playHorn, playPop } from '../sound.js';
 
 export class DriveSim extends BaseSim {
   constructor(viewer) {
@@ -9,7 +8,7 @@ export class DriveSim extends BaseSim {
     const isPedalBike = /tern|road-bike|bicycle|ebike/i.test(id);
     const isEbike = /tern|ebike|cargo/i.test(id);
     const isMoto = /ducati|panigale|moto/i.test(id);
-    super(viewer, { engineSound: !isPedalBike || isEbike, turbine: isEV || isEbike });
+    super(viewer, { engineSound: true, turbine: isEV || isEbike });
     this.isEV = isEV;
     this.isPedalBike = isPedalBike;
     this.isEbike = isEbike;
@@ -55,11 +54,11 @@ export class DriveSim extends BaseSim {
     if (name === 'lights' && this.hasLights) {
       this.st.headlightsOn = !this.st.headlightsOn;
       this.viewer.headlightGroup.visible = this.st.headlightsOn && this.viewer.driveWheels.length > 0;
+      this.playTrigger('lights');
       return this.st.headlightsOn;
     }
     if (name === 'horn') {
-      if (this.isPedalBike) playPop(920);
-      else playHorn();
+      this.playTrigger('horn');
       return true;
     }
     return false;
@@ -231,6 +230,7 @@ export class DriveSim extends BaseSim {
       rpmBar: st.rpm,
       soundRpm: this.isEbike ? 600 + absSpeed * 55 : this.isEV ? 450 + st.rpm * 0.35 : st.rpm,
       soundThrottle: st.throttle,
+      soundExtra: { speed: absSpeed, gear: gearLabel },
     });
   }
 }
