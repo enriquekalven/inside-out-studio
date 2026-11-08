@@ -54,10 +54,12 @@ export class DiveSim extends BaseSim {
   trigger(name) {
     if (name === 'lights') {
       this.st.lightsOn = !this.st.lightsOn;
+      this.playTrigger('lights');
       return this.st.lightsOn;
     }
     if (name === 'periscope') {
       this.st.mastUp = !this.st.mastUp;
+      this.playTrigger('periscope');
       return this.st.mastUp;
     }
     return false;
@@ -150,7 +152,8 @@ export class DiveSim extends BaseSim {
       stress: Math.round(stress),
       warning: st.creak ? '⚠️ HULL CREAKING — near crush depth! Blow ballast (Space)!' : '',
       soundRpm: 900 + st.throttle * 4000,
-      soundThrottle: st.throttle * 0.6,
+      soundThrottle: clamp(st.throttle * 0.7 + (inp.space ? 0.35 : 0), 0, 1),
+      soundExtra: { creak: st.creak, depth: st.depth },
     });
   }
 }

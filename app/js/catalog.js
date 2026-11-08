@@ -1,4 +1,4 @@
-// Inside Out Studio — Multi-Model 3D Engineering Catalog (8 Categories × 31 Iconic Models = 320+ 3D Parts).
+// Inside Out Studio — Multi-Model 3D Engineering Catalog (21 Categories × 79 Iconic Models = 790+ 3D Parts).
 // Each category has a `models` array and an `activeModelId` getter/setter so switching models
 // updates `.parts`, `.quiz`, `.cameraPos`, and `.activeModel` seamlessly.
 import { CAR_MODELS } from './models/cars.js';
@@ -9,6 +9,9 @@ import { TRAINS_CATEGORY, SPACE_CATEGORY } from './models/trains_space.js';
 import { ROCKETS_CATEGORY, ROBOTS_CATEGORY, CONSTRUCTION_CATEGORY } from './models/rockets_robots_heavy.js';
 import { HELICOPTERS_CATEGORY, WATCHES_CATEGORY, BIKES_CATEGORY } from './models/rotors_horology_bikes.js';
 import { SHIPS_CATEGORY, EVERYDAY_CATEGORY } from './models/ships_everyday.js';
+import { GAMING_CATEGORY } from './models/gaming_tech.js';
+import { AUDIO_XR_CATEGORY } from './models/audio_xr_tech.js';
+import { CAMERAS_CATEGORY } from './models/cameras_optics.js';
 
 function createCategory({ id, name, fullName, emoji, icon, tagline, models }) {
   let activeModelId = models[0].id;
@@ -118,6 +121,9 @@ export const OBJECTS = [
   createCategory(BIKES_CATEGORY),
   createCategory(SHIPS_CATEGORY),
   createCategory(EVERYDAY_CATEGORY),
+  createCategory(GAMING_CATEGORY),
+  createCategory(AUDIO_XR_CATEGORY),
+  createCategory(CAMERAS_CATEGORY),
 ];
 
 const ID_ALIASES = {
@@ -128,6 +134,12 @@ const ID_ALIASES = {
   watch: 'watches',
   bike: 'bikes',
   ship: 'ships',
+  console: 'gaming',
+  ps5: 'gaming',
+  vision: 'audio-xr',
+  headphones: 'audio-xr',
+  airpods: 'audio-xr',
+  camera: 'cameras',
 };
 
 export function getObjectById(id) {

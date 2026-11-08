@@ -2,7 +2,13 @@
 // A sim owns a private `env` group added to the scene while active, reads held inputs from
 // `viewer.inputs`, mutates part groups found by id-regex, and returns a telemetry object per frame.
 import * as THREE from '../../vendor/three.module.js';
-import { startEngineSound, updateEngineSound, stopEngineSound } from '../sound.js';
+import {
+  startEngineSound,
+  updateEngineSound,
+  stopEngineSound,
+  resolveSoundProfile,
+  playSimTriggerSound,
+} from '../sound.js';
 
 export const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 export const approach = (cur, target, rate) => cur + (target - cur) * Math.min(1, rate);
@@ -58,7 +64,7 @@ export function makeGlowQuad(color, size, opacity = 0.5, additive = false) {
 }
 
 export class BaseSim {
-  constructor(viewer, { engineSound = false, turbine = false } = {}) {
+  constructor(viewer, { engineSound = true, turbine = false, soundProfile = null } = {}) {
     this.viewer = viewer;
     this.env = new THREE.Group();
     this.env.name = 'sim-env';
@@ -67,7 +73,18 @@ export class BaseSim {
     this.telemetry = { checks: this.checks };
     this.engineSound = engineSound;
     this.turbine = turbine;
+    this.categoryId = viewer?.currentObject?.id || 'car';
+    this.activeModelId = viewer?.currentObject?.activeModelId || viewer?.currentModel?.id || '';
+    this.soundProfile = soundProfile || resolveSoundProfile(this.categoryId, this.activeModelId);
     this.hideFloor = false;
+  }
+
+  playTrigger(name) {
+    playSimTriggerSound(
+      name,
+      this.viewer?.currentObject?.id || this.categoryId,
+      this.viewer?.currentObject?.activeModelId || this.activeModelId,
+    );
   }
 
   get inputs() {
@@ -104,7 +121,7 @@ export class BaseSim {
 
   enter() {
     this.viewer.scene.add(this.env);
-    if (this.engineSound) startEngineSound();
+    if (this.engineSound) startEngineSound(this.soundProfile);
     this.onEnter();
     if (this.hideFloor) this.viewer.stageFloorGroup.visible = false;
   }
@@ -122,7 +139,11 @@ export class BaseSim {
     this.onUpdate(dt);
     this.telemetry.checks = this.checks;
     if (this.engineSound) {
-      updateEngineSound(this.telemetry.soundRpm ?? 900, this.telemetry.soundThrottle ?? 0, this.turbine);
+      updateEngineSound(
+        this.telemetry.soundRpm ?? 900,
+        this.telemetry.soundThrottle ?? 0,
+        this.telemetry.soundExtra ?? this.turbine,
+      );
     }
     return this.telemetry;
   }

@@ -443,6 +443,157 @@ ACTIONS.helicopters = ACTIONS.heli = {
 ACTIONS.watch = ACTIONS.watches;
 ACTIONS.bikes = ACTIONS.bike = { ...ACTIONS.car, id: 'bikes', verb: 'Take It for a Ride!', stopVerb: 'Stop Riding', emoji: '🏍️', tab: 'Take It for a Ride!' };
 ACTIONS.ship = ACTIONS.ships;
+
+ACTIONS.vacuum = {
+  id: 'vacuum', verb: 'Spin Cyclones!', stopVerb: 'Stop Vacuum', emoji: '🌪️', tab: 'Spin Cyclones!',
+  hint: 'to spin the 125,000-RPM Hyperdymium motor, shine the green dust laser & hit Boost',
+  keys: KEYS_WASD, taps: { l: 'lights', ' ': 'bin', h: 'bin' },
+  hud: [
+    { id: 'rpm', label: 'RPM', big: true },
+    { id: 'suction', label: 'Suction AW' },
+    { id: 'dust', label: 'Particles/s' },
+    { id: 'battery', label: '7-Cell Pack %', bar: true, max: 100 },
+  ],
+  controls: [
+    hold('up', '🌪️ Pull Trigger', 'Spin 125,000-RPM Motor & 14 Cyclones (W / ↑)', 'up', true),
+    hold('down', '🍃 Eco Mode', 'Throttle Down for Max Runtime (S / ↓)', 'down'),
+    hold('boost', '⚡ 240 AW Boost', 'Max 100,000-G Cyclone Suction (Shift / B)', 'boost'),
+    tap('lights', '💚 Optic Laser', 'Toggle 532nm Green Dust-Reveal Blade (L)', 'lights'),
+    tap('bin', '🗑️ Point & Shoot', 'Eject Clear Polycarbonate Dust Bin (Space / H)', 'bin'),
+  ],
+  checklist: [
+    { id: 'suction', label: 'Spool the Hyperdymium motor above 95,000 RPM' },
+    { id: 'laser', label: 'Illuminate hidden floor dust with the green laser' },
+    { id: 'boost', label: 'Engage 240 AW Max Cyclone Boost' },
+  ],
+  celebrate: { title: 'Spotless 100,000-G Clean!', text: 'Hyperdymium motor screaming at 125k RPM, laser dust beam locked, and HEPA air spotless!' },
+};
+
+ACTIONS.fridge = {
+  id: 'fridge', verb: 'Cool & Dispense!', stopVerb: 'Stop Cooling', emoji: '❄️', tab: 'Cool & Dispense!',
+  hint: 'to run the inverter compressor, dispense crushed ice & open French doors',
+  keys: KEYS_WASD, taps: { ' ': 'ice', l: 'lights', h: 'defrost' },
+  hud: [
+    { id: 'fridgeTemp', label: 'FRIDGE °F', big: true },
+    { id: 'freezerTemp', label: 'Freezer' },
+    { id: 'compHz', label: 'Inverter' },
+    { id: 'load', label: 'Heat-Pump Load %', bar: true, max: 100 },
+  ],
+  controls: [
+    hold('up', '❄️ SuperCool', 'Ramp Variable-Speed R600a Compressor (W / ↑)', 'up', true),
+    hold('down', '🌿 Eco Cruise', 'Low-Wattage Inverter Cruise (S / ↓)', 'down'),
+    hold('boost', '🧊 Turbo Freeze', 'Blast Sub-Zero Evaporator Airflow (Shift / B)', 'boost'),
+    tap('ice', '🥤 Dispense Ice', 'Auger Crushed Ice & Chilled Filtered Water (Space)', 'ice'),
+    tap('lights', '🚪 French Doors', 'Toggle Door Mullion & Crisp LED Showcase (L)', 'lights'),
+  ],
+  checklist: [
+    { id: 'cool', label: 'Chill fresh food to 37°F & freezer to 0°F' },
+    { id: 'ice', label: 'Dispense filtered ice cubes through the door chute' },
+    { id: 'door', label: 'Toggle the French-door showcase LEDs & mullion seal' },
+  ],
+  celebrate: { title: 'Sub-Zero Perfection!', text: 'R600a vapor-compression cycle balanced, VIP panels insulated, and ice chute frosty!' },
+};
+
+ACTIONS.escalator = {
+  id: 'escalator', verb: 'Ride Escalator!', stopVerb: 'Stop Escalator', emoji: '🪜', tab: 'Ride Escalator!',
+  hint: 'to drive the 16-step truss loop, test rush-hour load & reverse direction',
+  keys: KEYS_WASD, taps: { l: 'reverse', ' ': 'estop', h: 'estop' },
+  hud: [
+    { id: 'paxHr', label: 'PAX / HR', big: true },
+    { id: 'dir', label: 'Direction' },
+    { id: 'speedFpm', label: 'Step ft/min' },
+    { id: 'motorLoad', label: 'Worm-Gear Drive %', bar: true, max: 100 },
+  ],
+  controls: [
+    hold('up', '🟢 Full Speed', 'Drive 100 ft/min Step-Chain Loop (W / ↑)', 'up', true),
+    hold('down', '🟡 Sleep Creep', 'VFD Energy-Saver Idle Creep (S / ↓)', 'down'),
+    hold('boost', '🚇 Rush Hour', '9,000 Pax/Hr Peak Transit Load (Shift / B)', 'boost'),
+    tap('reverse', '🔄 Up / Down', 'Reverse Escalator Transit Direction (L)', 'reverse'),
+    tap('estop', '🛑 Comb E-Stop', 'Test Comb-Plate Safety Brake & Resume (Space / H)', 'estop'),
+  ],
+  checklist: [
+    { id: 'ride', label: 'Drive the continuous step-chain loop at 100 ft/min' },
+    { id: 'rush', label: 'Carry a peak 9,000 passengers/hr rush-hour surge' },
+    { id: 'reverse', label: 'Reverse escalator travel between UP and DOWN' },
+  ],
+  celebrate: { title: 'Transit Masterpiece!', text: 'Die-cast steps tracking cleanly across the 30° incline and flat comb-plate landings!' },
+};
+
+ACTIONS.gaming = ACTIONS.console = {
+  id: 'gaming', verb: 'Boot & Play!', stopVerb: 'Power Off', emoji: '🎮', tab: 'Boot & Play!',
+  hint: 'to boot 4K 120Hz graphics, ramp ray-tracing boost & pulse adaptive haptics',
+  keys: KEYS_WASD, taps: { ' ': 'haptic', l: 'rgb' },
+  hud: [
+    { id: 'fps', label: 'FPS', big: true },
+    { id: 'gpu', label: 'GPU Clock' },
+    { id: 'temp', label: 'Liquid Metal' },
+    { id: 'power', label: 'SoC Load %', bar: true, max: 100 },
+  ],
+  controls: [
+    hold('up', '🎮 Render 4K', 'Drive GPU Ray-Tracing & Blower Cooling (W / ↑)', 'up', true),
+    hold('down', '💤 Rest Mode', 'Drop to Low-Power Suspend State (S / ↓)', 'down'),
+    hold('boost', '🔥 120Hz Boost', 'Unlock 120 FPS PSSR Upscaling Overdrive (Shift / B)', 'boost'),
+    tap('haptic', '📳 Haptic Pulse', 'Fire Voice-Coil Haptics & Adaptive Triggers (Space)', 'haptic'),
+    tap('rgb', '🌈 RGB Lightbar', 'Cycle Console / Controller LED Light Blades (L)', 'rgb'),
+  ],
+  checklist: [
+    { id: 'boot', label: 'Boot up & render smooth 60+ FPS gameplay' },
+    { id: 'boost', label: 'Hit 120 FPS in high-refresh Ray-Tracing Boost' },
+    { id: 'haptic', label: 'Trigger DualSense voice-coil haptics & RGB blades' },
+  ],
+  celebrate: { title: 'Platinum Trophy Unlocked!', text: 'Locked 120 FPS ray-traced rendering, cool liquid-metal thermals, and crisp adaptive haptics!' },
+};
+
+ACTIONS['audio-xr'] = {
+  id: 'audio-xr', verb: 'Spatial & ANC!', stopVerb: 'Sleep Headset', emoji: '🎧', tab: 'Spatial & ANC!',
+  hint: 'to dial Active Noise Cancellation, launch 3D spatial audio & toggle passthrough',
+  keys: KEYS_WASD, taps: { ' ': 'spatial', l: 'passthrough' },
+  hud: [
+    { id: 'ancDb', label: 'ANC -dB', big: true },
+    { id: 'mode', label: 'Acoustic Mode' },
+    { id: 'latency', label: 'Photon/DSP' },
+    { id: 'immersion', label: 'Immersion %', bar: true, max: 100 },
+  ],
+  controls: [
+    hold('up', '🔇 Dial Immersion', 'Increase Crown Immersion & ANC Depth (W / ↑)', 'up', true),
+    hold('down', '🗣️ Ambient Ease', 'Soften Isolation for Room Awareness (S / ↓)', 'down'),
+    hold('boost', '🌌 Ultra Spatial', 'Full 360° Head-Tracked Dolby Spatial Field (Shift / B)', 'boost'),
+    tap('spatial', '🎵 Spatial Pulse', 'Emit 3D Ray-Traced Acoustic Wavefront (Space)', 'spatial'),
+    tap('passthrough', '👁️ Transparency', 'Toggle EyeSight / Transparency Passthrough (L)', 'passthrough'),
+  ],
+  checklist: [
+    { id: 'anc', label: 'Cancel over -35 dB of outside cabin roar with ANC' },
+    { id: 'spatial', label: 'Project a 360° head-tracked Spatial Audio wave' },
+    { id: 'passthrough', label: 'Toggle sub-12ms Passthrough / Transparency mode' },
+  ],
+  celebrate: { title: 'Pure Spatial Immersion!', text: '48,000-Hz anti-noise lock, ray-traced 3D acoustics, and sub-12ms passthrough!' },
+};
+
+ACTIONS.cameras = ACTIONS.camera = {
+  id: 'cameras', verb: 'Focus & Shoot!', stopVerb: 'Stow Camera', emoji: '📷', tab: 'Focus & Shoot!',
+  hint: 'to rack optical focus, trip the shutter/flash & roll high-speed burst or 70mm film',
+  keys: KEYS_WASD, taps: { ' ': 'shutter', l: 'flash' },
+  hud: [
+    { id: 'shutterHud', label: 'SHUTTER', big: true },
+    { id: 'aperture', label: 'Iris / Stop' },
+    { id: 'fpsHud', label: 'Drive Rate' },
+    { id: 'buffer', label: 'Focus / Film %', bar: true, max: 100 },
+  ],
+  controls: [
+    hold('up', '🔭 Focus / Roll', 'Drive Autofocus Motors & Film Transport (W / ↑)', 'up', true),
+    hold('down', '🌗 Stop Down', 'Close Iris Blades for Deep Depth-of-Field (S / ↓)', 'down'),
+    hold('boost', '⚡ High-Speed Burst', '30 FPS Continuous Burst / 24 FPS IMAX Roll (Shift / B)', 'boost'),
+    tap('shutter', '📸 Snap Shutter', 'Actuate Focal-Plane Shutter / Eject Print (Space)', 'shutter'),
+    tap('flash', '⚡ Strobe / ND', 'Fire Xenon Strobe or Toggle Studio Light (L)', 'flash'),
+  ],
+  checklist: [
+    { id: 'focus', label: 'Lock precision optical focus across the frame' },
+    { id: 'shutter', label: 'Trip the mechanical shutter (or eject an instant print!)' },
+    { id: 'burst', label: 'Run a high-speed continuous burst or 24-fps film roll' },
+  ],
+  celebrate: { title: 'Pulitzer & Oscar Frame!', text: 'Tack-sharp optical focus, crisp shutter timing, and full-frame light capture!' },
+};
+
 ACTIONS.everyday = ACTIONS.toilet;
 
 export const ACTION_CATEGORY_IDS = Object.keys(ACTIONS);
@@ -451,10 +602,57 @@ export function getAction(categoryId, modelId) {
   const key = String(categoryId || 'car').toLowerCase();
   const mid = String(modelId || '').toLowerCase();
   if (key === 'everyday') {
+    if (mid.includes('dyson') || mid.includes('vacuum')) return ACTIONS.vacuum;
+    if (mid.includes('fridge') || mid.includes('refrigerator')) return ACTIONS.fridge;
+    if (mid.includes('escalator')) return ACTIONS.escalator;
     if (mid.includes('espresso') || mid.includes('coffee')) return ACTIONS.espresso;
     if (mid.includes('elevator')) return ACTIONS.elevator;
     if (mid.includes('lock')) return ACTIONS.lock;
     return ACTIONS.toilet;
+  }
+  if (key === 'gaming' || key === 'console' || key === 'ps5') {
+    if (mid.includes('dualsense') || mid.includes('controller')) {
+      return {
+        ...ACTIONS.gaming,
+        emoji: '🕹️',
+        hint: 'to wind worm-gear adaptive triggers, pulse dual voice-coil haptics & glow the lightbar',
+      };
+    }
+    if (mid.includes('handheld') || mid.includes('switch')) {
+      return {
+        ...ACTIONS.gaming,
+        emoji: '📱',
+        hint: 'to dock for boosted TV clocks, spin the copper micro-blower & pulse HD Rumble',
+      };
+    }
+    return ACTIONS.gaming;
+  }
+  if (key === 'audio-xr' || key === 'vision' || key === 'headphones' || key === 'airpods') {
+    if (mid.includes('vision')) {
+      return {
+        ...ACTIONS['audio-xr'],
+        emoji: '🥽',
+        hint: 'to dial the Digital Crown immersion, render 23M-pixel spatial windows & glow EyeSight',
+      };
+    }
+    return ACTIONS['audio-xr'];
+  }
+  if (key === 'cameras' || key === 'camera') {
+    if (mid.includes('instant')) {
+      return {
+        ...ACTIONS.cameras,
+        emoji: '📸',
+        hint: 'to charge the 330V Xenon flash, snap the shutter & eject an instant photo through the rollers',
+      };
+    }
+    if (mid.includes('imax')) {
+      return {
+        ...ACTIONS.cameras,
+        emoji: '🎬',
+        hint: 'to roll 65mm 15-perf film at 336 ft/min through the Rolling-Loop gate & spinning mirror shutter',
+      };
+    }
+    return ACTIONS.cameras;
   }
   if (key === 'watches' || key === 'watch') {
     if (mid.includes('grandfather') || mid.includes('clock')) {

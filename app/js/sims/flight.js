@@ -478,19 +478,23 @@ export class FlightSim extends BaseSim {
     if (name === 'unibeam' && this.isIronMan) {
       this.st.unibeamTimer = this.st.unibeamTimer > 0.2 ? 0 : 2.8;
       if (this.st.unibeamTimer > 0) this.check('unibeam');
+      this.playTrigger('unibeam');
       return this.st.unibeamTimer > 0;
     }
     if (name === 'flaps' || (name === 'gear' && this.fixedGear)) {
       this.st.flapIdx = (this.st.flapIdx + 1) % FLAP_DETENTS.length;
       if (this.st.flapIdx > 0) this.check('flaps');
+      this.playTrigger('flaps');
       return this.st.flapIdx > 0;
     }
     if (name === 'gear' && !this.fixedGear) {
       this.st.gearDown = !this.st.gearDown;
+      this.playTrigger('gear');
       return !this.st.gearDown;
     }
     if (name === 'lights') {
       this.st.lightsOn = !this.st.lightsOn;
+      this.playTrigger('lights');
       return this.st.lightsOn;
     }
     return false;
@@ -758,6 +762,7 @@ export class FlightSim extends BaseSim {
       throttleBar: Math.round(clamp(st.throttle * (inp.boost ? 110 : 100), 0, 100)),
       soundRpm: this.isProp ? propRpm : 950 + st.throttle * 7900 + (burnerActive || st.unibeamTimer > 0 ? 1400 : 0),
       soundThrottle: clamp(st.throttle + (burnerActive || st.unibeamTimer > 0 ? 0.2 : 0), 0, 1),
+      soundExtra: { burner: burnerActive ? 1 : 0, mach },
     });
   }
 }

@@ -169,7 +169,7 @@ const UI_STRINGS = {
     "soundLabel": "Sound",
     "langLabel": "Language",
     "homeHeroTitle": "Explode & explore how the world works from the inside out!",
-    "homeHeroLead": "Pick any real-world supercar, airliner, submarine, smartphone, rocket engine, laptop, or building—switch between 67 iconic models, blow them apart in 3D, and earn stars!",
+    "homeHeroLead": "Pick any supercar, airliner, submarine, gaming console, spatial headset, camera, or appliance—switch between {totalModels} iconic 3D models, blow them apart, and earn stars!",
     "homeFooterNote": "Inside Out Studio • Interactive 3D engineering lab with 13-language Chirp 3 HD voice narration.",
     "resetStarsBtn": "Reset my stars",
     "modelsBadge": "🎛️ {count} Realistic 3D Models",
@@ -2499,64 +2499,250 @@ const CATEGORY_I18N = {
   },
   "everyday": {
     "zh-CN": {
-      "name": "日常工程奇迹",
-      "fullName": "虹吸马桶、摩天楼电梯、弹子锁与意式咖啡机",
-      "tagline": "重力虹吸冲水马桶 • 高层无齿轮曳引电梯 • 黄铜五弹子锁芯 • 双锅炉 9-Bar 意式浓缩咖啡机"
+      "name": "日常工程与家电",
+      "fullName": "戴森 V15 吸尘器、法式对开门冰箱、商用扶梯、电梯、虹吸马桶与咖啡机",
+      "tagline": "戴森 V15 激光气旋吸尘器 • 法式双循环热泵冰箱 • 重载自动扶梯 • 高层曳引电梯 • 虹吸马桶 • 弹子锁 • 9-Bar 意式咖啡机"
     },
     "zh-HK": {
-      "name": "日常工程奇蹟",
-      "fullName": "虹吸座廁、摩天大樓升降機、彈子鎖同意式咖啡機",
-      "tagline": "重力虹吸沖水座廁 • 高層無齒輪曳引升降機 • 黃銅五彈子鎖芯 • 雙鍋爐 9-Bar 意式濃縮咖啡機"
+      "name": "日常工程同家電",
+      "fullName": "Dyson V15 吸塵機、法式雪櫃、扶手電梯、升降機、虹吸座廁同咖啡機",
+      "tagline": "Dyson V15 激光氣旋吸塵機 • 法式雙門變頻雪櫃 • 重載扶手電梯 • 無齒輪升降機 • 虹吸座廁 • 彈子鎖 • 意式咖啡機"
     },
     "es": {
       "name": "Ingeniería Cotidiana",
-      "fullName": "Inodoro de Sifón, Ascensor, Cerradura de Cilindro y Cafetera Espresso",
-      "tagline": "Inodoro de Sifón por Gravedad • Ascensor de Tracción • Cerradura de 5 Pernos de Latón • Máquina de Café Espresso de 9 Bares"
+      "fullName": "Aspiradora Dyson V15, Frigorífico French-Door, Escalera Mecánica, Ascensor y Espresso",
+      "tagline": "Dyson V15 Detect • Frigorífico French-Door • Escalera Mecánica Comercial • Ascensor • Inodoro de Sifón • Cerradura • Cafetera Espresso"
     },
     "es-419": {
       "name": "Ingeniería Cotidiana",
-      "fullName": "Mecanismos Increíbles que Usas Todos los Días",
-      "tagline": "Inodoro de Sifón • Elevador de Pasajeros por Tracción • Cerradura de Cilindro • Cafetera Expreso Italiana"
+      "fullName": "Aspiradora Dyson V15, Refrigerador French-Door, Escalera Eléctrica, Elevador y Cafetera",
+      "tagline": "Aspiradora Ciclónica Dyson V15 • Refrigerador French-Door • Escalera Eléctrica • Elevador • Inodoro de Sifón • Cerradura • Cafetera Expreso"
     },
     "fr": {
       "name": "Ingénierie du Quotidien",
-      "fullName": "Toilettes à Siphon, Ascenseur, Serrure à Goupilles & Machine Expresso",
-      "tagline": "Toilettes à Siphon Gravitaire • Ascenseur à Traction • Serrure Cylindrique à 5 Goupilles • Machine Expresso 9 Bars"
+      "fullName": "Aspirateur Dyson V15, Réfrigérateur Multi-Portes, Escalator, Ascenseur & Expresso",
+      "tagline": "Dyson V15 Detect • Réfrigérateur French-Door • Escalator Commercial • Ascenseur • Toilettes à Siphon • Serrure • Machine Expresso"
     },
     "de": {
       "name": "Alltagstechnik",
-      "fullName": "Siphon-WC, Aufzug,Stiftzylinderschloss & Siebträgermaschine",
-      "tagline": "Schwerkraft-Siphon-WC • Hochhaus-Seilaufzug • Messing-Stiftzylinderschloss • 9-Bar-Dualboiler-Espressomaschine"
+      "fullName": "Dyson V15 Staubsauger, French-Door-Kühlschrank, Rolltreppe, Aufzug & Siebträger",
+      "tagline": "Dyson V15 Zyklonsauger • French-Door-Kühlschrank • Schwerlast-Rolltreppe • Seilaufzug • Siphon-WC • Zylinderschloss • Espressomaschine"
     },
     "nl": {
       "name": "Alledaagse Techniek",
-      "fullName": "Mechanica die je Elke Dag Gebruikt",
-      "tagline": "Sifon-spoeltoilet • Tractie-personenlift • Cilinderslot met stiftjes • Italiaanse espressomachine"
+      "fullName": "Dyson V15 Stofzuiger, French-Door Koelkast, Roltrap, Lift & Espressomachine",
+      "tagline": "Dyson V15 cycloonstofzuiger • French-door koelkast • Roltrap • Personenlift • Sifontoilet • Cilinderslot • Espressomachine"
     },
     "pt": {
       "name": "Engenharia do Dia a Dia",
-      "fullName": "Vaso Sanitário de Sifão, Elevador, Fechadura e Máquina de Espresso",
-      "tagline": "Vaso Sanitário de Sifão • Elevador de Tração • Fechadura de Pinos de Latão • Máquina de Espresso 9 Bar"
+      "fullName": "Aspirador Dyson V15, Geladeira French-Door, Escada Rolante, Elevador e Espresso",
+      "tagline": "Dyson V15 Detect • Geladeira French-Door • Escada Rolante Comercial • Elevador • Vaso de Sifão • Fechadura • Máquina de Espresso"
     },
     "it": {
       "name": "Ingegneria Quotidiana",
-      "fullName": "WC a Sifone, Ascensore, Serratura a Cilindro e Macchina Espresso",
-      "tagline": "WC a Sifone a Gravità • Ascensore a Trazione • Serratura a 5 Pistoncini in Ottone • Macchina per Espresso a 9 Bar"
+      "fullName": "Aspirapolvere Dyson V15, Frigorifero French-Door, Scala Mobile, Ascensore ed Espresso",
+      "tagline": "Dyson V15 Detect • Frigorifero French-Door • Scala Mobile • Ascensore • WC a Sifone • Serratura • Macchina Espresso"
     },
     "ja": {
       "name": "身近なエンジニアリング",
-      "fullName": "サイフォン式トイレ・エレベーター・ピンタンブラー錠・エスプレッソマシン",
-      "tagline": "重力サイフォン式水洗トイレ • 超高層ロープ式エレベーター • 真鍮製5ピンシリンダー錠 • 9気圧デュアルボイラー・エスプレッソマシン"
+      "fullName": "ダイソンV15掃除機・観音開き冷蔵庫・エスカレーター・エレベーター・エスプレッソマシン",
+      "tagline": "ダイソン V15 サイクロン掃除機 • フレンチドア冷蔵庫 • 業務用エスカレーター • エレベーター • サイフォン式トイレ • シリンダー錠 • エスプレッソマシン"
     },
     "ko": {
       "name": "일상 속 공학 기술",
-      "fullName": "사이펀 변기, 엘리베이터, 핀 텀블러 자물쇠 & 에스프레소 머신",
-      "tagline": "중력 사이펀 수세식 변기 • 초고층 권상기 엘리베이터 • 황동 5핀 실린더 자물쇠 • 듀얼 보일러 9바 에스프레소 머신"
+      "fullName": "다이슨 V15 청소기, 프렌치도어 냉장고, 에스컬레이터, 엘리베이터 & 에스프레소 머신",
+      "tagline": "다이슨 V15 무선 청소기 • 프렌치도어 인버터 냉장고 • 상업용 에스컬레이터 • 엘리베이터 • 사이펀 변기 • 실린더 자물쇠 • 에스프레소 머신"
     },
     "ar": {
       "name": "روائع الهندسة اليومية",
-      "fullName": "مرحاض السيفون والمصعد وقفل الأسطوانة وآلة الإسبريسو",
-      "tagline": "مرحاض التدفق بالسيفون الجاذبي • مصعد الجر بدون تروس • قفل أسطواني نحاسي بـ 5 دبابيس • آلة إسبريسو بضغط 9 بار"
+      "fullName": "مكنسة دايسون V15 وثلاجة الأبواب الفرنسية والسلم المتحرك والمصعد وآلة الإسبريسو",
+      "tagline": "مكنسة دايسون V15 الإعصارية • ثلاجة المضخة الحرارية • سلم كهربائي تجاري • مصعد الجر • مرحاض السيفون • قفل أسطواني • آلة إسبريسو"
+    }
+  },
+  "gaming": {
+    "zh-CN": {
+      "name": "游戏主机与手柄",
+      "fullName": "PlayStation 5 Pro、DualSense 自适应手柄与混合掌机",
+      "tagline": "PlayStation 5 Pro 主机 • DualSense 自适应扳机手柄 • 便携 OLED 混合游戏掌机"
+    },
+    "zh-HK": {
+      "name": "遊戲主機同手掣",
+      "fullName": "PlayStation 5 Pro、DualSense 自適應手掣同混合手提遊戲機",
+      "tagline": "PlayStation 5 Pro 主機 • DualSense 觸覺回饋手掣 • 手提 OLED 混合遊戲機"
+    },
+    "es": {
+      "name": "Consolas de Videojuegos",
+      "fullName": "PlayStation 5 Pro, Mando DualSense y Consola Híbrida OLED",
+      "tagline": "Consola PlayStation 5 Pro • Mando Inalámbrico DualSense • Consola Portátil Híbrida OLED"
+    },
+    "es-419": {
+      "name": "Consolas de Videojuegos",
+      "fullName": "PlayStation 5 Pro, Control DualSense y Consola Híbrida OLED",
+      "tagline": "Consola PlayStation 5 Pro • Control Adaptativo DualSense • Consola Portátil Híbrida OLED"
+    },
+    "fr": {
+      "name": "Consoles de Jeux",
+      "fullName": "PlayStation 5 Pro, Manette DualSense & Console Hybride OLED",
+      "tagline": "Console PlayStation 5 Pro • Manette Adaptative DualSense • Console Portable Hybride OLED"
+    },
+    "de": {
+      "name": "Spielkonsolen",
+      "fullName": "PlayStation 5 Pro, DualSense-Controller & Hybrid-OLED-Konsole",
+      "tagline": "PlayStation 5 Pro Konsole • DualSense Adaptive Controller • Tragbare Hybrid-OLED-Konsole"
+    },
+    "nl": {
+      "name": "Spelcomputers",
+      "fullName": "PlayStation 5 Pro, DualSense-controller & Hybride OLED-console",
+      "tagline": "PlayStation 5 Pro-console • DualSense adaptieve controller • Draagbare hybride OLED-console"
+    },
+    "pt": {
+      "name": "Consoles de Videogame",
+      "fullName": "PlayStation 5 Pro, Controle DualSense e Console Híbrido OLED",
+      "tagline": "Console PlayStation 5 Pro • Controle Adaptativo DualSense • Console Portátil Híbrido OLED"
+    },
+    "it": {
+      "name": "Console da Gioco",
+      "fullName": "PlayStation 5 Pro, Controller DualSense e Console Ibrida OLED",
+      "tagline": "Console PlayStation 5 Pro • Controller Adattivo DualSense • Console Portatile Ibrida OLED"
+    },
+    "ja": {
+      "name": "ゲーム機＆コントローラー",
+      "fullName": "PlayStation 5 Pro・DualSense・ハイブリッドOLED携帯ゲーム機",
+      "tagline": "PlayStation 5 Pro 本体 • DualSense ワイヤレスコントローラー • ハイブリッドOLED携帯ゲーム機"
+    },
+    "ko": {
+      "name": "게임 콘솔 & 컨트롤러",
+      "fullName": "PlayStation 5 Pro, DualSense 컨트롤러 & 하이브리드 OLED 콘솔",
+      "tagline": "PlayStation 5 Pro 콘솔 • DualSense 어댑티브 컨트롤러 • 휴대용 하이브리드 OLED 콘솔"
+    },
+    "ar": {
+      "name": "منصات الألعاب",
+      "fullName": "بلايستيشن 5 برو وذراع DualSense وجهاز الألعاب الهجين OLED",
+      "tagline": "جهاز PlayStation 5 Pro • وحدة تحكم DualSense التكيفية • جهاز ألعاب محمول هجين OLED"
+    }
+  },
+  "audio-xr": {
+    "zh-CN": {
+      "name": "空间计算与声学耳机",
+      "fullName": "Apple Vision Pro 空间计算机、AirPods Pro 2 与头戴降噪耳机",
+      "tagline": "Apple Vision Pro 空间计算头显 • AirPods Pro 2 与 MagSafe 充电盒 • 旗舰头戴式主动降噪耳机"
+    },
+    "zh-HK": {
+      "name": "空間計算同降噪耳機",
+      "fullName": "Apple Vision Pro 空間電腦、AirPods Pro 2 同頭戴式降噪耳機",
+      "tagline": "Apple Vision Pro 空間電腦 • AirPods Pro 2 同 MagSafe 充電盒 • 旗艦頭戴式主動降噪耳機"
+    },
+    "es": {
+      "name": "Audio y XR Espacial",
+      "fullName": "Apple Vision Pro, AirPods Pro 2 y Auriculares ANC",
+      "tagline": "Ordenador Espacial Apple Vision Pro • AirPods Pro 2 + Estuche MagSafe • Auriculares ANC de Diadema"
+    },
+    "es-419": {
+      "name": "Audio y XR Espacial",
+      "fullName": "Apple Vision Pro, AirPods Pro 2 y Audífonos con Cancelación Activa",
+      "tagline": "Computadora Espacial Apple Vision Pro • AirPods Pro 2 + Estuche MagSafe • Audífonos Inalámbricos ANC"
+    },
+    "fr": {
+      "name": "Audio & XR Spatial",
+      "fullName": "Apple Vision Pro, AirPods Pro 2 & Casque à Réduction de Bruit",
+      "tagline": "Ordinateur Spatial Apple Vision Pro • AirPods Pro 2 + Boîtier MagSafe • Casque Circum-Auriculaire ANC"
+    },
+    "de": {
+      "name": "Spatial XR & Audio",
+      "fullName": "Apple Vision Pro, AirPods Pro 2 & ANC-Kopfhörer",
+      "tagline": "Apple Vision Pro Räumlicher Computer • AirPods Pro 2 + MagSafe Case • Over-Ear-ANC-Kopfhörer"
+    },
+    "nl": {
+      "name": "Spatial XR & Audio",
+      "fullName": "Apple Vision Pro, AirPods Pro 2 & ANC-koptelefoon",
+      "tagline": "Apple Vision Pro ruimtelijke computer • AirPods Pro 2 + MagSafe-case • Over-ear ANC-koptelefoon"
+    },
+    "pt": {
+      "name": "Áudio e XR Espacial",
+      "fullName": "Apple Vision Pro, AirPods Pro 2 e Fones Over-Ear ANC",
+      "tagline": "Computador Espacial Apple Vision Pro • AirPods Pro 2 + Estojo MagSafe • Fones ANC Topo de Linha"
+    },
+    "it": {
+      "name": "Audio e XR Spaziale",
+      "fullName": "Apple Vision Pro, AirPods Pro 2 e Cuffie Over-Ear ANC",
+      "tagline": "Computer Spaziale Apple Vision Pro • AirPods Pro 2 + Custodia MagSafe • Cuffie Wireless ANC"
+    },
+    "ja": {
+      "name": "空間XR＆オーディオ",
+      "fullName": "Apple Vision Pro・AirPods Pro 2・ANCヘッドホン",
+      "tagline": "Apple Vision Pro 空間コンピュータ • AirPods Pro 2＆MagSafeケース • フラッグシップANCヘッドホン"
+    },
+    "ko": {
+      "name": "공간 XR & 오디오",
+      "fullName": "Apple Vision Pro, AirPods Pro 2 & 노이즈 캔슬링 헤드폰",
+      "tagline": "Apple Vision Pro 공간 컴퓨터 • AirPods Pro 2 + MagSafe 케이스 • 플래그십 오버이어 ANC 헤드폰"
+    },
+    "ar": {
+      "name": "الواقع المكاني والصوتيات",
+      "fullName": "نظارة Apple Vision Pro وسماعات AirPods Pro 2 وسماعات العزل الصوتي",
+      "tagline": "حاسوب Apple Vision Pro المكاني • سماعات AirPods Pro 2 وعلبة MagSafe • سماعات رأس لاسلكية بعزل الضوضاء"
+    }
+  },
+  "cameras": {
+    "zh-CN": {
+      "name": "专业相机与电影光学",
+      "fullName": "全画幅微单相机、复古拍立得与 IMAX 70毫米胶片摄影机",
+      "tagline": "全画幅专业微单与 f/2.8 变焦镜头 • 复古一次成像拍立得相机 • 好莱坞 IMAX 70mm 15齿孔摄影机"
+    },
+    "zh-HK": {
+      "name": "專業相機同電影光學",
+      "fullName": "全片幅無反相機、復古即影即有同 IMAX 70毫米菲林攝影機",
+      "tagline": "全片幅無反相機配 f/2.8 變焦鏡 • 復古即影即有相機 • 荷里活 IMAX 70mm 15齒孔攝影機"
+    },
+    "es": {
+      "name": "Cámaras y Óptica",
+      "fullName": "Cámara Sin Espejo Full-Frame, Cámara Instantánea y Cine IMAX 70mm",
+      "tagline": "Cámara Mirrorless Full-Frame f/2.8 • Cámara Instantánea Retro • Cámara de Cine IMAX 70mm 15-Perf"
+    },
+    "es-419": {
+      "name": "Cámaras y Óptica",
+      "fullName": "Cámara Mirrorless Full-Frame, Cámara Instantánea y Cámara de Cine IMAX 70mm",
+      "tagline": "Cámara Sin Espejo Full-Frame f/2.8 • Cámara Instantánea Retro • Cámara de Cine IMAX 70mm de 15 Perforaciones"
+    },
+    "fr": {
+      "name": "Caméras & Optique",
+      "fullName": "Hybride Plein Format, Appareil Instantané & Caméra IMAX 70 mm",
+      "tagline": "Hybride Plein Format & Zoom f/2.8 • Appareil Photo Instantané Rétro • Caméra Cinéma IMAX 70 mm 15-Perf"
+    },
+    "de": {
+      "name": "Kameras & Optik",
+      "fullName": "Vollformat-Systemkamera, Sofortbildkamera & IMAX-70-mm-Filmkamera",
+      "tagline": "Vollformat-Systemkamera & f/2.8-Zoom • Retro-Sofortbildkamera • IMAX 70 mm 15-Perf Kinokamera"
+    },
+    "nl": {
+      "name": "Camera’s & Optica",
+      "fullName": "Full-frame Systeemcamera, Instantcamera & IMAX 70mm-filmcamera",
+      "tagline": "Full-frame systeemcamera & f/2.8-zoom • Retro instantcamera • IMAX 70mm 15-perf bioscoopcamera"
+    },
+    "pt": {
+      "name": "Câmeras e Óptica",
+      "fullName": "Mirrorless Full-Frame, Câmera Instantânea e Câmera de Cinema IMAX 70mm",
+      "tagline": "Câmera Mirrorless Full-Frame f/2.8 • Câmera Instantânea Retrô • Câmera de Cinema IMAX 70mm 15-Perf"
+    },
+    "it": {
+      "name": "Fotocamere e Ottica",
+      "fullName": "Mirrorless Full-Frame, Fotocamera Istantanea e Cinepresa IMAX 70mm",
+      "tagline": "Mirrorless Full-Frame & Zoom f/2.8 • Fotocamera Istantanea Retrò • Cinepresa IMAX 70mm 15-Perf"
+    },
+    "ja": {
+      "name": "カメラ＆光学レンズ",
+      "fullName": "フルサイズミラーレス・インスタントカメラ・IMAX 70mm映画カメラ",
+      "tagline": "フルサイズミラーレス＆F2.8ズーム • レトロ・インスタントカメラ • IMAX 70mm 15パーフォレーション撮影機"
+    },
+    "ko": {
+      "name": "카메라 & 광학 기술",
+      "fullName": "풀프레임 미러리스, 즉석 필름 카메라 & IMAX 70mm 시네마 카메라",
+      "tagline": "풀프레임 미러리스 & f/2.8 줌 렌즈 • 레트로 즉석 필름 카메라 • IMAX 70mm 15퍼프 영화 카메라"
+    },
+    "ar": {
+      "name": "الكاميرات والبصريات",
+      "fullName": "كاميرا الإطار الكامل بدون مرآة والكاميرا الفورية وكاميرا سينما IMAX 70mm",
+      "tagline": "كاميرا احترافية بعدسة f/2.8 • كاميرا تصوير فوري كلاسيكية • كاميرا هوليوود السينمائية IMAX 70mm"
     }
   }
 };
@@ -3167,6 +3353,160 @@ const ACTION_VERB_I18N = {
     "ja": "ホバリング飛行！",
     "ko": "호버링 비행!",
     "ar": "تحليق مروحية!"
+  },
+  "Spin Cyclones!": {
+    "zh-CN": "启动气旋吸尘！",
+    "zh-HK": "啟動氣旋吸塵！",
+    "es": "¡Activar ciclones!",
+    "es-419": "¡Activar ciclones!",
+    "fr": "Lancer les cyclones !",
+    "de": "Zyklone starten!",
+    "nl": "Start cyclonen!",
+    "pt": "Ativar ciclones!",
+    "it": "Avvia cicloni!",
+    "ja": "サイクロン吸引！",
+    "ko": "사이클론 가동!",
+    "ar": "شغّل الإعصار!"
+  },
+  "Stop Vacuum": {
+    "zh-CN": "停止吸尘",
+    "zh-HK": "停止吸塵",
+    "es": "Apagar aspiradora",
+    "es-419": "Apagar aspiradora",
+    "fr": "Arrêter l’aspirateur",
+    "de": "Sauger stoppen",
+    "nl": "Stofzuiger stoppen",
+    "pt": "Desligar aspirador",
+    "it": "Ferma aspirapolvere",
+    "ja": "吸引停止",
+    "ko": "청소기 정지",
+    "ar": "إيقاف المكنسة"
+  },
+  "Cool & Dispense!": {
+    "zh-CN": "极速制冷与制冰！",
+    "zh-HK": "極速製冷同出冰！",
+    "es": "¡Enfriar y dispensar!",
+    "es-419": "¡Enfriar y servir hielo!",
+    "fr": "Refroidir & Glace !",
+    "de": "Kühlen & Eis!",
+    "nl": "Koelen & ijs tappen!",
+    "pt": "Gelar e servir gelo!",
+    "it": "Raffredda e ghiaccio!",
+    "ja": "急冷＆氷ディスペンス！",
+    "ko": "급속 냉각 & 얼음 추출!",
+    "ar": "تبريد وصنع الثلج!"
+  },
+  "Stop Cooling": {
+    "zh-CN": "退出制冷模拟",
+    "zh-HK": "退出製冷模擬",
+    "es": "Detener ciclo",
+    "es-419": "Detener ciclo",
+    "fr": "Arrêter le cycle",
+    "de": "Kühlung beenden",
+    "nl": "Koeling stoppen",
+    "pt": "Parar resfriamento",
+    "it": "Ferma ciclo",
+    "ja": "冷却シミュレーション終了",
+    "ko": "냉각 중지",
+    "ar": "إيقاف التبريد"
+  },
+  "Ride Escalator!": {
+    "zh-CN": "启动自动扶梯！",
+    "zh-HK": "啟動扶手電梯！",
+    "es": "¡Activar escalera!",
+    "es-419": "¡Subir a la escalera!",
+    "fr": "Lancer l’escalator !",
+    "de": "Rolltreppe starten!",
+    "nl": "Start roltrap!",
+    "pt": "Ligar escada rolante!",
+    "it": "Avvia scala mobile!",
+    "ja": "エスカレーター稼働！",
+    "ko": "에스컬레이터 가동!",
+    "ar": "شغّل السلم المتحرك!"
+  },
+  "Stop Escalator": {
+    "zh-CN": "停梯",
+    "zh-HK": "停梯",
+    "es": "Detener escalera",
+    "es-419": "Detener escalera",
+    "fr": "Arrêter l’escalator",
+    "de": "Rolltreppe stoppen",
+    "nl": "Roltrap stoppen",
+    "pt": "Parar escada",
+    "it": "Ferma scala mobile",
+    "ja": "エスカレーター停止",
+    "ko": "에스컬레이터 정지",
+    "ar": "إيقاف السلم"
+  },
+  "Boot & Play!": {
+    "zh-CN": "开机畅玩！",
+    "zh-HK": "開機打機！",
+    "es": "¡Encender y jugar!",
+    "es-419": "¡Prender y jugar!",
+    "fr": "Démarrer & jouer !",
+    "de": "Starten & Spielen!",
+    "nl": "Opstarten & spelen!",
+    "pt": "Ligar e jogar!",
+    "it": "Avvia e gioca!",
+    "ja": "起動してプレイ！",
+    "ko": "부팅 & 플레이!",
+    "ar": "شغّل والعب!"
+  },
+  "Spatial & ANC!": {
+    "zh-CN": "空间音频与降噪！",
+    "zh-HK": "空間音訊同降噪！",
+    "es": "¡Audio Espacial y ANC!",
+    "es-419": "¡Audio Espacial y ANC!",
+    "fr": "Audio Spatial & ANC !",
+    "de": "Spatial Audio & ANC!",
+    "nl": "Spatial Audio & ANC!",
+    "pt": "Áudio Espacial e ANC!",
+    "it": "Audio Spaziale e ANC!",
+    "ja": "空間オーディオ＆ANC！",
+    "ko": "공간 음향 & 노이즈 캔슬링!",
+    "ar": "الصوت المكاني وعزل الضوضاء!"
+  },
+  "Sleep Headset": {
+    "zh-CN": "休眠待机",
+    "zh-HK": "休眠待機",
+    "es": "Modo reposo",
+    "es-419": "Modo reposo",
+    "fr": "Mise en veille",
+    "de": "Ruhezustand",
+    "nl": "Slaapstand",
+    "pt": "Modo repouso",
+    "it": "Sospendi",
+    "ja": "スリープ",
+    "ko": "절전 모드",
+    "ar": "وضع السكون"
+  },
+  "Focus & Shoot!": {
+    "zh-CN": "对焦拍摄！",
+    "zh-HK": "對焦影相！",
+    "es": "¡Enfocar y disparar!",
+    "es-419": "¡Enfocar y capturar!",
+    "fr": "Mise au point & photo !",
+    "de": "Fokus & Auslösen!",
+    "nl": "Scherpstellen & klik!",
+    "pt": "Focar e fotografar!",
+    "it": "Fuoco e scatta!",
+    "ja": "フォーカス＆撮影！",
+    "ko": "포커스 & 촬영!",
+    "ar": "ضبط البؤرة والتصوير!"
+  },
+  "Stow Camera": {
+    "zh-CN": "收起相机",
+    "zh-HK": "收起相機",
+    "es": "Guardar cámara",
+    "es-419": "Guardar cámara",
+    "fr": "Ranger la caméra",
+    "de": "Kamera verstauen",
+    "nl": "Camera opbergen",
+    "pt": "Guardar câmera",
+    "it": "Riponi fotocamera",
+    "ja": "撮影終了",
+    "ko": "촬영 종료",
+    "ar": "إيقاف التصوير"
   }
 };
 
@@ -4722,6 +5062,174 @@ const MODEL_NAME_I18N = {
     "ja": "NASA アポロ計画 サターンV型月ロケット",
     "ko": "NASA 아폴로 새턴 V 달 탐사 로켓",
     "ar": "صاروخ القمر ناسا أبولو ساتورن 5"
+  },
+  "dyson-v15-vacuum": {
+    "zh-CN": "戴森 V15 Detect 激光无线气旋吸尘器",
+    "zh-HK": "Dyson V15 Detect 激光無線氣旋吸塵機",
+    "es": "Aspiradora Ciclónica Inalámbrica Dyson V15 Detect",
+    "es-419": "Aspiradora Ciclónica Inalámbrica Dyson V15 Detect",
+    "fr": "Aspirateur Cyclonique Sans Fil Dyson V15 Detect",
+    "de": "Kabelloser Zyklonsauger Dyson V15 Detect",
+    "nl": "Dyson V15 Detect Draadloze Cycloonstofzuiger",
+    "pt": "Aspirador Ciclônico Sem Fio Dyson V15 Detect",
+    "it": "Aspirapolvere Ciclonico Senza Fili Dyson V15 Detect",
+    "ja": "ダイソン V15 Detect コードレスサイクロン掃除機",
+    "ko": "다이슨 V15 디텍트 무선 사이클론 청소기",
+    "ar": "مكنسة دايسون V15 Detect اللاسلكية الإعصارية"
+  },
+  "french-door-refrigerator": {
+    "zh-CN": "不锈钢法式对开门热泵变频冰箱",
+    "zh-HK": "不鏽鋼法式雙門變頻熱泵雪櫃",
+    "es": "Frigorífico French-Door de Acero Inoxidable con Bomba de Calor",
+    "es-419": "Refrigerador French-Door Inverter de Acero Inoxidable",
+    "fr": "Réfrigérateur Multi-Portes Inox à Pompe à Chaleur",
+    "de": "Edelstahl-French-Door-Wärmepumpen-Kühlschrank",
+    "nl": "Roestvrijstalen French-Door Inverter-koelkast",
+    "pt": "Geladeira French-Door Inox Inverter",
+    "it": "Frigorifero French-Door Inox a Pompa di Calore",
+    "ja": "ステンレス製フレンチドア・ヒートポンプ冷蔵庫",
+    "ko": "스테인리스 프렌치도어 인버터 냉장고",
+    "ar": "ثلاجة الأبواب الفرنسية المصنوعة من الفولاذ المقاوم للصدأ"
+  },
+  "commercial-escalator": {
+    "zh-CN": "重载地铁与商场商用自动扶梯",
+    "zh-HK": "重載地鐵及商場商用扶手電梯",
+    "es": "Escalera Mecánica Comercial de Servicio Pesado",
+    "es-419": "Escalera Eléctrica Comercial de Uso Pesado",
+    "fr": "Escalator Commercial Grand Trafic",
+    "de": "Schwerlast-Verkehrsrolltreppe",
+    "nl": "Zware Commerciële Roltrap",
+    "pt": "Escada Rolante Comercial de Alta Capacidade",
+    "it": "Scala Mobile Commerciale ad Alta Capacità",
+    "ja": "ヘビーデューティ業務用エスカレーター",
+    "ko": "대용량 상업용 에스컬레이터",
+    "ar": "سلم كهربائي تجاري عالي التحمل"
+  },
+  "ps5-pro-console": {
+    "zh-CN": "PlayStation 5 Pro 次世代家用游戏主机",
+    "zh-HK": "PlayStation 5 Pro 次世代家用遊戲主機",
+    "es": "Consola PlayStation 5 Pro",
+    "es-419": "Consola PlayStation 5 Pro",
+    "fr": "Console PlayStation 5 Pro",
+    "de": "PlayStation 5 Pro Konsole",
+    "nl": "PlayStation 5 Pro-console",
+    "pt": "Console PlayStation 5 Pro",
+    "it": "Console PlayStation 5 Pro",
+    "ja": "PlayStation 5 Pro コンソール",
+    "ko": "PlayStation 5 Pro 콘솔",
+    "ar": "جهاز الألعاب PlayStation 5 Pro"
+  },
+  "dualsense-controller": {
+    "zh-CN": "DualSense 无线自适应扳机触觉手柄",
+    "zh-HK": "DualSense 無線自適應扳機觸覺手掣",
+    "es": "Mando Inalámbrico Adaptativo DualSense",
+    "es-419": "Control Inalámbrico Adaptativo DualSense",
+    "fr": "Manette Sans Fil Adaptative DualSense",
+    "de": "DualSense Wireless-Adaptive-Controller",
+    "nl": "DualSense Draadloze Adaptieve Controller",
+    "pt": "Controle Sem Fio Adaptativo DualSense",
+    "it": "Controller Wireless Adattivo DualSense",
+    "ja": "DualSense ワイヤレス・アダプティブコントローラー",
+    "ko": "DualSense 무선 어댑티브 컨트롤러",
+    "ar": "وحدة التحكم اللاسلكية التكيفية DualSense"
+  },
+  "handheld-hybrid-console": {
+    "zh-CN": "便携式 OLED 混合形态游戏掌机",
+    "zh-HK": "手提式 OLED 混合形態遊戲機",
+    "es": "Consola Portátil Híbrida OLED",
+    "es-419": "Consola Portátil Híbrida OLED",
+    "fr": "Console Portable Hybride OLED",
+    "de": "Tragbare Hybrid-OLED-Spielkonsole",
+    "nl": "Draagbare Hybride OLED-spelcomputer",
+    "pt": "Console Portátil Híbrido OLED",
+    "it": "Console Portatile Ibrida OLED",
+    "ja": "ハイブリッドOLED携帯ゲーム機",
+    "ko": "휴대용 하이브리드 OLED 게임 콘솔",
+    "ar": "جهاز الألعاب المحمول الهجين بشاشة OLED"
+  },
+  "apple-vision-pro": {
+    "zh-CN": "Apple Vision Pro 空间计算头显",
+    "zh-HK": "Apple Vision Pro 空間計算頭戴裝置",
+    "es": "Ordenador Espacial Apple Vision Pro",
+    "es-419": "Computadora Espacial Apple Vision Pro",
+    "fr": "Ordinateur Spatial Apple Vision Pro",
+    "de": "Apple Vision Pro Räumlicher Computer",
+    "nl": "Apple Vision Pro Ruimtelijke Computer",
+    "pt": "Computador Espacial Apple Vision Pro",
+    "it": "Computer Spaziale Apple Vision Pro",
+    "ja": "Apple Vision Pro 空間コンピュータ",
+    "ko": "Apple Vision Pro 공간 컴퓨터",
+    "ar": "حاسوب Apple Vision Pro المكاني"
+  },
+  "airpods-pro-2": {
+    "zh-CN": "AirPods Pro 2 主动降噪耳机与 MagSafe 充电盒",
+    "zh-HK": "AirPods Pro 2 主動降噪耳機連 MagSafe 充電盒",
+    "es": "AirPods Pro 2 y Estuche de Carga MagSafe",
+    "es-419": "Audífonos AirPods Pro 2 y Estuche MagSafe",
+    "fr": "AirPods Pro 2 & Boîtier de Charge MagSafe",
+    "de": "AirPods Pro 2 & MagSafe-Ladecase",
+    "nl": "AirPods Pro 2 & MagSafe-oplaadcase",
+    "pt": "AirPods Pro 2 e Estojo de Recarga MagSafe",
+    "it": "AirPods Pro 2 e Custodia di Ricarica MagSafe",
+    "ja": "AirPods Pro 2 ＆ MagSafe充電ケース",
+    "ko": "AirPods Pro 2 및 MagSafe 충전 케이스",
+    "ar": "سماعات AirPods Pro 2 وعلبة الشحن MagSafe"
+  },
+  "anc-over-ear-headphones": {
+    "zh-CN": "旗舰头戴式碳纤维振膜主动降噪耳机",
+    "zh-HK": "旗艦頭戴式碳纖維振膜主動降噪耳機",
+    "es": "Auriculares Inalámbricos Over-Ear ANC de Referencia",
+    "es-419": "Audífonos Inalámbricos Over-Ear con Cancelación Activa",
+    "fr": "Casque Sans Fil Circum-Auriculaire ANC",
+    "de": "Flaggschiff-Over-Ear-ANC-Kopfhörer",
+    "nl": "Topklasse Over-Ear ANC-koptelefoon",
+    "pt": "Fones Over-Ear Sem Fio com Cancelamento Ativo ANC",
+    "it": "Cuffie Wireless Over-Ear ANC Top di Gamma",
+    "ja": "フラッグシップ・オーバーイヤーANCヘッドホン",
+    "ko": "플래그십 오버이어 액티브 노이즈 캔슬링 헤드폰",
+    "ar": "سماعات رأس لاسلكية احترافية بعزل الضوضاء النشط"
+  },
+  "mirrorless-fullframe-camera": {
+    "zh-CN": "全画幅专业微单相机与 f/2.8 恒定光圈镜头",
+    "zh-HK": "全片幅專業無反相機配 f/2.8 恆定光圈變焦鏡",
+    "es": "Cámara Sin Espejo Full-Frame y Objetivo Zoom f/2.8",
+    "es-419": "Cámara Mirrorless Full-Frame y Lente Zoom f/2.8",
+    "fr": "Appareil Hybride Plein Format & Objectif Zoom f/2.8",
+    "de": "Vollformat-Systemkamera & f/2.8-Zoomobjektiv",
+    "nl": "Full-Frame Systeemcamera & f/2.8-zoomlens",
+    "pt": "Câmera Mirrorless Full-Frame e Lente Zoom f/2.8",
+    "it": "Fotocamera Mirrorless Full-Frame e Obiettivo Zoom f/2.8",
+    "ja": "フルサイズミラーレス一眼＆F2.8大口径ズームレンズ",
+    "ko": "풀프레임 미러리스 카메라 & f/2.8 줌 렌즈",
+    "ar": "كاميرا احترافية كاملة الإطار بدون مرآة وعدسة f/2.8"
+  },
+  "instant-film-camera": {
+    "zh-CN": "复古彩虹条纹一次成像拍立得相机",
+    "zh-HK": "復古彩虹條紋即影即有相機",
+    "es": "Cámara Fotográfica Instantánea Retro",
+    "es-419": "Cámara Fotográfica Instantánea Retro",
+    "fr": "Appareil Photo Instantané Rétro",
+    "de": "Retro-Sofortbildkamera",
+    "nl": "Retro Instant-filmcamera",
+    "pt": "Câmera Fotográfica Instantânea Retrô",
+    "it": "Fotocamera Istantanea Retrò",
+    "ja": "レトロ・インスタントフィルムカメラ",
+    "ko": "레트로 즉석 필름 카메라",
+    "ar": "كاميرا التصوير الفوري الكلاسيكية"
+  },
+  "imax-70mm-cinema-camera": {
+    "zh-CN": "IMAX 70毫米 15齿孔好莱坞胶片电影摄影机",
+    "zh-HK": "IMAX 70毫米 15齒孔荷里活菲林電影攝影機",
+    "es": "Cámara de Cine IMAX 70 mm de 15 Perforaciones",
+    "es-419": "Cámara de Cine IMAX 70 mm de 15 Perforaciones",
+    "fr": "Caméra de Cinéma IMAX 70 mm 15 Perforations",
+    "de": "IMAX 70-mm-15-Perf-Kinofilmkamera",
+    "nl": "IMAX 70mm 15-perf Bioscoopfilmcamera",
+    "pt": "Câmera de Cinema IMAX 70 mm de 15 Perfurações",
+    "it": "Cinepresa IMAX 70 mm a 15 Perforazioni",
+    "ja": "IMAX 70mm 15パーフォレーション映画撮影カメラ",
+    "ko": "IMAX 70mm 15퍼포레이션 시네마 필름 카메라",
+    "ar": "كاميرا السينما العملاقة IMAX مقاس 70 ملم (15 ثقباً)"
   }
 };
 
